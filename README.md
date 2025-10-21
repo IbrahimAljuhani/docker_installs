@@ -61,7 +61,7 @@ chmod +x install_docker_NPM.sh
 
 ### 3. Run it
 ```bash
-./install_docker_NPM.sh
+sudo ./install_docker_NPM.sh
 ```
 
 💡 You’ll be guided through an interactive menu to choose what to install.
@@ -132,3 +132,4 @@ This project is licensed under the **MIT License** — see [LICENSE](LICENSE) fo
 
 **Ibrahim Aljuhani**  
 GitHub: [@ibrahimaljuhani](https://github.com/ibrahimaljuhani)
+
