@@ -15,46 +15,33 @@ INFO='\033[0;36m'
 OK='\033[0;32m'
 WARN='\033[0;33m'
 ERROR='\033[0;31m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 print_info()    { echo -e "${INFO}[INFO]${NC} $1"; }
 print_ok()      { echo -e "${OK}[OK]${NC} $1"; }
 print_warn()    { echo -e "${WARN}[WARN]${NC} $1"; }
 print_error()   { echo -e "${ERROR}[ERROR]${NC} $1"; }
 
-# Spinner for background tasks
 spinner() {
     local pid=$1
-    local delay=0.2
     local spinstr='|/-\'
     while kill -0 "$pid" 2>/dev/null; do
-        local temp=${spinstr#?}
-        printf " [%c]  " "$spinstr"
-        local spinstr=$temp${spinstr%"$temp"}
-        sleep $delay
-        printf "\b\b\b\b\b\b"
+        printf "\b${spinstr:0:1}"
+        spinstr=${spinstr:1}${spinstr:0:1}
+        sleep 0.1
     done
-    printf " \b\b\b\b\b\b"
+    printf "\b"
 }
 
-# Detect OS
 detect_os() {
     if [[ -f /etc/os-release ]]; then
         . /etc/os-release
         case "$ID" in
             ubuntu)
-                if [[ "$(uname -m)" == "aarch64" ]]; then
-                    echo "ubuntu-arm64"
-                else
-                    echo "ubuntu"
-                fi
+                [[ "$(uname -m)" == "aarch64" ]] && echo "ubuntu-arm64" || echo "ubuntu"
                 ;;
             debian)
-                if [[ "$(uname -m)" == "aarch64" ]]; then
-                    echo "raspbian"
-                else
-                    echo "debian"
-                fi
+                [[ "$(uname -m)" == "aarch64" ]] && echo "raspbian" || echo "debian"
                 ;;
             centos|fedora|rhel) echo "centos" ;;
             arch) echo "arch" ;;
@@ -67,7 +54,6 @@ detect_os() {
     fi
 }
 
-# Map detected OS to internal ID
 map_os() {
     case "$1" in
         debian|ubuntu) echo "debian" ;;
@@ -82,7 +68,6 @@ map_os() {
 
 DETECTED=$(detect_os)
 OS=$(map_os "$DETECTED")
-
 print_info "Detected OS: $DETECTED"
 
 if [[ "$OS" == "unknown" ]]; then
@@ -111,23 +96,18 @@ if [[ "$OS" == "unknown" ]]; then
     done
 fi
 
-# Check existing installations
-DOCKER_INSTALLED=false
+# Check existing
 DOCKER_ACTIVE=false
 COMPOSE_INSTALLED=false
 
-if command -v docker &>/dev/null; then
-    DOCKER_INSTALLED=true
-    if sudo systemctl is-active --quiet docker; then
-        DOCKER_ACTIVE=true
-    fi
+if command -v docker &>/dev/null && sudo systemctl is-active --quiet docker; then
+    DOCKER_ACTIVE=true
 fi
 
 if docker compose version &>/dev/null; then
     COMPOSE_INSTALLED=true
 fi
 
-# User choices
 echo
 if [[ "$DOCKER_ACTIVE" == true ]]; then
     print_ok "Docker is already installed and running."
@@ -146,7 +126,7 @@ fi
 read -rp "$(print_info 'Install NGINX Proxy Manager? (y/n): ')" INSTALL_NPM
 read -rp "$(print_info 'Install Portainer-CE? (y/n): ')" INSTALL_PORTAINER
 
-# Install system dependencies
+# Install deps
 install_deps() {
     case "$OS" in
         debian|ubuntu-arm64|raspbian)
@@ -166,17 +146,15 @@ install_deps() {
     esac
 }
 
-# Install Docker
 install_docker() {
     print_info "Installing Docker-CE..."
     curl -fsSL https://get.docker.com | sh >> "$LOGFILE" 2>&1 &
     spinner $!
     sudo systemctl enable --now docker >> "$LOGFILE" 2>&1
     sudo usermod -aG docker "$USER" >> "$LOGFILE" 2>&1
-    print_ok "Docker installed. Log out and back in for group changes to apply."
+    print_ok "Docker installed and user added to 'docker' group."
 }
 
-# Install Docker Compose plugin
 install_compose() {
     print_info "Installing Docker Compose plugin..."
     case "$OS" in
@@ -190,8 +168,6 @@ install_compose() {
             sudo zypper install -y docker-compose-plugin >> "$LOGFILE" 2>&1
             ;;
         *)
-            # get.docker.com usually installs compose plugin on Debian/Ubuntu
-            # Ensure it's available
             if ! docker compose version &>/dev/null; then
                 sudo apt install -y docker-compose-plugin >> "$LOGFILE" 2>&1
             fi
@@ -200,7 +176,7 @@ install_compose() {
     print_ok "Docker Compose is ready."
 }
 
-# Main execution block
+# Main execution
 {
     install_deps
 
@@ -212,18 +188,15 @@ install_compose() {
         install_compose
     fi
 
-    # Ensure Docker is running
     if ! sudo systemctl is-active --quiet docker; then
-        print_error "Docker service failed to start. Check $LOGFILE."
+        print_error "Docker service failed to start."
         exit 1
     fi
 
-    # Create shared Docker network
     if ! docker network ls | grep -q "main-net"; then
         docker network create main-net >> "$LOGFILE" 2>&1
     fi
 
-    # Install NGINX Proxy Manager
     if [[ "${INSTALL_NPM,,}" == "y" ]]; then
         print_info "Installing NGINX Proxy Manager..."
         mkdir -p "$HOME/docker/npm"
@@ -233,7 +206,6 @@ install_compose() {
         print_ok "NGINX Proxy Manager installed."
     fi
 
-    # Install Portainer-CE
     if [[ "${INSTALL_PORTAINER,,}" == "y" ]]; then
         print_info "Installing Portainer-CE..."
         docker volume create portainer_data >> "$LOGFILE" 2>&1
@@ -271,7 +243,20 @@ install_compose() {
     fi
 
     echo "Log file: $LOGFILE"
-    echo "Note: If you added your user to the 'docker' group, log out and back in to use Docker without sudo."
+
+    # Auto-apply docker group membership if in interactive shell
+    if [[ $- == *i* ]] && groups "$USER" | grep -qw docker; then
+        print_info "Docker group permissions are already active."
+    elif [[ $- == *i* ]]; then
+        echo
+        print_info "Applying Docker group permissions now..."
+        print_info "Starting a new shell with updated group membership."
+        sleep 2
+        exec newgrp docker
+    else
+        echo
+        print_warn "To use Docker without 'sudo', log out and back in."
+    fi
 
 } 2>> "$LOGFILE"
 
