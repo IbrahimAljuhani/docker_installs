@@ -24,7 +24,7 @@ The script auto-detects your distribution via `/etc/os-release` (falling back to
 ## Features
 
 - **One-command setup** for a full Docker stack.
-- **Pinned images** (NPM `2.12.1`, Portainer-CE `2.21.5`) — reproducible builds. Overridable via env vars.
+- **Pinned images** (NPM `2.14.0`, Portainer-CE `2.40.0`) — reproducible builds. Overridable via env vars.
 - **Docker Compose v2 plugin** (`docker compose`, not the legacy binary).
 - **Shared `main-net` network** so NPM can proxy other containers by hostname.
 - **Healthchecks** configured for NPM (via `/bin/check-health`) and Portainer (HTTP spider).
@@ -58,11 +58,11 @@ Export before running to customize images or host ports:
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `NPM_IMAGE` | `jc21/nginx-proxy-manager:2.12.1` | NPM image tag |
+| `NPM_IMAGE` | `jc21/nginx-proxy-manager:2.14.0` | NPM image tag |
 | `NPM_HTTP_PORT` | `80` | Host port for public HTTP |
 | `NPM_HTTPS_PORT` | `443` | Host port for public HTTPS |
 | `NPM_ADMIN_PORT` | `81` | Host port for NPM admin UI |
-| `PORTAINER_IMAGE` | `portainer/portainer-ce:2.21.5` | Portainer image tag |
+| `PORTAINER_IMAGE` | `portainer/portainer-ce:2.40.0` | Portainer image tag |
 | `PORTAINER_HTTP_PORT` | `9000` | Host port for Portainer HTTP |
 | `PORTAINER_HTTPS_PORT` | `9443` | Host port for Portainer HTTPS |
 | `PORTAINER_EDGE_PORT` | `8000` | Host port for Portainer Edge agent |

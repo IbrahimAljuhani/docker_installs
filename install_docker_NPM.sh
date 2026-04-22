@@ -8,11 +8,11 @@
 # Environment overrides (export before running, e.g.:
 #   NPM_HTTP_PORT=8080 sudo -E ./install_docker_NPM.sh):
 #
-#   NPM_IMAGE             default: jc21/nginx-proxy-manager:2.12.1
+#   NPM_IMAGE             default: jc21/nginx-proxy-manager:2.14.0
 #   NPM_HTTP_PORT         default: 80
 #   NPM_HTTPS_PORT        default: 443
 #   NPM_ADMIN_PORT        default: 81
-#   PORTAINER_IMAGE       default: portainer/portainer-ce:2.21.5
+#   PORTAINER_IMAGE       default: portainer/portainer-ce:2.40.0
 #   PORTAINER_HTTP_PORT   default: 9000
 #   PORTAINER_HTTPS_PORT  default: 9443
 #   PORTAINER_EDGE_PORT   default: 8000
@@ -26,14 +26,32 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # --- Configurable via env vars (pin images, override ports) ---
-NPM_IMAGE="${NPM_IMAGE:-jc21/nginx-proxy-manager:2.12.1}"
+NPM_IMAGE="${NPM_IMAGE:-jc21/nginx-proxy-manager:2.14.0}"
 NPM_HTTP_PORT="${NPM_HTTP_PORT:-80}"
 NPM_HTTPS_PORT="${NPM_HTTPS_PORT:-443}"
 NPM_ADMIN_PORT="${NPM_ADMIN_PORT:-81}"
-PORTAINER_IMAGE="${PORTAINER_IMAGE:-portainer/portainer-ce:2.21.5}"
+PORTAINER_IMAGE="${PORTAINER_IMAGE:-portainer/portainer-ce:2.40.0}"
 PORTAINER_HTTP_PORT="${PORTAINER_HTTP_PORT:-9000}"
 PORTAINER_HTTPS_PORT="${PORTAINER_HTTPS_PORT:-9443}"
 PORTAINER_EDGE_PORT="${PORTAINER_EDGE_PORT:-8000}"
+
+# --- Validate env-var inputs (prevent command injection via heredoc expansion) ---
+_valid_image() { [[ "$1" =~ ^[a-zA-Z0-9][a-zA-Z0-9._/-]*:[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; }
+_valid_port()  { [[ "$1" =~ ^[0-9]+$ ]] && (( $1 > 0 && $1 < 65536 )); }
+
+for v in NPM_IMAGE PORTAINER_IMAGE; do
+    if ! _valid_image "${!v}"; then
+        echo "ERROR: $v='${!v}' is not a valid image reference (name:tag)." >&2
+        exit 2
+    fi
+done
+for v in NPM_HTTP_PORT NPM_HTTPS_PORT NPM_ADMIN_PORT \
+         PORTAINER_HTTP_PORT PORTAINER_HTTPS_PORT PORTAINER_EDGE_PORT; do
+    if ! _valid_port "${!v}"; then
+        echo "ERROR: $v='${!v}' is not a valid TCP port (1-65535)." >&2
+        exit 2
+    fi
+done
 
 # --- Resolve real user/home (so running under sudo doesn't turn $HOME into /root) ---
 REAL_USER="${SUDO_USER:-$USER}"
