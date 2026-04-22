@@ -1,135 +1,154 @@
-# 🐳 Docker & NGINX Proxy Manager Installer
+# Docker & NGINX Proxy Manager Installer
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-A smart, interactive Bash script to **automatically install Docker CE, Docker Compose, NGINX Proxy Manager, and Portainer-CE** on multiple Linux distributions — including ARM64 devices like Raspberry Pi.
+A hardened, interactive Bash installer for **Docker CE, Docker Compose, NGINX Proxy Manager (NPM), and Portainer-CE** on Linux — including ARM64 devices like Raspberry Pi.
 
-Perfect for homelab enthusiasts, DevOps beginners, or anyone who wants a quick, secure, and consistent Docker environment with a reverse proxy and management UI.
+Designed for homelab users, small-team DevOps, and anyone who wants a reproducible Docker host with a reverse proxy and a management UI behind a single command.
 
 ---
 
-## ✅ Supported Operating Systems
+## Supported Operating Systems
 
-- **Debian** 10 / 11 / 12  
-- **Ubuntu** 18.04 / 20.04 / 22.04 / 24.04 (x86_64 & ARM64)  
-- **Raspbian** / Raspberry Pi OS (ARM64)  
-- **CentOS** 7 / 8 / Stream  
-- **Fedora**  
-- **Arch Linux**  
+- **Debian** 10 / 11 / 12
+- **Ubuntu** 20.04 / 22.04 / 24.04 (x86_64 & ARM64)
+- **Raspberry Pi OS** / Raspbian (ARM64)
+- **CentOS / RHEL / Rocky / AlmaLinux / Fedora** (dnf or yum)
+- **Arch Linux**
 - **openSUSE** (Leap & Tumbleweed)
 
-> ✅ The script auto-detects your OS. If detection fails, you can select manually.
+The script auto-detects your distribution via `/etc/os-release` (falling back to `ID_LIKE` for derivatives). If detection fails, you can select manually.
 
 ---
 
-## 🚀 Features
+## Features
 
-- **One-command setup** for a full Docker stack.  
-- Installs **Docker CE** via the official `get.docker.com` script.  
-- Uses the modern **Docker Compose plugin** (`docker compose`, not the legacy binary).  
-- Deploys **NGINX Proxy Manager** from a remote `docker-compose.yml` file.  
-- Installs **Portainer-CE** for intuitive Docker management.  
-- Creates a shared Docker network (`main-net`) for easy container communication.  
-- Checks for existing installations to avoid duplicates.  
-- Adds your user to the `docker` group (no `sudo` needed after re-login).  
-- Clean, color-coded, interactive prompts.  
-- Full logging to `~/install_docker_NPM.log`.
-
----
-
-## 🔗 URLs
-
-- **Script**:  
-  [`https://github.com/ibrahimaljuhani/docker_installs/blob/main/install_docker_NPM.sh`](https://github.com/ibrahimaljuhani/docker_installs/blob/main/install_docker_NPM.sh)
-
-- **NGINX Proxy Manager Compose File**:  
-  [`https://github.com/ibrahimaljuhani/docker_installs/blob/main/docker_compose_NPM.yml`](https://github.com/ibrahimaljuhani/docker_installs/blob/main/docker_compose_NPM.yml)
+- **One-command setup** for a full Docker stack.
+- **Pinned images** (NPM `2.12.1`, Portainer-CE `2.21.5`) — reproducible builds. Overridable via env vars.
+- **Docker Compose v2 plugin** (`docker compose`, not the legacy binary).
+- **Shared `main-net` network** so NPM can proxy other containers by hostname.
+- **Healthchecks** configured for NPM (via `/bin/check-health`) and Portainer (HTTP spider).
+- **Port-conflict detection** — checks `ss`/`netstat` before binding.
+- **Idempotent reruns** — existing containers, compose files, and network are preserved.
+- **Configurable ports** via environment variables (see below).
+- **Distinguishes `sudo` vs pure root** — installs files into the invoking user's home and adds them to the `docker` group correctly.
+- **Proper error propagation** — `set -Eeuo pipefail` plus a global `ERR` trap reporting source file, line, and function.
+- **Log rotation** — each run archives the previous `~/install_docker_NPM.log` to `.old`.
+- **Firewalld hint** on RHEL-family systems.
+- Color-coded, interactive prompts; EOF-safe reads.
 
 ---
 
-## 📥 Installation & Usage
+## Installation
 
-### 1. Download the script
 ```bash
-curl -fsSL -o install_docker_NPM.sh https://raw.githubusercontent.com/ibrahimaljuhani/docker_installs/main/install_docker_NPM.sh
-```
-
-### 2. Make it executable
-```bash
+curl -fsSL -o install_docker_NPM.sh \
+  https://raw.githubusercontent.com/ibrahimaljuhani/docker_installs/main/install_docker_NPM.sh
 chmod +x install_docker_NPM.sh
-```
-
-### 3. Run it
-```bash
 sudo ./install_docker_NPM.sh
 ```
 
-💡 You’ll be guided through an interactive menu to choose what to install.
+> Must be run with `sudo` (or as root). Running with `sudo -E ./install_docker_NPM.sh` preserves env-var overrides.
 
 ---
 
-## 🔐 Default Credentials
+## Environment Variable Overrides
 
-### NGINX Proxy Manager
-- **URL**: `http://YOUR_SERVER_IP:81`  
-- **Email**: `admin@example.com`  
-- **Password**: `changeme`  
-  ⚠️ **Change this immediately after first login!**
+Export before running to customize images or host ports:
 
-### Portainer-CE
-- **URL**: `http://YOUR_SERVER_IP:9000`  
-- **First login**: Create your own admin account.
+| Variable | Default | Purpose |
+|---|---|---|
+| `NPM_IMAGE` | `jc21/nginx-proxy-manager:2.12.1` | NPM image tag |
+| `NPM_HTTP_PORT` | `80` | Host port for public HTTP |
+| `NPM_HTTPS_PORT` | `443` | Host port for public HTTPS |
+| `NPM_ADMIN_PORT` | `81` | Host port for NPM admin UI |
+| `PORTAINER_IMAGE` | `portainer/portainer-ce:2.21.5` | Portainer image tag |
+| `PORTAINER_HTTP_PORT` | `9000` | Host port for Portainer HTTP |
+| `PORTAINER_HTTPS_PORT` | `9443` | Host port for Portainer HTTPS |
+| `PORTAINER_EDGE_PORT` | `8000` | Host port for Portainer Edge agent |
 
----
-
-## 📁 Directory Structure After Install
-
-All apps are installed under your home directory:
+Example (move NPM HTTP to 8080):
 
 ```bash
-~/docker/
-└── npm/               # NGINX Proxy Manager
+NPM_HTTP_PORT=8080 NPM_HTTPS_PORT=8443 sudo -E ./install_docker_NPM.sh
 ```
 
-> Portainer-CE stores data in a Docker volume named `portainer_data`.
+---
+
+## Default Credentials
+
+### NGINX Proxy Manager
+- URL: `http://YOUR_SERVER_IP:81` (or `$NPM_ADMIN_PORT`)
+- Email: `admin@example.com`
+- Password: `changeme`
+
+> Change these on first login.
+
+### Portainer-CE
+- URL: `http://YOUR_SERVER_IP:9000` or `https://YOUR_SERVER_IP:9443`
+- First login: create your own admin account.
 
 ---
 
-## 🛡️ Security Notes
+## Directory Layout After Install
 
-- The script adds your user to the `docker` group. **Log out and back in** for this to take effect.  
-- Never expose NGINX Proxy Manager or Portainer to the public internet without authentication or a firewall.  
-- Always change default passwords on first use.  
-- 🔁 **After installation**, log out and log back in (or reboot) to apply Docker group permissions.
+```
+~/docker/
+└── npm/
+    ├── docker-compose.yml
+    ├── data/            # NPM SQLite DB + config
+    └── letsencrypt/     # TLS certs
+```
 
----
-
-## ⚙️ System Requirements (Optional)
-
-- Minimum **1 GB RAM** (2 GB recommended)  
-- At least **10 GB free disk space**  
-- Internet connection required during setup
+Portainer stores its data in the Docker volume `portainer_data`.
 
 ---
 
-## 🧩 Troubleshooting
+## Security Notes
 
-- **Docker not found after installation:**  
-  → Log out and log back in (or reboot) to refresh group permissions.  
-
-- **Portainer or NPM container not running:**  
-  → Check logs using `docker ps -a` or `docker logs <container_name>`.
-
----
-
-## 📜 License
-
-This project is licensed under the **MIT License** — see [LICENSE](LICENSE) for details.
+- **Portainer mounts `/var/run/docker.sock`.** Anyone who can reach Portainer effectively has root on the host. Protect the admin UI behind a firewall, VPN, or reverse proxy with auth.
+- **NPM default credentials must be changed immediately.**
+- **Docker group = root equivalent.** Be careful who you add.
+- The script pins image tags but does **not** verify checksums of the `get.docker.com` script. If this is a concern, install Docker from your distribution's repository instead.
 
 ---
 
-## 🙌 Author
+## Troubleshooting
 
-**Ibrahim Aljuhani**  
-GitHub: [@ibrahimaljuhani](https://github.com/ibrahimaljuhani)
+**Port already in use**
+The script pre-checks ports via `ss`/`netstat`. If a port is busy it prompts to continue. To change ports, re-run with env vars (see above).
 
+**`docker` command requires sudo after install**
+Log out and back in (or reboot) — group membership is a new-session thing.
+
+**Services unreachable on RHEL/Fedora**
+`firewalld` blocks ports even though Docker bypasses `ufw`. The script prints the exact `firewall-cmd` lines at the end.
+
+**Containers not running**
+```bash
+cd ~/docker/npm && docker compose logs
+docker logs portainer
+```
+
+**Installation failed mid-way**
+Check the log: `~/install_docker_NPM.log`. The previous run's log (if any) is preserved as `~/install_docker_NPM.log.old`.
+
+---
+
+## System Requirements
+
+- 1 GB RAM minimum (2 GB recommended)
+- ~10 GB free disk
+- Internet access during install
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+---
+
+## Author
+
+**Ibrahim Aljuhani** — [@ibrahimaljuhani](https://github.com/ibrahimaljuhani)

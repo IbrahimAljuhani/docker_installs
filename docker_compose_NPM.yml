@@ -1,12 +1,12 @@
 services:
   app:
-    image: 'jc21/nginx-proxy-manager:latest'
+    image: 'jc21/nginx-proxy-manager:2.12.1'
     restart: unless-stopped
     ports:
       # These ports are in format <host-port>:<container-port>
-      - '80:80' # Public HTTP Port
+      - '80:80'   # Public HTTP Port
       - '443:443' # Public HTTPS Port
-      - '81:81' # Admin Web Port
+      - '81:81'   # Admin Web Port
       # Add any other Stream port you want to expose
       # - '21:21' # FTP
 
@@ -21,7 +21,16 @@ services:
     volumes:
       - ./data:/data
       - ./letsencrypt:/etc/letsencrypt
-      
+
+    networks:
+      - main-net
+
+    healthcheck:
+      test: ["CMD", "/bin/check-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 networks:
   main-net:
     external: true

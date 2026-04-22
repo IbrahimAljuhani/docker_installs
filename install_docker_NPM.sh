@@ -1,16 +1,49 @@
 #!/bin/bash
-
+#
 # install_docker_NPM.sh
 # Author: Ibrahim Aljuhani
 # GitHub: https://github.com/ibrahimaljuhani/docker_installs
 # Purpose: Install Docker CE, Docker Compose, NGINX Proxy Manager, and Portainer-CE
+#
+# Environment overrides (export before running, e.g.:
+#   NPM_HTTP_PORT=8080 sudo -E ./install_docker_NPM.sh):
+#
+#   NPM_IMAGE             default: jc21/nginx-proxy-manager:2.12.1
+#   NPM_HTTP_PORT         default: 80
+#   NPM_HTTPS_PORT        default: 443
+#   NPM_ADMIN_PORT        default: 81
+#   PORTAINER_IMAGE       default: portainer/portainer-ce:2.21.5
+#   PORTAINER_HTTP_PORT   default: 9000
+#   PORTAINER_HTTPS_PORT  default: 9443
+#   PORTAINER_EDGE_PORT   default: 8000
 
-set -euo pipefail
+set -Eeuo pipefail
 
-LOGFILE="$HOME/install_docker_NPM.log"
-NPM_COMPOSE_URL="https://raw.githubusercontent.com/ibrahimaljuhani/docker_installs/main/docker_compose_NPM.yml"
+# --- Require root ---
+if [[ $EUID -ne 0 ]]; then
+    echo "ERROR: This script must be run with sudo (e.g. 'sudo ./install_docker_NPM.sh')." >&2
+    exit 1
+fi
 
-# Color codes
+# --- Configurable via env vars (pin images, override ports) ---
+NPM_IMAGE="${NPM_IMAGE:-jc21/nginx-proxy-manager:2.12.1}"
+NPM_HTTP_PORT="${NPM_HTTP_PORT:-80}"
+NPM_HTTPS_PORT="${NPM_HTTPS_PORT:-443}"
+NPM_ADMIN_PORT="${NPM_ADMIN_PORT:-81}"
+PORTAINER_IMAGE="${PORTAINER_IMAGE:-portainer/portainer-ce:2.21.5}"
+PORTAINER_HTTP_PORT="${PORTAINER_HTTP_PORT:-9000}"
+PORTAINER_HTTPS_PORT="${PORTAINER_HTTPS_PORT:-9443}"
+PORTAINER_EDGE_PORT="${PORTAINER_EDGE_PORT:-8000}"
+
+# --- Resolve real user/home (so running under sudo doesn't turn $HOME into /root) ---
+REAL_USER="${SUDO_USER:-$USER}"
+REAL_HOME="$(getent passwd "$REAL_USER" 2>/dev/null | cut -d: -f6)"
+: "${REAL_HOME:=${HOME:-/root}}"
+REAL_GROUP="$(id -gn "$REAL_USER" 2>/dev/null || echo "$REAL_USER")"
+
+LOGFILE="$REAL_HOME/install_docker_NPM.log"
+
+# --- Color codes ---
 INFO='\033[0;36m'
 OK='\033[0;32m'
 WARN='\033[0;33m'
@@ -19,18 +52,78 @@ NC='\033[0m'
 
 print_info()    { echo -e "${INFO}[INFO]${NC} $1"; }
 print_ok()      { echo -e "${OK}[OK]${NC} $1"; }
-print_warn()    { echo -e "${WARN}[WARN]${NC} $1"; }
-print_error()   { echo -e "${ERROR}[ERROR]${NC} $1"; }
+print_warn()    { echo -e "${WARN}[WARN]${NC} $1" >&2; }
+print_error()   { echo -e "${ERROR}[ERROR]${NC} $1" >&2; }
+
+# --- Rotate previous log, create fresh one owned by the real user ---
+if [[ -s "$LOGFILE" ]]; then
+    mv "$LOGFILE" "$LOGFILE.old" 2>/dev/null || true
+fi
+touch "$LOGFILE"
+chown "$REAL_USER":"$REAL_GROUP" "$LOGFILE" 2>/dev/null || true
+[[ -f "$LOGFILE.old" ]] && chown "$REAL_USER":"$REAL_GROUP" "$LOGFILE.old" 2>/dev/null || true
+
+# --- Global error trap (reports source:line + function for easier debugging) ---
+trap 'rc=$?; print_error "Failed at ${BASH_SOURCE[0]}:${LINENO} in ${FUNCNAME[0]:-main} (exit $rc). Log: $LOGFILE"; exit $rc' ERR
 
 spinner() {
     local pid=$1
     local spinstr='|/-\'
+    local first=1
     while kill -0 "$pid" 2>/dev/null; do
-        printf "\b${spinstr:0:1}"
+        if (( first )); then
+            printf "%s" "${spinstr:0:1}"
+            first=0
+        else
+            printf "\b%s" "${spinstr:0:1}"
+        fi
         spinstr=${spinstr:1}${spinstr:0:1}
         sleep 0.1
     done
-    printf "\b"
+    if (( first == 0 )); then
+        printf "\b \b"
+    fi
+}
+
+# Port conflict check — warns the user before docker tries to bind.
+# Matches ":<port>$" to cover IPv4 (0.0.0.0:80), IPv6 ([::]:80), and wildcard (*:80).
+check_port() {
+    local port=$1
+    if command -v ss &>/dev/null && ss -lntH 2>/dev/null | awk '{print $4}' | grep -qE ":${port}$"; then
+        return 1
+    elif command -v netstat &>/dev/null && netstat -lnt 2>/dev/null | awk 'NR>2 {print $4}' | grep -qE ":${port}$"; then
+        return 1
+    fi
+    return 0
+}
+
+check_ports_or_warn() {
+    local svc=$1; shift
+    local busy=()
+    for p in "$@"; do
+        check_port "$p" || busy+=("$p")
+    done
+    if (( ${#busy[@]} > 0 )); then
+        print_warn "$svc needs ports ${busy[*]} but they are already in use on the host."
+        read -rp "$(print_info 'Continue anyway? (y/n): ')" ans || ans=""
+        [[ "${ans,,}" == "y" ]] || return 1
+    fi
+    return 0
+}
+
+# Read wrapper that won't trip the ERR trap on EOF (e.g. when script is piped).
+safe_read() {
+    local __var=$1
+    local __prompt=$2
+    read -rp "$__prompt" "$__var" || eval "$__var=''"
+}
+
+# Run a command in the background with a spinner, then propagate its exit code.
+run_with_spinner() {
+    ("$@") >> "$LOGFILE" 2>&1 &
+    local pid=$!
+    spinner "$pid"
+    wait "$pid"
 }
 
 detect_os() {
@@ -41,13 +134,21 @@ detect_os() {
                 [[ "$(uname -m)" == "aarch64" ]] && echo "ubuntu-arm64" || echo "ubuntu"
                 ;;
             debian)
-                [[ "$(uname -m)" == "aarch64" ]] && echo "raspbian" || echo "debian"
+                echo "debian"
                 ;;
-            centos|fedora|rhel) echo "centos" ;;
+            raspbian) echo "raspbian" ;;
+            centos|fedora|rhel|rocky|almalinux) echo "centos" ;;
             arch) echo "arch" ;;
             opensuse-leap|opensuse-tumbleweed) echo "opensuse" ;;
-            raspbian) echo "raspbian" ;;
-            *) echo "unknown" ;;
+            *)
+                for like in ${ID_LIKE:-}; do
+                    case "$like" in
+                        debian) echo "debian"; return ;;
+                        rhel|fedora) echo "centos"; return ;;
+                    esac
+                done
+                echo "unknown"
+                ;;
         esac
     else
         echo "unknown"
@@ -77,7 +178,7 @@ if [[ "$OS" == "unknown" ]]; then
         "Debian / Ubuntu (x86_64)"
         "Ubuntu (ARM64)"
         "Raspbian (ARM64)"
-        "CentOS / Fedora"
+        "CentOS / Fedora / RHEL"
         "Arch Linux"
         "openSUSE"
         "Cancel"
@@ -96,15 +197,21 @@ if [[ "$OS" == "unknown" ]]; then
     done
 fi
 
-# Check existing
+# --- Check existing installations (we run as root, so no sudo needed) ---
 DOCKER_ACTIVE=false
 COMPOSE_INSTALLED=false
 
-if command -v docker &>/dev/null && sudo systemctl is-active --quiet docker; then
-    DOCKER_ACTIVE=true
+if command -v docker &>/dev/null; then
+    if systemctl is-active --quiet docker; then
+        DOCKER_ACTIVE=true
+    else
+        print_warn "Docker is installed but not running. Attempting to start it..."
+        systemctl enable --now docker >> "$LOGFILE" 2>&1 || true
+        systemctl is-active --quiet docker && DOCKER_ACTIVE=true || true
+    fi
 fi
 
-if docker compose version &>/dev/null; then
+if command -v docker &>/dev/null && docker compose version &>/dev/null; then
     COMPOSE_INSTALLED=true
 fi
 
@@ -113,151 +220,258 @@ if [[ "$DOCKER_ACTIVE" == true ]]; then
     print_ok "Docker is already installed and running."
     INSTALL_DOCKER="n"
 else
-    read -rp "$(print_info 'Install Docker-CE? (y/n): ')" INSTALL_DOCKER
+    safe_read INSTALL_DOCKER "$(print_info 'Install Docker-CE? (y/n): ')"
 fi
 
 if [[ "$COMPOSE_INSTALLED" == true ]]; then
     print_ok "Docker Compose (plugin) is already installed."
     INSTALL_COMPOSE="n"
 else
-    read -rp "$(print_info 'Install Docker Compose? (y/n): ')" INSTALL_COMPOSE
+    safe_read INSTALL_COMPOSE "$(print_info 'Install Docker Compose? (y/n): ')"
 fi
 
-read -rp "$(print_info 'Install NGINX Proxy Manager? (y/n): ')" INSTALL_NPM
-read -rp "$(print_info 'Install Portainer-CE? (y/n): ')" INSTALL_PORTAINER
+safe_read INSTALL_NPM       "$(print_info 'Install NGINX Proxy Manager? (y/n): ')"
+safe_read INSTALL_PORTAINER "$(print_info 'Install Portainer-CE? (y/n): ')"
 
-# Install deps
+# --- Install deps ---
 install_deps() {
     case "$OS" in
         debian|ubuntu-arm64|raspbian)
-            sudo apt update >> "$LOGFILE" 2>&1
-            sudo apt install -y curl wget git >> "$LOGFILE" 2>&1
+            DEBIAN_FRONTEND=noninteractive apt-get update -y >> "$LOGFILE" 2>&1
+            DEBIAN_FRONTEND=noninteractive apt-get install -y curl wget git ca-certificates >> "$LOGFILE" 2>&1
             ;;
         centos)
-            sudo dnf install -y curl wget git >> "$LOGFILE" 2>&1
+            if command -v dnf &>/dev/null; then
+                dnf install -y curl wget git ca-certificates >> "$LOGFILE" 2>&1
+            else
+                yum install -y curl wget git ca-certificates >> "$LOGFILE" 2>&1
+            fi
             ;;
         arch)
-            sudo pacman -Sy --noconfirm curl wget git >> "$LOGFILE" 2>&1
+            pacman -Sy --noconfirm curl wget git ca-certificates >> "$LOGFILE" 2>&1
             ;;
         opensuse)
-            sudo zypper refresh >> "$LOGFILE" 2>&1
-            sudo zypper install -y curl wget git >> "$LOGFILE" 2>&1
+            zypper --non-interactive refresh >> "$LOGFILE" 2>&1
+            zypper --non-interactive install -y curl wget git ca-certificates >> "$LOGFILE" 2>&1
             ;;
     esac
 }
 
 install_docker() {
-    print_info "Installing Docker-CE..."
-    curl -fsSL https://get.docker.com | sh >> "$LOGFILE" 2>&1 &
-    spinner $!
-    sudo systemctl enable --now docker >> "$LOGFILE" 2>&1
-    sudo usermod -aG docker "$USER" >> "$LOGFILE" 2>&1
-    print_ok "Docker installed and user added to 'docker' group."
+    print_info "Installing Docker-CE... "
+    # Use pipefail inside the subshell so a failing curl is detected.
+    run_with_spinner bash -c "set -o pipefail; curl -fsSL https://get.docker.com | sh"
+    systemctl enable --now docker >> "$LOGFILE" 2>&1
+    usermod -aG docker "$REAL_USER" >> "$LOGFILE" 2>&1
+    print_ok "Docker installed and '$REAL_USER' added to the 'docker' group."
 }
 
 install_compose() {
+    # Docker's official installer already ships the compose plugin on most distros.
+    if docker compose version &>/dev/null; then
+        print_ok "Docker Compose plugin already present."
+        return 0
+    fi
+
     print_info "Installing Docker Compose plugin..."
     case "$OS" in
         arch)
-            sudo pacman -S --noconfirm docker-compose >> "$LOGFILE" 2>&1
+            pacman -Sy --noconfirm docker-compose >> "$LOGFILE" 2>&1
             ;;
         centos)
-            sudo dnf install -y docker-compose-plugin >> "$LOGFILE" 2>&1
-            ;;
-        opensuse)
-            sudo zypper install -y docker-compose-plugin >> "$LOGFILE" 2>&1
-            ;;
-        *)
-            if ! docker compose version &>/dev/null; then
-                sudo apt install -y docker-compose-plugin >> "$LOGFILE" 2>&1
+            if command -v dnf &>/dev/null; then
+                dnf install -y docker-compose-plugin >> "$LOGFILE" 2>&1
+            else
+                yum install -y docker-compose-plugin >> "$LOGFILE" 2>&1
             fi
             ;;
+        opensuse)
+            # openSUSE ships the v2 plugin as 'docker-compose'.
+            zypper --non-interactive install -y docker-compose >> "$LOGFILE" 2>&1
+            ;;
+        debian|ubuntu-arm64|raspbian)
+            DEBIAN_FRONTEND=noninteractive apt-get install -y docker-compose-plugin >> "$LOGFILE" 2>&1
+            ;;
     esac
+
+    if ! docker compose version &>/dev/null; then
+        print_error "Docker Compose plugin did not install correctly."
+        exit 1
+    fi
     print_ok "Docker Compose is ready."
 }
 
-# Main execution
-{
-    install_deps
+# --- Main execution ---
+install_deps
 
-    if [[ "${INSTALL_DOCKER,,}" == "y" ]]; then
-        install_docker
+if [[ "${INSTALL_DOCKER,,}" == "y" ]]; then
+    install_docker
+fi
+
+if [[ "${INSTALL_COMPOSE,,}" == "y" ]]; then
+    install_compose
+fi
+
+if ! systemctl is-active --quiet docker; then
+    print_error "Docker service is not running. Aborting."
+    exit 1
+fi
+
+# Ensure the real user is in the docker group (idempotent). Skip for pure root.
+if [[ "$REAL_USER" != "root" ]]; then
+    if ! id -nG "$REAL_USER" | tr ' ' '\n' | grep -qx docker; then
+        usermod -aG docker "$REAL_USER" >> "$LOGFILE" 2>&1
+        print_info "Added '$REAL_USER' to the 'docker' group."
     fi
+else
+    print_warn "Running as pure root (no SUDO_USER). Skipping docker group setup."
+fi
 
-    if [[ "${INSTALL_COMPOSE,,}" == "y" ]]; then
-        install_compose
-    fi
+# Create shared docker network.
+if ! docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
+    docker network create main-net >> "$LOGFILE" 2>&1
+    print_ok "Created docker network 'main-net'."
+fi
 
-    if ! sudo systemctl is-active --quiet docker; then
-        print_error "Docker service failed to start."
-        exit 1
-    fi
+if [[ "${INSTALL_NPM,,}" == "y" ]]; then
+    if check_ports_or_warn "NGINX Proxy Manager" "$NPM_HTTP_PORT" "$NPM_HTTPS_PORT" "$NPM_ADMIN_PORT"; then
+        print_info "Installing NGINX Proxy Manager ($NPM_IMAGE)..."
+        NPM_DIR="$REAL_HOME/docker/npm"
+        mkdir -p "$NPM_DIR"
 
-    if ! docker network ls | grep -q "main-net"; then
-        docker network create main-net >> "$LOGFILE" 2>&1
-    fi
+        if [[ -f "$NPM_DIR/docker-compose.yml" ]]; then
+            print_warn "Existing docker-compose.yml found at $NPM_DIR — keeping it (not overwritten)."
+        else
+            # Unquoted heredoc so env-var-configured ports/image are substituted.
+            # NPM is attached to 'main-net' so other containers can be proxied by hostname.
+            cat > "$NPM_DIR/docker-compose.yml" <<YAML
+services:
+  app:
+    image: '$NPM_IMAGE'
+    restart: unless-stopped
+    ports:
+      - '$NPM_HTTP_PORT:80'
+      - '$NPM_HTTPS_PORT:443'
+      - '$NPM_ADMIN_PORT:81'
+    volumes:
+      - ./data:/data
+      - ./letsencrypt:/etc/letsencrypt
+    networks:
+      - main-net
+    healthcheck:
+      test: ["CMD", "/bin/check-health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
-    if [[ "${INSTALL_NPM,,}" == "y" ]]; then
-        print_info "Installing NGINX Proxy Manager..."
-        mkdir -p "$HOME/docker/npm"
-        cd "$HOME/docker/npm"
-        curl -s "$NPM_COMPOSE_URL" -o docker-compose.yml
-        docker compose up -d >> "$LOGFILE" 2>&1
-        print_ok "NGINX Proxy Manager installed."
-    fi
+networks:
+  main-net:
+    external: true
+YAML
+        fi
 
-    if [[ "${INSTALL_PORTAINER,,}" == "y" ]]; then
-        print_info "Installing Portainer-CE..."
-        docker volume create portainer_data >> "$LOGFILE" 2>&1
-        docker run -d \
-            -p 8000:8000 -p 9000:9000 \
-            --name=portainer \
-            --restart=always \
-            -v /var/run/docker.sock:/var/run/docker.sock \
-            -v portainer_data:/data \
-            --network main-net \
-            portainer/portainer-ce:latest >> "$LOGFILE" 2>&1
-        print_ok "Portainer-CE installed."
-    fi
+        # Targeted chown: only the NPM directory, not the whole ~/docker tree.
+        mkdir -p "$REAL_HOME/docker"
+        chown "$REAL_USER":"$REAL_GROUP" "$REAL_HOME/docker" 2>/dev/null || true
+        chown -R "$REAL_USER":"$REAL_GROUP" "$NPM_DIR"
 
-    # Final summary
-    echo
-    print_ok "Installation completed successfully!"
-    echo
-
-    SERVER_IP=$(hostname -I | awk '{print $1}')
-
-    if [[ "${INSTALL_NPM,,}" == "y" ]]; then
-        echo "→ NGINX Proxy Manager:"
-        echo "   URL:      http://$SERVER_IP:81"
-        echo "   Username: admin@example.com"
-        echo "   Password: changeme"
-        echo
-    fi
-
-    if [[ "${INSTALL_PORTAINER,,}" == "y" ]]; then
-        echo "→ Portainer-CE:"
-        echo "   URL: http://$SERVER_IP:9000"
-        echo "   (Create admin account on first login)"
-        echo
-    fi
-
-    echo "Log file: $LOGFILE"
-
-    # Auto-apply docker group membership if in interactive shell
-    if [[ $- == *i* ]] && groups "$USER" | grep -qw docker; then
-        print_info "Docker group permissions are already active."
-    elif [[ $- == *i* ]]; then
-        echo
-        print_info "Applying Docker group permissions now..."
-        print_info "Starting a new shell with updated group membership."
-        sleep 2
-        exec newgrp docker
+        (cd "$NPM_DIR" && docker compose up -d) >> "$LOGFILE" 2>&1
+        sleep 3
+        if (cd "$NPM_DIR" && docker compose ps --status=running --quiet | grep -q .); then
+            print_ok "NGINX Proxy Manager is running."
+        else
+            print_warn "NPM started but no running container detected. Check: (cd $NPM_DIR && docker compose logs)"
+        fi
     else
-        echo
-        print_warn "To use Docker without 'sudo', log out and back in."
+        print_warn "Skipping NPM installation due to port conflicts."
+        INSTALL_NPM="n"
     fi
+fi
 
-} 2>> "$LOGFILE"
+if [[ "${INSTALL_PORTAINER,,}" == "y" ]]; then
+    if check_ports_or_warn "Portainer-CE" "$PORTAINER_EDGE_PORT" "$PORTAINER_HTTP_PORT" "$PORTAINER_HTTPS_PORT"; then
+        print_info "Installing Portainer-CE ($PORTAINER_IMAGE)..."
+        if docker ps -a --format '{{.Names}}' | grep -qx portainer; then
+            print_warn "A container named 'portainer' already exists; skipping."
+        else
+            docker volume create portainer_data >> "$LOGFILE" 2>&1
+            docker run -d \
+                -p "$PORTAINER_EDGE_PORT:8000" \
+                -p "$PORTAINER_HTTP_PORT:9000" \
+                -p "$PORTAINER_HTTPS_PORT:9443" \
+                --name=portainer \
+                --restart=always \
+                --health-cmd="wget -q --spider http://localhost:9000/ || exit 1" \
+                --health-interval=30s \
+                --health-timeout=10s \
+                --health-retries=3 \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                -v portainer_data:/data \
+                --network main-net \
+                "$PORTAINER_IMAGE" >> "$LOGFILE" 2>&1
+            print_ok "Portainer-CE installed."
+            print_warn "Portainer mounts /var/run/docker.sock (root-equivalent on host). Keep it behind a firewall."
+        fi
+    else
+        print_warn "Skipping Portainer installation due to port conflicts."
+        INSTALL_PORTAINER="n"
+    fi
+fi
+
+# --- Summary ---
+echo
+print_ok "Installation completed successfully!"
+echo
+
+SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+[[ -z "${SERVER_IP:-}" ]] && SERVER_IP="<your-server-ip>"
+
+# Gather additional non-loopback, non-docker-bridge IPs for the summary.
+ALL_IPS=$(hostname -I 2>/dev/null \
+    | tr ' ' '\n' \
+    | grep -v '^$' \
+    | grep -Ev '^(127\.|169\.254\.|172\.1[7-9]\.|172\.2[0-9]\.|172\.3[0-1]\.)' \
+    || true)
+
+if [[ "${INSTALL_NPM,,}" == "y" ]]; then
+    echo "-> NGINX Proxy Manager:"
+    echo "   URL:      http://$SERVER_IP:$NPM_ADMIN_PORT"
+    echo "   Username: admin@example.com"
+    echo "   Password: changeme"
+    print_warn "Change the default NPM credentials immediately after first login."
+    echo
+fi
+
+if [[ "${INSTALL_PORTAINER,,}" == "y" ]]; then
+    echo "-> Portainer-CE:"
+    echo "   URL (HTTP):  http://$SERVER_IP:$PORTAINER_HTTP_PORT"
+    echo "   URL (HTTPS): https://$SERVER_IP:$PORTAINER_HTTPS_PORT"
+    echo "   (Create admin account on first login)"
+    echo
+fi
+
+# If the host has more than one reachable IP, show them so the user picks the right one.
+if [[ -n "$ALL_IPS" ]] && (( $(echo "$ALL_IPS" | wc -l) > 1 )); then
+    echo "Reachable host IPs (pick the one matching your network):"
+    while IFS= read -r ip; do echo "   - $ip"; done <<< "$ALL_IPS"
+    echo
+fi
+
+echo "Log file: $LOGFILE"
+[[ -f "$LOGFILE.old" ]] && echo "Previous log:  $LOGFILE.old"
+echo
+
+# Firewalld hint (Docker bypasses ufw via DOCKER-USER, but firewalld can still block).
+if systemctl is-active --quiet firewalld 2>/dev/null; then
+    print_warn "firewalld is active. If you cannot reach the services, open the ports, e.g.:"
+    [[ "${INSTALL_NPM,,}" == "y" ]] && \
+        echo "   sudo firewall-cmd --permanent --add-port=$NPM_HTTP_PORT/tcp --add-port=$NPM_HTTPS_PORT/tcp --add-port=$NPM_ADMIN_PORT/tcp"
+    [[ "${INSTALL_PORTAINER,,}" == "y" ]] && \
+        echo "   sudo firewall-cmd --permanent --add-port=$PORTAINER_HTTP_PORT/tcp --add-port=$PORTAINER_HTTPS_PORT/tcp"
+    echo "   sudo firewall-cmd --reload"
+fi
+
+[[ "$REAL_USER" != "root" ]] && \
+    print_warn "Log out and back in (or reboot) so '$REAL_USER' can use docker without sudo."
 
 exit 0
