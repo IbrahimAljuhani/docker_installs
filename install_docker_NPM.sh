@@ -8,7 +8,7 @@
 # Environment overrides (export before running, e.g.:
 #   NPM_HTTP_PORT=8080 sudo -E ./install_docker_NPM.sh):
 #
-#   NPM_IMAGE             default: jc21/nginx-proxy-manager:2.14.0
+#   NPM_IMAGE             default: jc21/nginx-proxy-manager:latest
 #   NPM_HTTP_PORT         default: 80
 #   NPM_HTTPS_PORT        default: 443
 #   NPM_ADMIN_PORT        default: 81
@@ -16,6 +16,28 @@
 #   PORTAINER_HTTP_PORT   default: 9000
 #   PORTAINER_HTTPS_PORT  default: 9443
 #   PORTAINER_EDGE_PORT   default: 8000
+#
+# Fixed (this revision):
+#   1. Portainer no longer marked "unhealthy" while actually running fine.
+#      `docker run --health-cmd` always wraps the check in CMD-SHELL (i.e.
+#      `/bin/sh -c ...`), but the default portainer-ce image ships no
+#      /bin/sh at all -> the healthcheck itself could never succeed.
+#      Portainer is now installed via docker-compose (like NPM) with an
+#      exec-form healthcheck (["CMD", "wget", ...]) that never needs a
+#      shell.
+#   2. NPM_IMAGE now defaults to `:latest` instead of a pinned version.
+#      Trade-off: less reproducible across installs, but always current.
+#      Pin it yourself via NPM_IMAGE=jc21/nginx-proxy-manager:2.x.y if you
+#      need a stable, repeatable version.
+#   3. NPM's ./data and ./letsencrypt folders (created by the Docker
+#      daemon as root the first time `docker compose up` runs them into
+#      existence) are now re-chowned to the real user afterwards, so they
+#      don't end up silently root-owned despite the rest of the directory
+#      being handed to the user.
+#   4. NPM healthcheck path corrected to /usr/bin/check-health to match
+#      upstream docs (the previous /bin/check-health likely worked too on
+#      this Debian-based image via the usr-merge symlink, but this removes
+#      any doubt).
 
 set -Eeuo pipefail
 
@@ -26,7 +48,7 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # --- Configurable via env vars (pin images, override ports) ---
-NPM_IMAGE="${NPM_IMAGE:-jc21/nginx-proxy-manager:2.14.0}"
+NPM_IMAGE="${NPM_IMAGE:-jc21/nginx-proxy-manager:latest}"
 NPM_HTTP_PORT="${NPM_HTTP_PORT:-80}"
 NPM_HTTPS_PORT="${NPM_HTTPS_PORT:-443}"
 NPM_ADMIN_PORT="${NPM_ADMIN_PORT:-81}"
@@ -377,7 +399,7 @@ services:
     networks:
       - main-net
     healthcheck:
-      test: ["CMD", "/bin/check-health"]
+      test: ["CMD", "/usr/bin/check-health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -394,6 +416,12 @@ YAML
         chown -R "$REAL_USER":"$REAL_GROUP" "$NPM_DIR"
 
         (cd "$NPM_DIR" && docker compose up -d) >> "$LOGFILE" 2>&1
+        # docker compose up creates ./data and ./letsencrypt (bind mount
+        # targets) if they don't exist yet -- since the daemon runs as
+        # root, those two folders come out root-owned even though we just
+        # chowned everything else. Re-chown now that they exist so the
+        # real user can actually manage their own NPM data/certs later.
+        chown -R "$REAL_USER":"$REAL_GROUP" "$NPM_DIR"
         sleep 3
         if (cd "$NPM_DIR" && docker compose ps --status=running --quiet | grep -q .); then
             print_ok "NGINX Proxy Manager is running."
@@ -409,26 +437,68 @@ fi
 if [[ "${INSTALL_PORTAINER,,}" == "y" ]]; then
     if check_ports_or_warn "Portainer-CE" "$PORTAINER_EDGE_PORT" "$PORTAINER_HTTP_PORT" "$PORTAINER_HTTPS_PORT"; then
         print_info "Installing Portainer-CE ($PORTAINER_IMAGE)..."
-        if docker ps -a --format '{{.Names}}' | grep -qx portainer; then
-            print_warn "A container named 'portainer' already exists; skipping."
+        PORTAINER_DIR="$REAL_HOME/docker/portainer"
+        mkdir -p "$PORTAINER_DIR"
+
+        if [[ -f "$PORTAINER_DIR/docker-compose.yml" ]]; then
+            print_warn "Existing docker-compose.yml found at $PORTAINER_DIR — keeping it (not overwritten)."
         else
-            docker volume create portainer_data >> "$LOGFILE" 2>&1
-            docker run -d \
-                -p "$PORTAINER_EDGE_PORT:8000" \
-                -p "$PORTAINER_HTTP_PORT:9000" \
-                -p "$PORTAINER_HTTPS_PORT:9443" \
-                --name=portainer \
-                --restart=always \
-                --health-cmd="wget -q --spider http://localhost:9000/ || exit 1" \
-                --health-interval=30s \
-                --health-timeout=10s \
-                --health-retries=3 \
-                -v /var/run/docker.sock:/var/run/docker.sock \
-                -v portainer_data:/data \
-                --network main-net \
-                "$PORTAINER_IMAGE" >> "$LOGFILE" 2>&1
-            print_ok "Portainer-CE installed."
+            # NOTE on the healthcheck: the default (non-alpine) portainer-ce
+            # image ships no /bin/sh at all. `docker run --health-cmd` has
+            # no way to avoid wrapping the check in CMD-SHELL (i.e. `sh -c
+            # ...`), so that form ALWAYS fails on this image with "exec:
+            # /bin/sh: no such file or directory" -- reporting a perfectly
+            # working container as "unhealthy". Compose's array/exec form
+            # (["CMD", "wget", ...]) execs wget directly, no shell involved,
+            # so it works correctly. `wget --spider`'s own exit code is
+            # already 0/1, so no `|| exit 1` shell logic is needed either.
+            cat > "$PORTAINER_DIR/docker-compose.yml" <<YAML
+services:
+  portainer:
+    image: '$PORTAINER_IMAGE'
+    container_name: portainer
+    restart: always
+    ports:
+      - '$PORTAINER_EDGE_PORT:8000'
+      - '$PORTAINER_HTTP_PORT:9000'
+      - '$PORTAINER_HTTPS_PORT:9443'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - main-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  portainer_data:
+    external: true
+
+networks:
+  main-net:
+    external: true
+YAML
+        fi
+
+        # Pre-existing external volume so upgrades from older (docker run
+        # -v portainer_data:/data) installs keep their data untouched.
+        docker volume create portainer_data >> "$LOGFILE" 2>&1
+
+        mkdir -p "$REAL_HOME/docker"
+        chown "$REAL_USER":"$REAL_GROUP" "$REAL_HOME/docker" 2>/dev/null || true
+        chown -R "$REAL_USER":"$REAL_GROUP" "$PORTAINER_DIR"
+
+        (cd "$PORTAINER_DIR" && docker compose up -d) >> "$LOGFILE" 2>&1
+        chown -R "$REAL_USER":"$REAL_GROUP" "$PORTAINER_DIR"
+        sleep 3
+        if (cd "$PORTAINER_DIR" && docker compose ps --status=running --quiet | grep -q .); then
+            print_ok "Portainer-CE is running."
             print_warn "Portainer mounts /var/run/docker.sock (root-equivalent on host). Keep it behind a firewall."
+        else
+            print_warn "Portainer started but no running container detected. Check: (cd $PORTAINER_DIR && docker compose logs)"
         fi
     else
         print_warn "Skipping Portainer installation due to port conflicts."

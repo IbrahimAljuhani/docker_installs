@@ -1,6 +1,17 @@
+# Standalone NGINX Proxy Manager stack (manual/reference use).
+#
+# This is the same stack the installer script (install_docker_NPM.sh)
+# generates automatically -- kept here as a reference/manual-use template.
+# If you use this file directly (without running the installer script
+# first), you must create the external network it depends on first:
+#
+#   docker network create main-net
+#
+# Then: docker compose -f docker_compose_NPM.yml up -d
+
 services:
   app:
-    image: 'jc21/nginx-proxy-manager:2.14.0'
+    image: 'jc21/nginx-proxy-manager:latest'
     restart: unless-stopped
     ports:
       # These ports are in format <host-port>:<container-port>
@@ -26,7 +37,7 @@ services:
       - main-net
 
     healthcheck:
-      test: ["CMD", "/bin/check-health"]
+      test: ["CMD", "/usr/bin/check-health"]
       interval: 30s
       timeout: 10s
       retries: 3
