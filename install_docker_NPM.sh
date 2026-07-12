@@ -457,6 +457,8 @@ services:
   portainer:
     image: '$PORTAINER_IMAGE'
     container_name: portainer
+    command:
+      - --no-setup-token
     restart: always
     ports:
       - '$PORTAINER_EDGE_PORT:8000'
