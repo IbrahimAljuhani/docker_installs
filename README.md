@@ -4,7 +4,7 @@
 [![Shell](https://img.shields.io/badge/Shell-Bash-4EAA25?logo=gnu-bash&logoColor=white)](#)
 [![Docker](https://img.shields.io/badge/Docker-CE-2496ED?logo=docker&logoColor=white)](#)
 [![NPM](https://img.shields.io/badge/NGINX%20Proxy%20Manager-latest-00A98F)](#-environment-variable-overrides)
-[![Portainer](https://img.shields.io/badge/Portainer--CE-2.40.0-13BEF9)](#-environment-variable-overrides)
+[![Portainer](https://img.shields.io/badge/Portainer--CE-latest-13BEF9)](#-environment-variable-overrides)
 [![Platforms](https://img.shields.io/badge/Platforms-Debian%20%7C%20Ubuntu%20%7C%20RHEL%20%7C%20Arch%20%7C%20openSUSE-lightgrey)](#-supported-operating-systems)
 
 A hardened, interactive Bash installer for **Docker CE, Docker Compose, NGINX Proxy Manager (NPM), and Portainer‑CE** on Linux — including ARM64 devices like Raspberry Pi.
@@ -130,7 +130,7 @@ Export before running to customize images or host ports:
 | `NPM_HTTP_PORT` | `80` | Host port for public HTTP |
 | `NPM_HTTPS_PORT` | `443` | Host port for public HTTPS |
 | `NPM_ADMIN_PORT` | `81` | Host port for NPM admin UI |
-| `PORTAINER_IMAGE` | `portainer/portainer-ce:2.40.0` | Portainer image tag |
+| `PORTAINER_IMAGE` | `portainer/portainer-ce:latest` | Portainer image tag |
 | `PORTAINER_HTTP_PORT` | `9000` | Host port for Portainer HTTP |
 | `PORTAINER_HTTPS_PORT` | `9443` | Host port for Portainer HTTPS |
 | `PORTAINER_EDGE_PORT` | `8000` | Host port for Portainer Edge agent |
