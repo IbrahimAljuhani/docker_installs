@@ -12,7 +12,7 @@
 #   NPM_HTTP_PORT         default: 80
 #   NPM_HTTPS_PORT        default: 443
 #   NPM_ADMIN_PORT        default: 81
-#   PORTAINER_IMAGE       default: portainer/portainer-ce:2.40.0
+#   PORTAINER_IMAGE       default: portainer/portainer-ce:latest
 #   PORTAINER_HTTP_PORT   default: 9000
 #   PORTAINER_HTTPS_PORT  default: 9443
 #   PORTAINER_EDGE_PORT   default: 8000
@@ -52,7 +52,7 @@ NPM_IMAGE="${NPM_IMAGE:-jc21/nginx-proxy-manager:latest}"
 NPM_HTTP_PORT="${NPM_HTTP_PORT:-80}"
 NPM_HTTPS_PORT="${NPM_HTTPS_PORT:-443}"
 NPM_ADMIN_PORT="${NPM_ADMIN_PORT:-81}"
-PORTAINER_IMAGE="${PORTAINER_IMAGE:-portainer/portainer-ce:2.40.0}"
+PORTAINER_IMAGE="${PORTAINER_IMAGE:-portainer/portainer-ce:latest}"
 PORTAINER_HTTP_PORT="${PORTAINER_HTTP_PORT:-9000}"
 PORTAINER_HTTPS_PORT="${PORTAINER_HTTPS_PORT:-9443}"
 PORTAINER_EDGE_PORT="${PORTAINER_EDGE_PORT:-8000}"
