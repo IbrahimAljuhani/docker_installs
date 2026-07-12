@@ -469,11 +469,6 @@ services:
       - portainer_data:/data
     networks:
       - main-net
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9000/"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 
 volumes:
   portainer_data:
