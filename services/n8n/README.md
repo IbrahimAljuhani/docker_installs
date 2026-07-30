@@ -33,17 +33,22 @@ chmod +x deploy.sh
 
 > ⚠️ **Do not run as root.** Your user must be in the `docker` group.
 
-You'll be prompted for the public domain (e.g. `n8n.example.com`). The Postgres root password, the app-user password, and the runner auth token are all generated automatically and saved to `.env` (`600`) and a one-time readable copy at `~/docker/n8n/.n8n-docker-secrets.txt` (`600`).
+The Postgres root password, the app-user password, and the runner auth token are all generated automatically and saved to `.env` (`600`) and a one-time readable copy at `~/docker/n8n/.n8n-docker-secrets.txt` (`600`).
 
 n8n has **no default admin account** — the first person to open the URL creates the owner account through n8n's own setup screen.
 
-You'll also be asked whether to cap memory on the `app` container (default suggestion: `512m`; `db`/`runner` stay unbounded either way — note the `runner` is what actually executes workflow code, so heavy Code-node usage isn't covered by this cap). Say no and it runs uncapped. This choice, like the domain and secrets, is only asked once — rerunning `deploy.sh` reuses `.env` and **never overwrites an existing `docker-compose.yml`** at `~/docker/n8n/` (so any manual edits you make there survive reruns; delete it yourself first if you want the latest version from this repo).
+You'll also be asked whether to cap memory on the `app` container (default suggestion: `512m`; `db`/`runner` stay unbounded either way — note the `runner` is what actually executes workflow code, so heavy Code-node usage isn't covered by this cap). Say no and it runs uncapped.
 
 > 💡 **To change the memory limit later**: edit `MEM_LIMIT=` in `~/docker/n8n/.env` (change the value, or delete the line entirely to remove the cap), then rerun `deploy.sh` — it regenerates `docker-compose.override.yml` from whatever `.env` currently has and reapplies it with `docker compose up -d`.
 
 You'll also be asked whether to publish a host port for direct access without NPM (e.g. `http://<server-ip>:5678`) — useful for a quick first check that the container actually works before wiring up NPM. Default is no. Say yes and the port is checked for conflicts, then printed as a URL once n8n starts.
 
-Choosing a host port also sets `N8N_PROTOCOL=http`, `N8N_SECURE_COOKIE=false`, and a matching `N8N_WEBHOOK_URL` in `.env` automatically — with the `https`/`true` defaults (when you *don't* choose a host port), **n8n's login fails outright** over a bare `http://` direct port, since browsers refuse to send a secure-flagged cookie back over plain HTTP. Once you switch to NPM+SSL, edit `N8N_PROTOCOL=https`, `N8N_SECURE_COOKIE=true`, and `N8N_WEBHOOK_URL=https://<domain>/` (and remove `HOST_PORT=` if you no longer want the direct port) in `.env` and rerun `deploy.sh`.
+- **If you said no** to a host port, you're then prompted for the public domain you plan to point NPM at (e.g. `n8n.example.com`) — this becomes `N8N_HOST`, with `N8N_PROTOCOL=https` and `N8N_SECURE_COOKIE=true`.
+- **If you said yes** to a host port, the domain question is skipped — `N8N_HOST` is set to `<server-ip>:<port>` automatically, with `N8N_PROTOCOL=http` and `N8N_SECURE_COOKIE=false`. Without this, **n8n's login fails outright** over a bare `http://` direct port, since browsers refuse to send a secure-flagged cookie back over plain HTTP.
+
+Either way, this choice (like memory and secrets) is only asked once — rerunning `deploy.sh` reuses `.env` and **never overwrites an existing `docker-compose.yml`** at `~/docker/n8n/` (so any manual edits you make there survive reruns; delete it yourself first if you want the latest version from this repo).
+
+Once you switch to NPM+SSL, edit `N8N_HOST` to your real domain, `N8N_PROTOCOL=https`, `N8N_SECURE_COOKIE=true`, and `N8N_WEBHOOK_URL=https://<domain>/` (and remove `HOST_PORT=` if you no longer want the direct port) in `.env` and rerun `deploy.sh`.
 
 ---
 

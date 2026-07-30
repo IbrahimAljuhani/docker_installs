@@ -132,29 +132,33 @@ fi
 if [[ -f "$INSTALL_DIR/.env" ]]; then
     print_info "Existing deployment found at $INSTALL_DIR — reusing its .env (not regenerated)."
 else
-    read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. n8n.example.com): " N8N_HOST_NAME
-    [[ -n "$N8N_HOST_NAME" ]] || print_error "A domain is required (used to build the webhook URL)."
-
     POSTGRES_ROOT_PASSWORD=$(generate_password)
     POSTGRES_APP_PASSWORD=$(generate_password)
     RUNNERS_AUTH_TOKEN=$(generate_password)
     prompt_mem_limit "512m"
     prompt_host_port "5678"
 
-    # N8N_PROTOCOL=https + N8N_SECURE_COOKIE=true (the default) make n8n
-    # reject login entirely over a bare-http:// direct host port — browsers
-    # won't send a secure-flagged cookie back over plain HTTP. Default both
-    # to the http-safe values only when a host port was chosen; flip them
-    # back once NPM/SSL is set up.
+    # N8N_HOST feeds URL generation/display — using the placeholder domain
+    # you'd type here instead of the real IP:port would show wrong/misleading
+    # URLs while testing via the direct port. N8N_PROTOCOL=https +
+    # N8N_SECURE_COOKIE=true (the default) also make n8n reject login
+    # entirely over a bare-http:// direct host port — browsers won't send a
+    # secure-flagged cookie back over plain HTTP. All three are only
+    # asked/derived here when NOT using a host port; flip them back once
+    # NPM/SSL is set up (edit .env and rerun deploy.sh).
     if [[ -n "$HOST_PORT" ]]; then
         N8N_PROTOCOL_VALUE="http"
         N8N_SECURE_COOKIE_VALUE="false"
         SERVER_IP_FOR_WEBHOOK=$(hostname -I 2>/dev/null | awk '{print $1}')
         [[ -z "${SERVER_IP_FOR_WEBHOOK:-}" ]] && SERVER_IP_FOR_WEBHOOK="localhost"
+        N8N_HOST_NAME="$SERVER_IP_FOR_WEBHOOK:$HOST_PORT"
         N8N_WEBHOOK_URL_VALUE="http://$SERVER_IP_FOR_WEBHOOK:$HOST_PORT/"
+        print_info "Using '$N8N_HOST_NAME' as N8N_HOST (must match how you access it). Once you switch to NPM, edit this to your real domain in .env."
     else
         N8N_PROTOCOL_VALUE="https"
         N8N_SECURE_COOKIE_VALUE="true"
+        read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. n8n.example.com): " N8N_HOST_NAME
+        [[ -n "$N8N_HOST_NAME" ]] || print_error "A domain is required (used to build the webhook URL)."
         N8N_WEBHOOK_URL_VALUE="https://$N8N_HOST_NAME/"
     fi
 

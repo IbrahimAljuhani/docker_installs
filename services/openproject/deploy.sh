@@ -135,8 +135,6 @@ if [[ -f "$INSTALL_DIR/.env" ]]; then
     print_info "Existing deployment found at $INSTALL_DIR — reusing its .env (not regenerated)."
 else
     print_warn "OpenProject needs at least 4 GB RAM / 2 CPU cores / 20 GB disk for a small team — more for heavier use."
-    read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. openproject.example.com): " HOST_NAME
-    [[ -n "$HOST_NAME" ]] || print_error "A host domain is required (used for the collaborative-editing websocket URL)."
 
     POSTGRES_PASSWORD=$(generate_secret 16)
     SECRET_KEY_BASE=$(generate_secret 64)
@@ -144,17 +142,24 @@ else
     prompt_mem_limit "2g"
     prompt_host_port "8080"
 
-    # OPENPROJECT_HTTPS=true makes the app force-redirect to https:// and mark
-    # cookies secure-only — correct once NPM/TLS is in front, but it makes a
-    # bare-HTTP direct host port completely inaccessible (redirects to a
-    # https:// address nothing is listening on). Default it to false only
-    # when a host port was chosen; flip it back once NPM/SSL is set up (see
-    # README "To change the memory limit later" section for the edit+rerun
-    # pattern — same idea, different variable).
+    # OPENPROJECT_HOST__NAME must match the browser's actual Host header
+    # exactly, or OpenProject rejects every request with "Invalid host_name
+    # configuration" — so it can't just be an arbitrary placeholder domain
+    # when accessed directly by IP:port. OPENPROJECT_HTTPS=true also makes
+    # the app force-redirect to https:// and mark cookies secure-only, which
+    # makes a bare-HTTP direct host port completely inaccessible. Both are
+    # only asked/derived here when NOT using a host port; flip them back
+    # once NPM/SSL is set up (edit .env and rerun deploy.sh).
     if [[ -n "$HOST_PORT" ]]; then
         OPENPROJECT_HTTPS_VALUE="false"
+        SERVER_IP_FOR_HOST=$(hostname -I 2>/dev/null | awk '{print $1}')
+        [[ -z "${SERVER_IP_FOR_HOST:-}" ]] && SERVER_IP_FOR_HOST="localhost"
+        HOST_NAME="$SERVER_IP_FOR_HOST:$HOST_PORT"
+        print_info "Using '$HOST_NAME' as OPENPROJECT_HOST__NAME (must match how you access it). Once you switch to NPM, edit this to your real domain in .env."
     else
         OPENPROJECT_HTTPS_VALUE="true"
+        read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. openproject.example.com): " HOST_NAME
+        [[ -n "$HOST_NAME" ]] || print_error "A host domain is required (used for the collaborative-editing websocket URL)."
     fi
 
     cat > "$INSTALL_DIR/.env" <<EOF

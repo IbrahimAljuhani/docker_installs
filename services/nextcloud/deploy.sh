@@ -132,9 +132,6 @@ fi
 if [[ -f "$INSTALL_DIR/.env" ]]; then
     print_info "Existing deployment found at $INSTALL_DIR — reusing its .env (not regenerated)."
 else
-    read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. cloud.example.com): " TRUSTED_DOMAIN
-    [[ -n "$TRUSTED_DOMAIN" ]] || print_error "A domain is required (Nextcloud rejects requests for unlisted domains)."
-
     read -rp "Enter the admin username (default: admin): " ADMIN_USER
     ADMIN_USER="${ADMIN_USER:-admin}"
 
@@ -143,15 +140,24 @@ else
     prompt_mem_limit "1g"
     prompt_host_port "8080"
 
-    # OVERWRITEPROTOCOL=https makes Nextcloud force-redirect to https:// —
-    # correct once NPM/TLS is in front, but it makes a bare-http:// direct
-    # host port completely inaccessible (redirect loop to a https:// address
-    # nothing is listening on). Default it to http only when a host port was
-    # chosen; flip it back once NPM/SSL is set up.
+    # NEXTCLOUD_TRUSTED_DOMAINS must match the browser's actual Host header
+    # exactly, or Nextcloud rejects every request with "Access through
+    # untrusted domain" — so it can't just be an arbitrary placeholder domain
+    # when accessed directly by IP:port. OVERWRITEPROTOCOL=https also makes
+    # Nextcloud force-redirect to https://, which makes a bare-HTTP direct
+    # host port completely inaccessible. Both are only asked/derived here
+    # when NOT using a host port; flip them back once NPM/SSL is set up
+    # (edit .env and rerun deploy.sh).
     if [[ -n "$HOST_PORT" ]]; then
         OVERWRITEPROTOCOL_VALUE="http"
+        SERVER_IP_FOR_DOMAIN=$(hostname -I 2>/dev/null | awk '{print $1}')
+        [[ -z "${SERVER_IP_FOR_DOMAIN:-}" ]] && SERVER_IP_FOR_DOMAIN="localhost"
+        TRUSTED_DOMAIN="$SERVER_IP_FOR_DOMAIN:$HOST_PORT"
+        print_info "Using '$TRUSTED_DOMAIN' as NEXTCLOUD_TRUSTED_DOMAINS (must match how you access it). Once you switch to NPM, edit this to your real domain in .env."
     else
         OVERWRITEPROTOCOL_VALUE="https"
+        read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. cloud.example.com): " TRUSTED_DOMAIN
+        [[ -n "$TRUSTED_DOMAIN" ]] || print_error "A domain is required (Nextcloud rejects requests for unlisted domains)."
     fi
 
     cat > "$INSTALL_DIR/.env" <<EOF

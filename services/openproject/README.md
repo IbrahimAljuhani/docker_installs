@@ -33,17 +33,22 @@ chmod +x deploy.sh
 
 > ⚠️ **Do not run as root.** Your user must be in the `docker` group (the same requirement as `services/odoo`).
 
-You'll be prompted once for the public domain you plan to point NPM at (e.g. `openproject.example.com`). Everything else — `POSTGRES_PASSWORD`, `SECRET_KEY_BASE` (Rails secret), `COLLABORATIVE_SERVER_SECRET` — is generated automatically and saved to `.env` (`600`) and a one-time readable copy at `~/docker/openproject/.openproject-docker-secrets.txt` (`600`).
+`POSTGRES_PASSWORD`, `SECRET_KEY_BASE` (Rails secret), and `COLLABORATIVE_SERVER_SECRET` are generated automatically and saved to `.env` (`600`) and a one-time readable copy at `~/docker/openproject/.openproject-docker-secrets.txt` (`600`).
 
 This is a **single-instance** service (unlike `services/odoo`, which supports multiple named instances) — one OpenProject deployment per host, under `~/docker/openproject/`.
 
-You'll also be asked whether to cap memory on the `web` container (default suggestion: `2g`; `db`/`worker`/`cron`/`seeder`/`hocuspocus` stay unbounded either way). Say no and it runs uncapped. This choice, like the domain and secrets, is only asked once — rerunning `deploy.sh` reuses `.env` and **never overwrites an existing `docker-compose.yml`** at `~/docker/openproject/` (so any manual edits you make there survive reruns; delete it yourself first if you want the latest version from this repo).
+You'll also be asked whether to cap memory on the `web` container (default suggestion: `2g`; `db`/`worker`/`cron`/`seeder`/`hocuspocus` stay unbounded either way). Say no and it runs uncapped.
 
 > 💡 **To change the memory limit later**: edit `MEM_LIMIT=` in `~/docker/openproject/.env` (change the value, or delete the line entirely to remove the cap), then rerun `deploy.sh` — it regenerates `docker-compose.override.yml` from whatever `.env` currently has and reapplies it with `docker compose up -d`.
 
 You'll also be asked whether to publish a host port for direct access without NPM (e.g. `http://<server-ip>:8080`) — useful for a quick first check that the container actually works before wiring up NPM. Default is no. Say yes and the port is checked for conflicts, then printed as a URL once OpenProject starts.
 
-Choosing a host port also sets `OPENPROJECT_HTTPS=false` in `.env` automatically — with it `true` (the default when you *don't* choose a host port), OpenProject force-redirects to `https://` and marks cookies secure-only, which makes a bare `http://` direct port completely inaccessible. The one thing that still doesn't work over the direct port regardless: `/hocuspocus` real-time collaborative editing needs NPM's path routing. Once you switch to NPM+SSL, edit `OPENPROJECT_HTTPS=true` (and remove `HOST_PORT=` if you no longer want the direct port) in `.env` and rerun `deploy.sh`.
+- **If you said no** to a host port, you're then prompted for the public domain you plan to point NPM at (e.g. `openproject.example.com`) — this becomes `OPENPROJECT_HOST__NAME`, and `OPENPROJECT_HTTPS=true`.
+- **If you said yes** to a host port, the domain question is skipped — `OPENPROJECT_HOST__NAME` is set to `<server-ip>:<port>` automatically, and `OPENPROJECT_HTTPS=false`. This matters because **OpenProject rejects every request with "Invalid host_name configuration" unless `OPENPROJECT_HOST__NAME` exactly matches the browser's `Host` header** — a placeholder domain wouldn't match `<server-ip>:<port>`. `OPENPROJECT_HTTPS=true` would also force a redirect to `https://`, making a bare `http://` direct port completely inaccessible.
+
+Either way, this choice (like memory and secrets) is only asked once — rerunning `deploy.sh` reuses `.env` and **never overwrites an existing `docker-compose.yml`** at `~/docker/openproject/` (so any manual edits you make there survive reruns; delete it yourself first if you want the latest version from this repo).
+
+The one thing that still doesn't work over the direct port regardless: `/hocuspocus` real-time collaborative editing needs NPM's path routing. Once you switch to NPM+SSL, edit `OPENPROJECT_HOST__NAME` to your real domain, `OPENPROJECT_HTTPS=true` (and remove `HOST_PORT=` if you no longer want the direct port) in `.env` and rerun `deploy.sh`.
 
 First startup takes a few minutes: the `seeder` container runs database migrations and creates the default admin user before `web`/`worker`/`cron` can do anything useful.
 
