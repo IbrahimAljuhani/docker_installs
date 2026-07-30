@@ -17,11 +17,11 @@ Optional services that run on top of the core infrastructure ([`install_docker_c
 
 ## 🚀 Quick Start
 
-### 1. Install the core infrastructure first (if you haven't)
+### 1. Clone the repo and install the core infrastructure (if you haven't)
 
 ```bash
-curl -fsSL -o install_docker_core.sh \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/install_docker_core.sh
+git clone https://github.com/IbrahimAljuhani/docker_installs.git
+cd docker_installs
 chmod +x install_docker_core.sh
 sudo ./install_docker_core.sh
 ```
@@ -29,17 +29,11 @@ Pick **`1) Install / manage core infrastructure`** from the menu it shows.
 
 ### 2. Pick and deploy a service
 
-Easiest way — run [`services.sh`](services.sh), which lists every service here and launches the one you pick:
+Pick **`2) Install a service`** from that same menu — it launches [`services.sh`](services.sh) right there, which lists every service here and runs the one you pick (as your regular user, not root).
 
-```bash
-curl -fsSL -o services.sh \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/services.sh
-chmod +x services.sh
-./services.sh
-```
-No sibling service folders next to it (i.e. you didn't `git clone` the full repo)? It detects that automatically and downloads the service you pick fresh from GitHub instead.
+Or run `./services/services.sh` (or any service's `deploy.sh` directly, see that service's own README) yourself at any time.
 
-Or run any service's `deploy.sh` directly — see that service's own README for its exact `curl` commands.
+> 💡 **Didn't clone the repo** (just curled `install_docker_core.sh` alone)? "Install a service" still works — `services.sh` detects there's no local checkout and downloads the service you pick fresh from GitHub instead. See [`services.sh`](services.sh) usage in that case: `curl -fsSL -o services.sh https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/services.sh && chmod +x services.sh && ./services.sh`.
 
 > ⚠️ **Do not run `services.sh` or any `deploy.sh` as root.** Your user must be in the `docker` group (set up by `install_docker_core.sh`).
 
