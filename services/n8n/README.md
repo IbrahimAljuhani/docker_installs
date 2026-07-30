@@ -18,7 +18,7 @@ curl -fsSL -o install_docker_core.sh \
 chmod +x install_docker_core.sh
 sudo ./install_docker_core.sh
 ```
-Pick **`1) Install / manage core infrastructure`** from the menu it shows, then answer the per-component prompts.
+Pick **`1) Install / manage core infrastructure`** from the menu it shows, it installs the full bundle automatically (skipping anything already installed).
 
 ### 2. Deploy n8n
 

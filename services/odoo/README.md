@@ -100,7 +100,7 @@ curl -fsSL -o install_docker_core.sh \
 chmod +x install_docker_core.sh
 sudo ./install_docker_core.sh
 ```
-Pick **`1) Install / manage core infrastructure`** from the menu it shows, then answer the per-component prompts. ✅ This also installs **NGINX Proxy Manager** and **Portainer CE** (optional, recommended for production), and creates the shared `main-net` network this service attaches to.
+Pick **`1) Install / manage core infrastructure`** from the menu it shows, it installs the full bundle automatically (skipping anything already installed). ✅ This also installs **NGINX Proxy Manager** and **Portainer CE** (optional, recommended for production), and creates the shared `main-net` network this service attaches to.
 
 ### 2. Download and Run the Installer
 

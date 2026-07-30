@@ -157,13 +157,6 @@ check_ports_or_warn() {
     return 0
 }
 
-# Read wrapper that won't trip the ERR trap on EOF (e.g. when script is piped).
-safe_read() {
-    local __var=$1
-    local __prompt=$2
-    read -rp "$__prompt" "$__var" || eval "$__var=''"
-}
-
 # Run a command in the background with a spinner, then propagate its exit code.
 run_with_spinner() {
     ("$@") >> "$LOGFILE" 2>&1 &
@@ -331,24 +324,28 @@ run_core_install() {
         COMPOSE_INSTALLED=true
     fi
 
+    # Choosing "Install / manage core infrastructure" from the menu already
+    # is the confirmation — install the full bundle (whatever's missing)
+    # without re-asking per component. Only skip pieces already active/present.
     echo
     if [[ "$DOCKER_ACTIVE" == true ]]; then
         print_ok "Docker is already installed and running."
         INSTALL_DOCKER="n"
     else
-        safe_read INSTALL_DOCKER "$(print_info 'Install Docker-CE? (y/n): ')"
+        print_info "Docker-CE will be installed."
+        INSTALL_DOCKER="y"
     fi
 
     if [[ "$COMPOSE_INSTALLED" == true ]]; then
         print_ok "Docker Compose (plugin) is already installed."
         INSTALL_COMPOSE="n"
     else
-        safe_read INSTALL_COMPOSE "$(print_info 'Install Docker Compose? (y/n): ')"
+        print_info "Docker Compose will be installed."
+        INSTALL_COMPOSE="y"
     fi
 
-    # Reset flow (see reset_npm_portainer) pre-sets these to skip re-asking.
-    [[ -n "${INSTALL_NPM:-}" ]] || safe_read INSTALL_NPM "$(print_info 'Install NGINX Proxy Manager? (y/n): ')"
-    [[ -n "${INSTALL_PORTAINER:-}" ]] || safe_read INSTALL_PORTAINER "$(print_info 'Install Portainer-CE? (y/n): ')"
+    INSTALL_NPM="y"
+    INSTALL_PORTAINER="y"
 
     # Only touch the package manager if we're actually about to install something —
     # an all-already-installed rerun (e.g. just adding NPM/Portainer later) should
@@ -610,9 +607,6 @@ reset_npm_portainer() {
     fi
 
     print_ok "NPM and Portainer reset. Reinstalling fresh..."
-    # Pre-answer these so run_core_install doesn't re-ask what we just confirmed.
-    INSTALL_NPM="y"
-    INSTALL_PORTAINER="y"
 }
 
 core_menu() {

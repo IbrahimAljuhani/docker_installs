@@ -101,7 +101,7 @@ Both services are plain `docker-compose.yml` stacks under `~/docker/<service>/`,
 
 ## 🧱 Services
 
-This repo installs the **core infrastructure** (`install_docker_core.sh` → Docker CE, Compose, NPM, Portainer, and the shared `main-net` network). Everything else lives under [`services/`](services/) as its own self-contained, independently-deployed folder — run only the ones you actually need:
+This repo installs the **core infrastructure** (`install_docker_core.sh` → Docker CE, Compose, NPM, Portainer, and the shared `main-net` network). Everything else lives under [`services/`](services/README.md) as its own self-contained, independently-deployed folder — run only the ones you actually need. See [`services/README.md`](services/README.md) for the full list, quick-start, and conventions:
 
 ```
 services/
@@ -139,14 +139,14 @@ What would you like to do?
 3) Exit
 ```
 
-- **Option 1**: if Docker, Compose, NPM, and Portainer are all already installed, you're offered **Reset NPM & Portainer** (recreates just those two — never touches Docker Engine, `main-net`, or any other running service/container — and asks separately whether to also wipe their data) or going back. Otherwise it prompts per-component, same as before:
+- **Option 1**: if Docker, Compose, NPM, and Portainer are all already installed, you're offered **Reset NPM & Portainer** (recreates just those two — never touches Docker Engine, `main-net`, or any other running service/container — and asks separately whether to also wipe their data) or going back. Otherwise, choosing this option is itself the confirmation — it installs the full bundle (Docker CE, Compose, NPM, Portainer) straight away, silently skipping whichever pieces are already installed/active:
 
-  | Prompt | Skipped automatically if... |
+  | Component | Skipped automatically if... |
   |---|---|
-  | Install Docker-CE? | Docker is already installed and active |
-  | Install Docker Compose? | The `compose` plugin is already present |
-  | Install NGINX Proxy Manager? | Always asked |
-  | Install Portainer-CE? | Always asked |
+  | Docker-CE | Docker is already installed and active |
+  | Docker Compose | The `compose` plugin is already present |
+  | NGINX Proxy Manager | Always installed |
+  | Portainer-CE | Always installed |
 
 - **Option 2**: hands off to [`services/services.sh`](services/services.sh) (if you have the full repo checked out next to this script) to list and launch any service under `services/`; otherwise it prints the `curl` command to fetch `services.sh` standalone.
 
