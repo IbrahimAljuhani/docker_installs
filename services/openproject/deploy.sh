@@ -144,9 +144,22 @@ else
     prompt_mem_limit "2g"
     prompt_host_port "8080"
 
+    # OPENPROJECT_HTTPS=true makes the app force-redirect to https:// and mark
+    # cookies secure-only — correct once NPM/TLS is in front, but it makes a
+    # bare-HTTP direct host port completely inaccessible (redirects to a
+    # https:// address nothing is listening on). Default it to false only
+    # when a host port was chosen; flip it back once NPM/SSL is set up (see
+    # README "To change the memory limit later" section for the edit+rerun
+    # pattern — same idea, different variable).
+    if [[ -n "$HOST_PORT" ]]; then
+        OPENPROJECT_HTTPS_VALUE="false"
+    else
+        OPENPROJECT_HTTPS_VALUE="true"
+    fi
+
     cat > "$INSTALL_DIR/.env" <<EOF
 OPENPROJECT_HOST__NAME=$HOST_NAME
-OPENPROJECT_HTTPS=true
+OPENPROJECT_HTTPS=$OPENPROJECT_HTTPS_VALUE
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 SECRET_KEY_BASE=$SECRET_KEY_BASE
 COLLABORATIVE_SERVER_SECRET=$COLLABORATIVE_SERVER_SECRET
@@ -215,9 +228,10 @@ echo "📜 Log:                     $LOGFILE"
 echo "──────────────────────────────────────────────"
 echo
 if [[ -n "$ENV_HOST_PORT" ]]; then
-    echo "⚠️  Direct access over plain http:// may not behave fully correctly"
-    echo "   (OPENPROJECT_HTTPS=true assumes NPM/TLS) and real-time collaborative"
-    echo "   editing needs NPM's /hocuspocus routing — full functionality needs NPM."
+    echo "⚠️  OPENPROJECT_HTTPS was set to false for this plain-http:// direct port"
+    echo "   to work at all. Real-time collaborative editing still needs NPM's"
+    echo "   /hocuspocus routing regardless. Once you switch to NPM+SSL, edit"
+    echo "   OPENPROJECT_HTTPS=true in .env and rerun deploy.sh."
     echo
 fi
 echo "Set up NGINX Proxy Manager (see README.md 'Reverse Proxy' section for the"

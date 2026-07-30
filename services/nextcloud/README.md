@@ -41,7 +41,9 @@ You'll also be asked whether to cap memory on the `app` container (default sugge
 
 > 💡 **To change the memory limit later**: edit `MEM_LIMIT=` in `~/docker/nextcloud/.env` (change the value, or delete the line entirely to remove the cap), then rerun `deploy.sh` — it regenerates `docker-compose.override.yml` from whatever `.env` currently has and reapplies it with `docker compose up -d`.
 
-You'll also be asked whether to publish a host port for direct access without NPM (e.g. `http://<server-ip>:8080`) — useful for a quick first check that the container actually works before wiring up NPM. Default is no (main-net/NPM only, matching the rest of this repo's services). Say yes and the port is checked for conflicts, then printed as a URL once Nextcloud starts. Change it later the same way as the memory limit: edit `HOST_PORT=` in `.env` and rerun `deploy.sh`.
+You'll also be asked whether to publish a host port for direct access without NPM (e.g. `http://<server-ip>:8080`) — useful for a quick first check that the container actually works before wiring up NPM. Default is no (main-net/NPM only, matching the rest of this repo's services). Say yes and the port is checked for conflicts, then printed as a URL once Nextcloud starts.
+
+Choosing a host port also sets `OVERWRITEPROTOCOL=http` in `.env` automatically — with it `https` (the default when you *don't* choose a host port), Nextcloud force-redirects to `https://`, which makes a bare `http://` direct port inaccessible (redirect loop to an address nothing is listening on). Once you switch to NPM+SSL, edit `OVERWRITEPROTOCOL=https` (and remove `HOST_PORT=` if you no longer want the direct port) in `.env` and rerun `deploy.sh`.
 
 ---
 

@@ -141,6 +141,23 @@ else
     prompt_mem_limit "512m"
     prompt_host_port "5678"
 
+    # N8N_PROTOCOL=https + N8N_SECURE_COOKIE=true (the default) make n8n
+    # reject login entirely over a bare-http:// direct host port — browsers
+    # won't send a secure-flagged cookie back over plain HTTP. Default both
+    # to the http-safe values only when a host port was chosen; flip them
+    # back once NPM/SSL is set up.
+    if [[ -n "$HOST_PORT" ]]; then
+        N8N_PROTOCOL_VALUE="http"
+        N8N_SECURE_COOKIE_VALUE="false"
+        SERVER_IP_FOR_WEBHOOK=$(hostname -I 2>/dev/null | awk '{print $1}')
+        [[ -z "${SERVER_IP_FOR_WEBHOOK:-}" ]] && SERVER_IP_FOR_WEBHOOK="localhost"
+        N8N_WEBHOOK_URL_VALUE="http://$SERVER_IP_FOR_WEBHOOK:$HOST_PORT/"
+    else
+        N8N_PROTOCOL_VALUE="https"
+        N8N_SECURE_COOKIE_VALUE="true"
+        N8N_WEBHOOK_URL_VALUE="https://$N8N_HOST_NAME/"
+    fi
+
     cat > "$INSTALL_DIR/.env" <<EOF
 N8N_VERSION=stable
 POSTGRES_USER=n8n_root
@@ -150,6 +167,9 @@ POSTGRES_NON_ROOT_USER=n8n
 POSTGRES_NON_ROOT_PASSWORD=$POSTGRES_APP_PASSWORD
 RUNNERS_AUTH_TOKEN=$RUNNERS_AUTH_TOKEN
 N8N_HOST=$N8N_HOST_NAME
+N8N_PROTOCOL=$N8N_PROTOCOL_VALUE
+N8N_WEBHOOK_URL=$N8N_WEBHOOK_URL_VALUE
+N8N_SECURE_COOKIE=$N8N_SECURE_COOKIE_VALUE
 EOF
     [[ -n "$MEM_LIMIT" ]] && echo "MEM_LIMIT=$MEM_LIMIT" >> "$INSTALL_DIR/.env"
     [[ -n "$HOST_PORT" ]] && echo "HOST_PORT=$HOST_PORT" >> "$INSTALL_DIR/.env"
@@ -220,9 +240,11 @@ echo "📜 Log:          $LOGFILE"
 echo "──────────────────────────────────────────────"
 echo
 if [[ -n "$ENV_HOST_PORT" ]]; then
-    echo "⚠️  n8n is configured with N8N_PROTOCOL=https and an https:// webhook"
-    echo "   URL (for eventual NPM/TLS use) — webhooks may not register correctly"
-    echo "   while only accessed over this plain http:// port."
+    echo "⚠️  N8N_PROTOCOL/N8N_SECURE_COOKIE were set to http/false for this"
+    echo "   plain-http:// direct port to work at all (login fails otherwise —"
+    echo "   browsers won't send a secure cookie over plain HTTP). Once you"
+    echo "   switch to NPM+SSL, edit N8N_PROTOCOL=https, N8N_SECURE_COOKIE=true,"
+    echo "   and N8N_WEBHOOK_URL=https://<domain>/ in .env and rerun deploy.sh."
     echo
 fi
 echo "Set up NGINX Proxy Manager: forward to n8n-app:5678, enable Websockets"

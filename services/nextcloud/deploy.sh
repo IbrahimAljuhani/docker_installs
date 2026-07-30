@@ -143,6 +143,17 @@ else
     prompt_mem_limit "1g"
     prompt_host_port "8080"
 
+    # OVERWRITEPROTOCOL=https makes Nextcloud force-redirect to https:// —
+    # correct once NPM/TLS is in front, but it makes a bare-http:// direct
+    # host port completely inaccessible (redirect loop to a https:// address
+    # nothing is listening on). Default it to http only when a host port was
+    # chosen; flip it back once NPM/SSL is set up.
+    if [[ -n "$HOST_PORT" ]]; then
+        OVERWRITEPROTOCOL_VALUE="http"
+    else
+        OVERWRITEPROTOCOL_VALUE="https"
+    fi
+
     cat > "$INSTALL_DIR/.env" <<EOF
 POSTGRES_DB=nextcloud
 POSTGRES_USER=nextcloud
@@ -150,6 +161,7 @@ POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 NEXTCLOUD_TRUSTED_DOMAINS=$TRUSTED_DOMAIN
 NEXTCLOUD_ADMIN_USER=$ADMIN_USER
 NEXTCLOUD_ADMIN_PASSWORD=$ADMIN_PASSWORD
+OVERWRITEPROTOCOL=$OVERWRITEPROTOCOL_VALUE
 EOF
     [[ -n "$MEM_LIMIT" ]] && echo "MEM_LIMIT=$MEM_LIMIT" >> "$INSTALL_DIR/.env"
     [[ -n "$HOST_PORT" ]] && echo "HOST_PORT=$HOST_PORT" >> "$INSTALL_DIR/.env"

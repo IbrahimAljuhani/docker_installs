@@ -41,7 +41,9 @@ You'll also be asked whether to cap memory on the `app` container (default sugge
 
 > 💡 **To change the memory limit later**: edit `MEM_LIMIT=` in `~/docker/n8n/.env` (change the value, or delete the line entirely to remove the cap), then rerun `deploy.sh` — it regenerates `docker-compose.override.yml` from whatever `.env` currently has and reapplies it with `docker compose up -d`.
 
-You'll also be asked whether to publish a host port for direct access without NPM (e.g. `http://<server-ip>:5678`) — useful for a quick first check that the container actually works before wiring up NPM. Default is no. Say yes and the port is checked for conflicts, then printed as a URL once n8n starts. Note: n8n is configured with `N8N_PROTOCOL=https` and an `https://` webhook URL for eventual NPM/TLS use, so webhooks may not register correctly while only accessed over this plain `http://` port. Change it later the same way as the memory limit: edit `HOST_PORT=` in `.env` and rerun `deploy.sh`.
+You'll also be asked whether to publish a host port for direct access without NPM (e.g. `http://<server-ip>:5678`) — useful for a quick first check that the container actually works before wiring up NPM. Default is no. Say yes and the port is checked for conflicts, then printed as a URL once n8n starts.
+
+Choosing a host port also sets `N8N_PROTOCOL=http`, `N8N_SECURE_COOKIE=false`, and a matching `N8N_WEBHOOK_URL` in `.env` automatically — with the `https`/`true` defaults (when you *don't* choose a host port), **n8n's login fails outright** over a bare `http://` direct port, since browsers refuse to send a secure-flagged cookie back over plain HTTP. Once you switch to NPM+SSL, edit `N8N_PROTOCOL=https`, `N8N_SECURE_COOKIE=true`, and `N8N_WEBHOOK_URL=https://<domain>/` (and remove `HOST_PORT=` if you no longer want the direct port) in `.env` and rerun `deploy.sh`.
 
 ---
 
