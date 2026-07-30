@@ -650,14 +650,26 @@ show_services_menu() {
     local script_dir services_sh
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     services_sh="$script_dir/services/services.sh"
+
+    if [[ "$REAL_USER" == "root" ]]; then
+        print_warn "This script is running as pure root (no regular sudo user to drop to)."
+        print_warn "services/deploy.sh scripts refuse to run as root by design — log in as a"
+        print_warn "regular user in the 'docker' group and run services/services.sh yourself."
+        return
+    fi
+
     if [[ -f "$services_sh" ]]; then
+        # Drop from root back to the invoking user: deploy.sh scripts refuse
+        # to run as root by design. 'sudo -u' (not 'su') re-checks group
+        # membership fresh from /etc/group, so this picks up a 'docker' group
+        # add from earlier in *this same run* without needing a re-login.
         # 'bash <file>' instead of exec'ing it directly: a fresh git clone
         # doesn't guarantee the executable bit survived, and this works
         # either way.
-        exec bash "$services_sh"
+        exec sudo -u "$REAL_USER" -H bash "$services_sh"
     fi
     echo
-    print_info "Download the services picker and run it:"
+    print_info "Download the services picker and run it as your regular user (not root):"
     echo "  curl -fsSL -o services.sh https://raw.githubusercontent.com/ibrahimaljuhani/docker_installs/main/services/services.sh"
     echo "  chmod +x services.sh && ./services.sh"
     echo "(Or browse services/ in the repo and run any <service>/deploy.sh directly.)"
