@@ -1,6 +1,6 @@
 # Standalone NGINX Proxy Manager stack (manual/reference use).
 #
-# This is the same stack the installer script (install_docker_NPM.sh)
+# This is the same stack the installer script (install_docker_core.sh)
 # generates automatically -- kept here as a reference/manual-use template.
 # If you use this file directly (without running the installer script
 # first), you must create the external network it depends on first:

@@ -18,6 +18,7 @@ One command → a reproducible Docker host with a reverse proxy and a container 
 - [Supported Operating Systems](#-supported-operating-systems)
 - [Features](#-features)
 - [Architecture](#-architecture)
+- [Services](#-services)
 - [Installation](#-installation)
 - [Environment Variable Overrides](#-environment-variable-overrides)
 - [Default Credentials](#-default-credentials)
@@ -60,7 +61,7 @@ Auto-detected via `/etc/os-release` (falls back to `ID_LIKE` for derivatives). I
 | ⚙️ **Configurable ports** | Every published port is an environment variable override |
 | 👤 **`sudo` vs pure-root aware** | Installs into the *invoking* user's home (not `/root`), fixes ownership, adds them to the `docker` group correctly |
 | 🛡️ **Proper error propagation** | `set -Eeuo pipefail` + a global `ERR` trap reporting file, line, and function |
-| 🗒️ **Log rotation** | Each run archives the previous `~/install_docker_NPM.log` to `.old` |
+| 🗒️ **Log rotation** | Each run archives the previous `~/docker/install_docker_core.log` to `.old` |
 | 🔥 **Firewalld hint** | Prints ready-to-paste `firewall-cmd` commands on RHEL-family systems |
 | 🎨 **Color-coded, EOF-safe prompts** | Won't crash if piped or run non-interactively |
 
@@ -98,25 +99,56 @@ Both services are plain `docker-compose.yml` stacks under `~/docker/<service>/`,
 
 ---
 
+## 🧱 Services
+
+This repo installs the **core infrastructure** (`install_docker_core.sh` → Docker CE, Compose, NPM, Portainer, and the shared `main-net` network). Everything else lives under [`services/`](services/) as its own self-contained, independently-deployed folder — run only the ones you actually need:
+
+```
+services/
+├── odoo/                  # ERP — services/odoo/deploy.sh (multi-instance)
+├── openproject/           # Project management — services/openproject/deploy.sh
+├── nextcloud/             # File sync & sharing — services/nextcloud/deploy.sh
+├── n8n/                   # Workflow automation — services/n8n/deploy.sh
+└── _template/              # copy this to start a new service
+    ├── deploy.sh.template
+    ├── docker-compose.template.yml
+    └── .env.example
+```
+
+Convention for every service: its own `.env` (never committed, `chmod 600`), a private `<service>-net` for its own containers (e.g. app ↔ db), and only its app/entrypoint container also joined to `main-net` so NPM can reach it by container name — no databases and no extra host ports exposed. Containers are named `<service>-app` / `<service>-db`. Most services also offer an **optional memory cap** on their main container, asked once on first deploy and applied via a generated `docker-compose.override.yml` (see any service's README, "memory limit" section). See [`services/_template/`](services/_template/) to scaffold a new one.
+
+---
+
 ## 📥 Installation
 
 ```bash
-curl -fsSL -o install_docker_NPM.sh \
-  https://raw.githubusercontent.com/ibrahimaljuhani/docker_installs/main/install_docker_NPM.sh
-chmod +x install_docker_NPM.sh
-sudo ./install_docker_NPM.sh
+curl -fsSL -o install_docker_core.sh \
+  https://raw.githubusercontent.com/ibrahimaljuhani/docker_installs/main/install_docker_core.sh
+chmod +x install_docker_core.sh
+sudo ./install_docker_core.sh
 ```
 
-> ⚠️ Must be run with `sudo` (or as root). Use `sudo -E ./install_docker_NPM.sh` if you're setting env-var overrides (`-E` preserves them across the `sudo` boundary).
+> ⚠️ Must be run with `sudo` (or as root). Use `sudo -E ./install_docker_core.sh` if you're setting env-var overrides (`-E` preserves them across the `sudo` boundary).
 
-You'll be prompted for each component:
+You'll get a menu:
 
-| Prompt | Skipped automatically if... |
-|---|---|
-| Install Docker-CE? | Docker is already installed and active |
-| Install Docker Compose? | The `compose` plugin is already present |
-| Install NGINX Proxy Manager? | Always asked |
-| Install Portainer-CE? | Always asked |
+```
+What would you like to do?
+1) Install / manage core infrastructure (Docker CE, Compose, NPM, Portainer)
+2) Install a service
+3) Exit
+```
+
+- **Option 1**: if Docker, Compose, NPM, and Portainer are all already installed, you're offered **Reset NPM & Portainer** (recreates just those two — never touches Docker Engine, `main-net`, or any other running service/container — and asks separately whether to also wipe their data) or going back. Otherwise it prompts per-component, same as before:
+
+  | Prompt | Skipped automatically if... |
+  |---|---|
+  | Install Docker-CE? | Docker is already installed and active |
+  | Install Docker Compose? | The `compose` plugin is already present |
+  | Install NGINX Proxy Manager? | Always asked |
+  | Install Portainer-CE? | Always asked |
+
+- **Option 2**: hands off to [`services/services.sh`](services/services.sh) (if you have the full repo checked out next to this script) to list and launch any service under `services/`; otherwise it prints the `curl` command to fetch `services.sh` standalone.
 
 ---
 
@@ -137,13 +169,13 @@ Export before running to customize images or host ports:
 
 > 💡 **`NPM_IMAGE` defaults to `:latest`** — you always get the newest NPM release, at the cost of reproducibility (a re-run next month may pull a different image than today). If you need a **pinned, repeatable** version instead (e.g. for production), override it explicitly:
 > ```bash
-> NPM_IMAGE=jc21/nginx-proxy-manager:2.14.0 sudo -E ./install_docker_NPM.sh
+> NPM_IMAGE=jc21/nginx-proxy-manager:2.14.0 sudo -E ./install_docker_core.sh
 > ```
 
 Example (move NPM's HTTP/HTTPS off the standard ports):
 
 ```bash
-NPM_HTTP_PORT=8080 NPM_HTTPS_PORT=8443 sudo -E ./install_docker_NPM.sh
+NPM_HTTP_PORT=8080 NPM_HTTPS_PORT=8443 sudo -E ./install_docker_core.sh
 ```
 
 ---
@@ -165,14 +197,23 @@ NPM_HTTP_PORT=8080 NPM_HTTPS_PORT=8443 sudo -E ./install_docker_NPM.sh
 
 ## 📁 Directory Layout After Install
 
+This script only creates `npm/` and `portainer/`, plus its own log file — but every service under [`services/`](services/) (see [Services](#-services)) follows the same convention and adds its own `~/docker/<name>/` folder alongside them, so the entire host's state (core infra *and* every optional service) stays backupable as one `~/docker/` tree:
+
 ```
 ~/docker/
+├── install_docker_core.log      # this script's own log (rotated to .old on rerun)
 ├── npm/
 │   ├── docker-compose.yml
 │   ├── data/            # NPM SQLite DB + config      (owned by you)
 │   └── letsencrypt/      # TLS certs                   (owned by you)
-└── portainer/
-    └── docker-compose.yml
+├── portainer/
+│   └── docker-compose.yml
+└── odoo/                 # example: added by services/odoo/deploy.sh
+    ├── deploy.log
+    ├── .odoo-docker-secrets.txt
+    └── <instance-name>/
+        ├── .env
+        └── docker-compose.yml
 ```
 
 > 📝 Portainer's own data (users, stack definitions, settings) lives in the **named Docker volume** `portainer_data` — not a folder under `~/docker/portainer/`. It's created as `external: true` in the compose file specifically so that re-running the installer, or upgrading from an older version of this script, never touches or recreates existing Portainer data.
@@ -222,7 +263,7 @@ docker inspect --format='{{.State.Health.Status}}' portainer
 | Services unreachable on RHEL/Fedora | `firewalld` blocks ports even though Docker bypasses `ufw` | The script prints the exact `firewall-cmd` lines it needs at the end of the run |
 | Port already in use | Another service is bound to it | The script pre-checks with `ss`/`netstat` and offers to continue or abort. Re-run with the relevant `_PORT` env var to pick a different one |
 | Containers not running after install | Varies | `cd ~/docker/npm && docker compose logs` / `cd ~/docker/portainer && docker compose logs` |
-| Installation failed mid-way | Varies — check the log | `~/install_docker_NPM.log` (previous run preserved as `.old`) |
+| Installation failed mid-way | Varies — check the log | `~/docker/install_docker_core.log` (previous run preserved as `.old`) |
 
 ---
 

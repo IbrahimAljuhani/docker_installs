@@ -1,0 +1,53 @@
+# Template docker-compose.yml for a new service under services/<name>/.
+# Copy this file, replace every <service> / <SERVICE> placeholder, and delete
+# the "db" block if the service doesn't need its own database.
+#
+# This file is the SOURCE template (tracked in git, under services/<name>/).
+# deploy.sh copies it (and .env) to ~/docker/<name>/ and runs it from there —
+# ./data and ./db-data below resolve relative to that runtime folder, not
+# this repo folder. See deploy.sh.template for the copy step.
+#
+# Conventions (see root README.md → "Services"):
+#   - container_name: <service>-app / <service>-db
+#   - private network: <service>-net   (app <-> db only, never published)
+#   - shared network:  main-net        (app only — lets NPM reach it by name;
+#                                        created by ../../install_docker_core.sh)
+#   - all secrets/ports come from .env — never hardcode them here
+#   - optional per-service memory cap: deploy.sh.template prompts for it once
+#     and applies it via a generated docker-compose.override.yml — don't add
+#     mem_limit here directly
+
+services:
+  app:
+    image: '<IMAGE>:<TAG>'
+    container_name: <service>-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+    networks:
+      - <service>-net
+      - main-net
+    # Only publish a host port if you need direct access without NPM.
+    # Prefer proxying via container name (<service>-app) over main-net instead.
+    # ports:
+    #   - "${APP_PORT}:8080"
+
+  db:
+    image: 'postgres:17'
+    container_name: <service>-db
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+    networks:
+      - <service>-net
+    # Never attach db to main-net and never publish its port to the host.
+
+networks:
+  <service>-net:
+    driver: bridge
+  main-net:
+    external: true
