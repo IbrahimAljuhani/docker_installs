@@ -126,8 +126,7 @@ Convention for every service: its own `.env` (never committed, `chmod 600`), a p
 ```bash
 git clone https://github.com/IbrahimAljuhani/docker_installs.git
 cd docker_installs
-chmod +x install_docker_core.sh
-sudo ./install_docker_core.sh
+sudo bash install_docker_core.sh
 ```
 
 <details>
@@ -138,15 +137,14 @@ If you only want the core infrastructure (Docker CE, Compose, NPM, Portainer) an
 ```bash
 curl -fsSL -o install_docker_core.sh \
   https://raw.githubusercontent.com/ibrahimaljuhani/docker_installs/main/install_docker_core.sh
-chmod +x install_docker_core.sh
-sudo ./install_docker_core.sh
+sudo bash install_docker_core.sh
 ```
 
 Picking **"Install a service"** from the menu without a local clone still works — it falls back to downloading the service you pick from GitHub on the spot (see [`services/README.md`](services/README.md)).
 
 </details>
 
-> ⚠️ Must be run with `sudo` (or as root). Use `sudo -E ./install_docker_core.sh` if you're setting env-var overrides (`-E` preserves them across the `sudo` boundary).
+> ⚠️ Must be run with `sudo` (or as root). Use `sudo -E bash install_docker_core.sh` if you're setting env-var overrides (`-E` preserves them across the `sudo` boundary). Note it's `bash install_docker_core.sh`, not `./install_docker_core.sh` — a fresh `git clone`/`git pull` doesn't reliably preserve the executable bit, and `bash <file>` works regardless of it.
 
 You'll get a menu:
 
@@ -187,13 +185,13 @@ Export before running to customize images or host ports:
 
 > 💡 **`NPM_IMAGE` defaults to `:latest`** — you always get the newest NPM release, at the cost of reproducibility (a re-run next month may pull a different image than today). If you need a **pinned, repeatable** version instead (e.g. for production), override it explicitly:
 > ```bash
-> NPM_IMAGE=jc21/nginx-proxy-manager:2.14.0 sudo -E ./install_docker_core.sh
+> NPM_IMAGE=jc21/nginx-proxy-manager:2.14.0 sudo -E bash install_docker_core.sh
 > ```
 
 Example (move NPM's HTTP/HTTPS off the standard ports):
 
 ```bash
-NPM_HTTP_PORT=8080 NPM_HTTPS_PORT=8443 sudo -E ./install_docker_core.sh
+NPM_HTTP_PORT=8080 NPM_HTTPS_PORT=8443 sudo -E bash install_docker_core.sh
 ```
 
 ---

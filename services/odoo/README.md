@@ -97,8 +97,7 @@ Key design decisions baked into the script:
 ```bash
 curl -fsSL -o install_docker_core.sh \
   https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/install_docker_core.sh
-chmod +x install_docker_core.sh
-sudo ./install_docker_core.sh
+sudo bash install_docker_core.sh
 ```
 Pick **`1) Install / manage core infrastructure`** from the menu it shows, it installs the full bundle automatically (skipping anything already installed). ✅ This also installs **NGINX Proxy Manager** and **Portainer CE** (optional, recommended for production), and creates the shared `main-net` network this service attaches to.
 
@@ -107,8 +106,7 @@ Pick **`1) Install / manage core infrastructure`** from the menu it shows, it in
 ```bash
 curl -fsSL -o deploy.sh \
   https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/odoo/deploy.sh
-chmod +x deploy.sh
-./deploy.sh
+bash deploy.sh
 ```
 
 > ⚠️ **Do not run as root.** Your user must be in the `docker` group.

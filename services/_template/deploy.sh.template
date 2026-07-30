@@ -11,6 +11,11 @@
 # under ~/docker/<name>/ — the same root used by install_docker_core.sh and
 # services/odoo/deploy.sh — so the whole host's state stays backupable as one
 # ~/docker/ tree. Never generate data/db-data/etc. inside the repo folder.
+#
+# In your new service's own README, document running this as
+# `bash deploy.sh` (not `chmod +x deploy.sh && ./deploy.sh`) — a fresh
+# `git clone`/`git pull` doesn't reliably preserve the executable bit, and
+# `bash <file>` works regardless of it. Same for any curl-then-run snippet.
 
 set -euo pipefail
 

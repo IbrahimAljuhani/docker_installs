@@ -10,7 +10,9 @@
 #      exist, so this downloads the chosen service's files fresh into
 #      ./<name>/ from GitHub and runs it from there.
 #
-# Usage: ./services.sh
+# Usage: bash services.sh
+# (not './services.sh' — a fresh git clone/pull doesn't reliably preserve the
+# executable bit, and 'bash <file>' works regardless of it)
 
 set -euo pipefail
 

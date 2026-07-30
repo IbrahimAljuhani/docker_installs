@@ -15,8 +15,7 @@ Adapted from the official [opf/openproject-docker-compose](https://github.com/op
 ```bash
 curl -fsSL -o install_docker_core.sh \
   https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/install_docker_core.sh
-chmod +x install_docker_core.sh
-sudo ./install_docker_core.sh
+sudo bash install_docker_core.sh
 ```
 Pick **`1) Install / manage core infrastructure`** from the menu it shows, it installs the full bundle automatically (skipping anything already installed).
 
@@ -27,8 +26,7 @@ curl -fsSL -o deploy.sh \
   https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/openproject/deploy.sh
 curl -fsSL -o docker-compose.yml \
   https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/openproject/docker-compose.yml
-chmod +x deploy.sh
-./deploy.sh
+bash deploy.sh
 ```
 
 > ⚠️ **Do not run as root.** Your user must be in the `docker` group (the same requirement as `services/odoo`).

@@ -15,8 +15,7 @@ Adapted from the official [n8n-io/n8n-hosting](https://github.com/n8n-io/n8n-hos
 ```bash
 curl -fsSL -o install_docker_core.sh \
   https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/install_docker_core.sh
-chmod +x install_docker_core.sh
-sudo ./install_docker_core.sh
+sudo bash install_docker_core.sh
 ```
 Pick **`1) Install / manage core infrastructure`** from the menu it shows, it installs the full bundle automatically (skipping anything already installed).
 
@@ -27,8 +26,7 @@ mkdir n8n-deploy && cd n8n-deploy
 curl -fsSL -o deploy.sh https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/n8n/deploy.sh
 curl -fsSL -o docker-compose.yml https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/n8n/docker-compose.yml
 curl -fsSL -o init-data.sh https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/n8n/init-data.sh
-chmod +x deploy.sh
-./deploy.sh
+bash deploy.sh
 ```
 
 > ⚠️ **Do not run as root.** Your user must be in the `docker` group.

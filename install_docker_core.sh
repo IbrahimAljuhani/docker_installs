@@ -7,7 +7,7 @@
 #          — the core infrastructure every service under services/ builds on top of.
 #
 # Environment overrides (export before running, e.g.:
-#   NPM_HTTP_PORT=8080 sudo -E ./install_docker_core.sh):
+#   NPM_HTTP_PORT=8080 sudo -E bash install_docker_core.sh):
 #
 #   NPM_IMAGE             default: jc21/nginx-proxy-manager:latest
 #   NPM_HTTP_PORT         default: 80
@@ -44,7 +44,7 @@ set -Eeuo pipefail
 
 # --- Require root ---
 if [[ $EUID -ne 0 ]]; then
-    echo "ERROR: This script must be run with sudo (e.g. 'sudo ./install_docker_core.sh')." >&2
+    echo "ERROR: This script must be run with sudo (e.g. 'sudo bash install_docker_core.sh')." >&2
     exit 1
 fi
 
@@ -665,7 +665,7 @@ show_services_menu() {
     echo
     print_info "Download the services picker and run it as your regular user (not root):"
     echo "  curl -fsSL -o services.sh https://raw.githubusercontent.com/ibrahimaljuhani/docker_installs/main/services/services.sh"
-    echo "  chmod +x services.sh && ./services.sh"
+    echo "  bash services.sh"
     echo "(Or browse services/ in the repo and run any <service>/deploy.sh directly.)"
 }
 
