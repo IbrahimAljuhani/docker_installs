@@ -651,7 +651,10 @@ show_services_menu() {
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     services_sh="$script_dir/services/services.sh"
     if [[ -f "$services_sh" ]]; then
-        exec "$services_sh"
+        # 'bash <file>' instead of exec'ing it directly: a fresh git clone
+        # doesn't guarantee the executable bit survived, and this works
+        # either way.
+        exec bash "$services_sh"
     fi
     echo
     print_info "Download the services picker and run it:"
