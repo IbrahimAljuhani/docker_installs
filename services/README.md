@@ -28,7 +28,18 @@ Pick **`1) Install / manage core infrastructure`** from the menu it shows.
 
 ### 2. Pick and deploy a service
 
-Pick **`2) Install a service`** from that same menu — it launches [`services.sh`](services.sh) right there, which lists every service here and runs the one you pick (as your regular user, not root).
+Pick **`2) Install a service`** from that same menu — it launches [`services.sh`](services.sh) right there, which lists every service here and, once you pick one, gives you:
+
+```
+1) Deploy / manage (runs deploy.sh — safe for new or existing deployments)
+2) Remove
+3) Reinstall (remove, then deploy fresh)
+4) Back
+```
+
+- **Deploy / manage** just runs that service's `deploy.sh` — safe to pick whether it's a fresh install or an existing one (reuses `.env`, won't overwrite `docker-compose.yml`).
+- **Remove** stops its containers and asks separately whether to also permanently delete its data (database, uploaded files, secrets). Say no and only the containers/cached compose file go — `.env` and volumes are kept so a later deploy picks up right where you left off.
+- **Reinstall** does Remove, then immediately deploys fresh. For multi-instance services (odoo), picking Remove or Reinstall with more than one instance deployed asks which instance first.
 
 Or run `bash services/services.sh` (or `bash deploy.sh` inside any service's own folder, see that service's own README) yourself at any time.
 
