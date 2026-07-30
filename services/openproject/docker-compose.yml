@@ -14,6 +14,10 @@
 #   - Upstream's inline proxy forwarded /hocuspocus* to hocuspocus:1234 and
 #     everything else to web:8080 — replicate this in NPM (see README.md,
 #     "Reverse Proxy" section) instead of running the Caddy container.
+#   - Postgres bumped to 17 (upstream still defaults to 13, which is stale —
+#     OpenProject has required 16+ since 16.0.0, and some migrations need
+#     15+'s `NULLS NOT DISTINCT` index syntax; on 13 the seeder hangs/retries
+#     that migration forever and web never boots).
 #
 # This file is the SOURCE template (tracked in git). deploy.sh copies it (and
 # the generated .env) to ~/docker/openproject/ and runs it from there.
@@ -47,7 +51,12 @@ x-op-app: &app
 
 services:
   db:
-    image: postgres:${POSTGRES_VERSION:-13}
+    # OpenProject officially requires Postgres 16+ (since OpenProject 16.0.0);
+    # current Docker installs default to 17. Some migrations use syntax
+    # (e.g. `CREATE UNIQUE INDEX ... NULLS NOT DISTINCT`) that needs 15+ and
+    # will hang/fail-loop on older versions. Upstream's own reference compose
+    # still defaults to 13, which is stale — don't copy that default again.
+    image: postgres:${POSTGRES_VERSION:-17}
     container_name: openproject-db
     restart: unless-stopped
     stop_grace_period: "3s"
