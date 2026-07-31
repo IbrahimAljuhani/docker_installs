@@ -470,7 +470,7 @@ msgid ""
 "                                                <p>Welcome to "
 "%(product_name)s, an Open Source, Agile Project Management Tool</p>\n"
 "                                                "
-msgstr "\\n                                                <p>مرحباً بك في %(product_name)s، أداة مفتوحة المصدر لإدارة المشاريع بمنهجية Agile</p>\\n"
+msgstr "\n                                                <p>مرحباً بك في %(product_name)s، أداة مفتوحة المصدر لإدارة المشاريع بمنهجية Agile</p>\n"
 
 #: taiga/base/templates/emails/includes/footer.jinja:15
 #, python-format
@@ -483,7 +483,7 @@ msgid ""
 "                &nbsp;&bull;&nbsp;\n"
 "                <a href=\"mailto:%(support_email)s\" >Contact us</a>\n"
 "                "
-msgstr "\\n                <a href=\"%(unsubscribe_url)s\">إعداد إشعارات البريد الإلكتروني أو إلغاء الاشتراك</a>\\n                &nbsp;&bull;&nbsp;\\n                <a href=\"%(support_url)s\">دعم Taiga</a>\\n                &nbsp;&bull;&nbsp;\\n                <a href=\"mailto:%(support_email)s\" >تواصل معنا</a>\\n"
+msgstr "\n                <a href=\"%(unsubscribe_url)s\">إعداد إشعارات البريد الإلكتروني أو إلغاء الاشتراك</a>\n                &nbsp;&bull;&nbsp;\n                <a href=\"%(support_url)s\">دعم Taiga</a>\n                &nbsp;&bull;&nbsp;\n                <a href=\"mailto:%(support_email)s\" >تواصل معنا</a>\n"
 
 #: taiga/base/templates/emails/includes/footer.jinja:26
 msgid "Follow us on Twitter"
@@ -510,7 +510,7 @@ msgid ""
 "                                                                    <p>%(comment)s</"
 "p>\n"
 "                                                                    "
-msgstr "\\n                                                                    <h3>تعليق:</h3>\\n                                                                    <p>%(comment)s</p>\\n"
+msgstr "\n                                                                    <h3>تعليق:</h3>\n                                                                    <p>%(comment)s</p>\n"
 
 #: taiga/base/templates/emails/updates-body-text.jinja:14
 #, python-format
@@ -518,7 +518,7 @@ msgid ""
 "\n"
 "    Comment: %(comment)s\n"
 "        "
-msgstr "\\n    التعليق: %(comment)s\\n"
+msgstr "\n    التعليق: %(comment)s\n"
 
 #: taiga/base/utils/urls.py:56
 msgid "Host access error"
@@ -737,7 +737,7 @@ msgid ""
 "\n"
 "TRACE ERROR:\n"
 "------------"
-msgstr "\\n\\nخطأ أثناء تحميل ملف التفريغ بواسطة {user_full_name} <{user_email}>:\"\\n\\n\\nالسبب:\\n-------\\n{reason}\\n\\nالتفاصيل:\\n--------\\n{details}\\n\\nتتبع الخطأ:\\n------------"
+msgstr "\n\nخطأ أثناء تحميل ملف التفريغ بواسطة {user_full_name} <{user_email}>:\"\n\n\nالسبب:\n-------\n{reason}\n\nالتفاصيل:\n--------\n{details}\n\nتتبع الخطأ:\n------------"
 
 #: taiga/export_import/tasks.py:109
 msgid "Error loading project dump"
@@ -765,7 +765,7 @@ msgid ""
 "    <p>This file will be deleted on %(deletion_date)s.</p>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم إنشاء تفريغ المشروع</h1>\\n    <p>مرحباً %(user)s،</p>\\n    <h3>تم إنشاء تفريغ مشروعك %(project)s بنجاح.</h3>\\n    <p>يمكنك تنزيله من هنا:</p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"Download the dump file\">تنزيل ملف التفريغ</a>\\n    <p>سيتم حذف هذا الملف بتاريخ %(deletion_date)s.</p>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم إنشاء تفريغ المشروع</h1>\n    <p>مرحباً %(user)s،</p>\n    <h3>تم إنشاء تفريغ مشروعك %(project)s بنجاح.</h3>\n    <p>يمكنك تنزيله من هنا:</p>\n    <a class=\"button\" href=\"%(url)s\" title=\"Download the dump file\">تنزيل ملف التفريغ</a>\n    <p>سيتم حذف هذا الملف بتاريخ %(deletion_date)s.</p>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/export_import/templates/emails/dump_project-body-text.jinja:9
 #, python-format
@@ -782,7 +782,7 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nمرحباً %(user)s،\\n\\nتم إنشاء تفريغ مشروعك %(project)s بنجاح. يمكنك تنزيله من هنا:\\n\\n%(url)s\\n\\nسيتم حذف هذا الملف بتاريخ %(deletion_date)s.\\n\\n---\\n%(signature)s\\n"
+msgstr "\nمرحباً %(user)s،\n\nتم إنشاء تفريغ مشروعك %(project)s بنجاح. يمكنك تنزيله من هنا:\n\n%(url)s\n\nسيتم حذف هذا الملف بتاريخ %(deletion_date)s.\n\n---\n%(signature)s\n"
 
 #: taiga/export_import/templates/emails/dump_project-subject.jinja:9
 #, python-format
@@ -802,7 +802,7 @@ msgid ""
 "style=\"color: #83EEDE\">%(support_email)s</a></p>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>%(error_message)s</h1>\\n    <p>مرحباً %(user)s،</p>\\n    <p>لم يتم تصدير مشروعك %(project)s بشكل صحيح.</p>\\n    <p>تم إبلاغ مسؤولي نظام Taiga بذلك.<br/> يُرجى المحاولة مرة أخرى أو التواصل مع فريق الدعم عبر\\n       <a href=\"mailto:%(support_email)s\" title=\"Support email\" style=\"color: #83EEDE\">%(support_email)s</a></p>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>%(error_message)s</h1>\n    <p>مرحباً %(user)s،</p>\n    <p>لم يتم تصدير مشروعك %(project)s بشكل صحيح.</p>\n    <p>تم إبلاغ مسؤولي نظام Taiga بذلك.<br/> يُرجى المحاولة مرة أخرى أو التواصل مع فريق الدعم عبر\n       <a href=\"mailto:%(support_email)s\" title=\"Support email\" style=\"color: #83EEDE\">%(support_email)s</a></p>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/export_import/templates/emails/export_error-body-text.jinja:9
 #, python-format
@@ -819,7 +819,7 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nمرحباً %(user)s،\\n\\n%(error_message)s\\nلم يتم تصدير مشروعك %(project)s بشكل صحيح.\\n\\nتم إبلاغ مسؤولي نظام Taiga بذلك.\\n\\nيُرجى المحاولة مرة أخرى أو التواصل مع فريق الدعم عبر %(support_email)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nمرحباً %(user)s،\n\n%(error_message)s\nلم يتم تصدير مشروعك %(project)s بشكل صحيح.\n\nتم إبلاغ مسؤولي نظام Taiga بذلك.\n\nيُرجى المحاولة مرة أخرى أو التواصل مع فريق الدعم عبر %(support_email)s\n\n---\n%(signature)s\n"
 
 #: taiga/export_import/templates/emails/export_error-subject.jinja:9
 #, python-format
@@ -841,7 +841,7 @@ msgid ""
 "    <h2>Error details</h2>\n"
 "    <pre>%(details)s</pre>\n"
 "    "
-msgstr "\\n    <h1>%(error_message)s</h1>\\n    <p>مرحباً %(user)s،</p>\\n    <p>لم يتم استيراد مشروعك بشكل صحيح.</p>\\n    <p>تم إبلاغ مسؤولي نظام %(product_name)s بذلك.<br/> يُرجى المحاولة مرة أخرى أو التواصل مع فريق الدعم عبر\\n       <a href=\"mailto:%(support_email)s\" title=\"Support email\" style=\"color: #83EEDE\">%(support_email)s</a></p>\\n    <p><small>%(signature)s</small></p>\\n    <h2>تفاصيل الخطأ</h2>\\n    <pre>%(details)s</pre>\\n"
+msgstr "\n    <h1>%(error_message)s</h1>\n    <p>مرحباً %(user)s،</p>\n    <p>لم يتم استيراد مشروعك بشكل صحيح.</p>\n    <p>تم إبلاغ مسؤولي نظام %(product_name)s بذلك.<br/> يُرجى المحاولة مرة أخرى أو التواصل مع فريق الدعم عبر\n       <a href=\"mailto:%(support_email)s\" title=\"Support email\" style=\"color: #83EEDE\">%(support_email)s</a></p>\n    <p><small>%(signature)s</small></p>\n    <h2>تفاصيل الخطأ</h2>\n    <pre>%(details)s</pre>\n"
 
 #: taiga/export_import/templates/emails/import_error-body-text.jinja:9
 #: taiga/importers/templates/emails/importer_import_error-body-text.jinja:9
@@ -860,7 +860,7 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nمرحباً %(user)s،\\n\\n%(error_message)s\\n\\nلم يتم استيراد مشروعك بشكل صحيح.\\n\\nتم إبلاغ مسؤولي نظام %(product_name)s بذلك.\\n\\nيُرجى المحاولة مرة أخرى أو التواصل مع فريق الدعم عبر %(support_email)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nمرحباً %(user)s،\n\n%(error_message)s\n\nلم يتم استيراد مشروعك بشكل صحيح.\n\nتم إبلاغ مسؤولي نظام %(product_name)s بذلك.\n\nيُرجى المحاولة مرة أخرى أو التواصل مع فريق الدعم عبر %(support_email)s\n\n---\n%(signature)s\n"
 
 #: taiga/export_import/templates/emails/import_error-subject.jinja:9
 #: taiga/importers/templates/emails/importer_import_error-subject.jinja:9
@@ -879,7 +879,7 @@ msgid ""
 "%(project)s\">Go to %(project)s</a>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم استيراد تفريغ المشروع</h1>\\n    <p>مرحباً %(user)s،</p>\\n    <h3>تم استيراد تفريغ مشروعك بنجاح.</h3>\\n    <a class=\"button\" href=\"%(url)s\" title=\"Go to the project %(project)s\">اذهب إلى %(project)s</a>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم استيراد تفريغ المشروع</h1>\n    <p>مرحباً %(user)s،</p>\n    <h3>تم استيراد تفريغ مشروعك بنجاح.</h3>\n    <a class=\"button\" href=\"%(url)s\" title=\"Go to the project %(project)s\">اذهب إلى %(project)s</a>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/export_import/templates/emails/load_dump-body-text.jinja:9
 #, python-format
@@ -895,7 +895,7 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nمرحباً %(user)s،\\n\\nتم استيراد تفريغ مشروعك بنجاح.\\n\\nيمكنك مشاهدة المشروع %(project)s هنا:\\n\\n%(url)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nمرحباً %(user)s،\n\nتم استيراد تفريغ مشروعك بنجاح.\n\nيمكنك مشاهدة المشروع %(project)s هنا:\n\n%(url)s\n\n---\n%(signature)s\n"
 
 #: taiga/export_import/templates/emails/load_dump-subject.jinja:9
 #, python-format
@@ -1009,7 +1009,7 @@ msgid ""
 "    <h1>Feedback</h1>\n"
 "    <p>Taiga has received feedback from %(full_name)s <%(email)s></p>\n"
 "    "
-msgstr "\\n    <h1>ملاحظات</h1>\\n    <p>استلم Taiga ملاحظات من %(full_name)s <%(email)s></p>\\n"
+msgstr "\n    <h1>ملاحظات</h1>\n    <p>استلم Taiga ملاحظات من %(full_name)s <%(email)s></p>\n"
 
 #: taiga/feedback/templates/emails/feedback_notification-body-html.jinja:17
 #, python-format
@@ -1018,7 +1018,7 @@ msgid ""
 "    <h3>Comment</h3>\n"
 "    <p>%(comment)s</p>\n"
 "    "
-msgstr "\\n    <h3>تعليق</h3>\\n    <p>%(comment)s</p>\\n"
+msgstr "\n    <h3>تعليق</h3>\n    <p>%(comment)s</p>\n"
 
 #: taiga/feedback/templates/emails/feedback_notification-body-html.jinja:26
 #: taiga/projects/admin.py:95
@@ -1033,7 +1033,7 @@ msgid ""
 "\n"
 "        <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n        <p><small>%(signature)s</small></p>\\n"
+msgstr "\n        <p><small>%(signature)s</small></p>\n"
 
 #: taiga/feedback/templates/emails/feedback_notification-body-text.jinja:9
 #, python-format
@@ -1044,7 +1044,7 @@ msgid ""
 "- Comment:\n"
 "%(comment)s\n"
 "---------"
-msgstr "---------\\n- من: %(full_name)s <%(email)s>\\n---------\\n- التعليق:\\n%(comment)s\\n---------"
+msgstr "---------\n- من: %(full_name)s <%(email)s>\n---------\n- التعليق:\n%(comment)s\n---------"
 
 #: taiga/feedback/templates/emails/feedback_notification-body-text.jinja:16
 msgid "- Extra info:"
@@ -1062,14 +1062,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\n---\\n%(signature)s\\n"
+msgstr "\n---\n%(signature)s\n"
 
 #: taiga/feedback/templates/emails/feedback_notification-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[Taiga] Feedback from %(full_name)s <%(email)s>\n"
-msgstr "\\n[Taiga] ملاحظات من %(full_name)s <%(email)s>\\n"
+msgstr "\n[Taiga] ملاحظات من %(full_name)s <%(email)s>\n"
 
 #: taiga/hooks/api.py:43
 msgid "The payload is not valid json"
@@ -1092,7 +1092,7 @@ msgid ""
 "[{platform}#{number}]({comment_url} \"Go to comment\"):\n"
 "\n"
 "\"{comment_message}\""
-msgstr "[{user_name}]({user_url} \"مشاهدة ملف {user_name} الشخصي على {platform}\") يقول في [{platform}#{number}]({comment_url} \"الذهاب إلى التعليق\"):\\n\\n\"{comment_message}\""
+msgstr "[{user_name}]({user_url} \"مشاهدة ملف {user_name} الشخصي على {platform}\") يقول في [{platform}#{number}]({comment_url} \"الذهاب إلى التعليق\"):\n\n\"{comment_message}\""
 
 #: taiga/hooks/event_hooks.py:75
 #, python-brace-format
@@ -1100,7 +1100,7 @@ msgid ""
 "Comment From {platform}:\n"
 "\n"
 "> {comment_message}"
-msgstr "تعليق من {platform}:\\n\\n> {comment_message}"
+msgstr "تعليق من {platform}:\n\n> {comment_message}"
 
 #: taiga/hooks/event_hooks.py:88
 msgid "Invalid issue comment information"
@@ -1169,7 +1169,7 @@ msgid ""
 "commit '{commit_id} - {commit_short_message}'\")\n"
 "\n"
 "  - Status: **{src_status}** → **{dst_status}**"
-msgstr "{user_text} غيّر الحالة من [{platform} commit]({commit_url} \"مشاهدة الإيداع '{commit_id} - {commit_short_message}'\")\\n\\n  - الحالة: **{src_status}** → **{dst_status}**"
+msgstr "{user_text} غيّر الحالة من [{platform} commit]({commit_url} \"مشاهدة الإيداع '{commit_id} - {commit_short_message}'\")\n\n  - الحالة: **{src_status}** → **{dst_status}**"
 
 #: taiga/hooks/event_hooks.py:303
 #, python-brace-format
@@ -1177,7 +1177,7 @@ msgid ""
 "Changed status from {platform} commit.\n"
 "\n"
 " - Status: **{src_status}** → **{dst_status}**"
-msgstr "تم تغيير الحالة من إيداع {platform}.\\n\\n - الحالة: **{src_status}** → **{dst_status}**"
+msgstr "تم تغيير الحالة من إيداع {platform}.\n\n - الحالة: **{src_status}** → **{dst_status}**"
 
 #: taiga/hooks/event_hooks.py:321
 #, python-brace-format
@@ -1250,7 +1250,7 @@ msgid ""
 "                There was an error; probably due to an unsupported Jira "
 "version.\n"
 "                Taiga does not support Jira releases from 8.6."
-msgstr "\\n                حدث خطأ؛ على الأرجح بسبب إصدار Jira غير مدعوم.\\n                لا يدعم Taiga إصدارات Jira ابتداءً من 8.6."
+msgstr "\n                حدث خطأ؛ على الأرجح بسبب إصدار Jira غير مدعوم.\n                لا يدعم Taiga إصدارات Jira ابتداءً من 8.6."
 
 #: taiga/importers/jira/api.py:158
 msgid "Invalid project_type {}"
@@ -1284,7 +1284,7 @@ msgid ""
 "%(project)s\">Go to %(project)s</a>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم استيراد مشروع Asana</h1>\\n    <p>مرحباً %(user)s،</p>\\n    <h3>تم استيراد مشروع Asana الخاص بك بنجاح.</h3>\\n    <a class=\"button\" href=\"%(url)s\" title=\"Go to the project %(project)s\">اذهب إلى %(project)s</a>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم استيراد مشروع Asana</h1>\n    <p>مرحباً %(user)s،</p>\n    <h3>تم استيراد مشروع Asana الخاص بك بنجاح.</h3>\n    <a class=\"button\" href=\"%(url)s\" title=\"Go to the project %(project)s\">اذهب إلى %(project)s</a>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/importers/templates/emails/asana_import_success-body-text.jinja:9
 #, python-format
@@ -1300,7 +1300,7 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nمرحباً %(user)s،\\n\\nتم استيراد مشروع Asana الخاص بك بنجاح.\\n\\nيمكنك مشاهدة المشروع %(project)s هنا:\\n\\n%(url)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nمرحباً %(user)s،\n\nتم استيراد مشروع Asana الخاص بك بنجاح.\n\nيمكنك مشاهدة المشروع %(project)s هنا:\n\n%(url)s\n\n---\n%(signature)s\n"
 
 #: taiga/importers/templates/emails/asana_import_success-subject.jinja:9
 #, python-format
@@ -1318,7 +1318,7 @@ msgid ""
 "%(project)s\">Go to %(project)s</a>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم استيراد مشروع GitHub</h1>\\n    <p>مرحباً %(user)s،</p>\\n    <h3>تم استيراد مشروع GitHub الخاص بك بنجاح.</h3>\\n    <a class=\"button\" href=\"%(url)s\" title=\"Go to the project %(project)s\">اذهب إلى %(project)s</a>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم استيراد مشروع GitHub</h1>\n    <p>مرحباً %(user)s،</p>\n    <h3>تم استيراد مشروع GitHub الخاص بك بنجاح.</h3>\n    <a class=\"button\" href=\"%(url)s\" title=\"Go to the project %(project)s\">اذهب إلى %(project)s</a>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/importers/templates/emails/github_import_success-body-text.jinja:9
 #, python-format
@@ -1334,7 +1334,7 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nمرحباً %(user)s،\\n\\nتم استيراد مشروع GitHub الخاص بك بنجاح.\\n\\nيمكنك مشاهدة المشروع %(project)s هنا:\\n\\n%(url)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nمرحباً %(user)s،\n\nتم استيراد مشروع GitHub الخاص بك بنجاح.\n\nيمكنك مشاهدة المشروع %(project)s هنا:\n\n%(url)s\n\n---\n%(signature)s\n"
 
 #: taiga/importers/templates/emails/github_import_success-subject.jinja:9
 #, python-format
@@ -1354,7 +1354,7 @@ msgid ""
 "style=\"color: #83EEDE\">%(support_email)s</a></p>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>%(error_message)s</h1>\\n    <p>مرحباً %(user)s،</p>\\n    <p>لم يتم استيراد مشروعك بشكل صحيح.</p>\\n    <p>تم إبلاغ مسؤولي نظام %(product_name)s بذلك.<br/> يُرجى المحاولة مرة أخرى أو التواصل مع فريق الدعم عبر\\n       <a href=\"mailto:%(support_email)s\" title=\"Support email\" style=\"color: #83EEDE\">%(support_email)s</a></p>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>%(error_message)s</h1>\n    <p>مرحباً %(user)s،</p>\n    <p>لم يتم استيراد مشروعك بشكل صحيح.</p>\n    <p>تم إبلاغ مسؤولي نظام %(product_name)s بذلك.<br/> يُرجى المحاولة مرة أخرى أو التواصل مع فريق الدعم عبر\n       <a href=\"mailto:%(support_email)s\" title=\"Support email\" style=\"color: #83EEDE\">%(support_email)s</a></p>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/importers/templates/emails/jira_import_success-body-html.jinja:12
 #, python-format
@@ -1367,7 +1367,7 @@ msgid ""
 "%(project)s\">Go to %(project)s</a>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم استيراد مشروع Jira</h1>\\n    <p>مرحباً %(user)s،</p>\\n    <h3>تم استيراد مشروع Jira الخاص بك بنجاح.</h3>\\n    <a class=\"button\" href=\"%(url)s\" title=\"Go to the project %(project)s\">اذهب إلى %(project)s</a>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم استيراد مشروع Jira</h1>\n    <p>مرحباً %(user)s،</p>\n    <h3>تم استيراد مشروع Jira الخاص بك بنجاح.</h3>\n    <a class=\"button\" href=\"%(url)s\" title=\"Go to the project %(project)s\">اذهب إلى %(project)s</a>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/importers/templates/emails/jira_import_success-body-text.jinja:9
 #, python-format
@@ -1383,7 +1383,7 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nمرحباً %(user)s،\\n\\nتم استيراد مشروع Jira الخاص بك بنجاح.\\n\\nيمكنك مشاهدة المشروع %(project)s هنا:\\n\\n%(url)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nمرحباً %(user)s،\n\nتم استيراد مشروع Jira الخاص بك بنجاح.\n\nيمكنك مشاهدة المشروع %(project)s هنا:\n\n%(url)s\n\n---\n%(signature)s\n"
 
 #: taiga/importers/templates/emails/jira_import_success-subject.jinja:9
 #, python-format
@@ -1401,7 +1401,7 @@ msgid ""
 "%(project)s\">Go to %(project)s</a>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم استيراد مشروع Trello</h1>\\n    <p>مرحباً %(user)s،</p>\\n    <h3>تم استيراد مشروع Trello الخاص بك بنجاح.</h3>\\n    <a class=\"button\" href=\"%(url)s\" title=\"Go to the project %(project)s\">اذهب إلى %(project)s</a>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم استيراد مشروع Trello</h1>\n    <p>مرحباً %(user)s،</p>\n    <h3>تم استيراد مشروع Trello الخاص بك بنجاح.</h3>\n    <a class=\"button\" href=\"%(url)s\" title=\"Go to the project %(project)s\">اذهب إلى %(project)s</a>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/importers/templates/emails/trello_import_success-body-text.jinja:9
 #, python-format
@@ -1417,7 +1417,7 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nمرحباً %(user)s،\\n\\nتم استيراد مشروع Trello الخاص بك بنجاح.\\n\\nيمكنك مشاهدة المشروع %(project)s هنا:\\n\\n%(url)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nمرحباً %(user)s،\n\nتم استيراد مشروع Trello الخاص بك بنجاح.\n\nيمكنك مشاهدة المشروع %(project)s هنا:\n\n%(url)s\n\n---\n%(signature)s\n"
 
 #: taiga/importers/templates/emails/trello_import_success-subject.jinja:9
 #, python-format
@@ -1865,7 +1865,7 @@ msgid ""
 "href=\"%(user_profile_url)s\" title=\"%(full_name)s\">%(full_name)s</a> has "
 "written to %(project_name)s\n"
 "    "
-msgstr "\\n        <a style=\"font-weight: bold;text-decoration:none;color:#222;\" href=\"%(user_profile_url)s\" title=\"%(full_name)s\">%(full_name)s</a> راسل %(project_name)s\\n"
+msgstr "\n        <a style=\"font-weight: bold;text-decoration:none;color:#222;\" href=\"%(user_profile_url)s\" title=\"%(full_name)s\">%(full_name)s</a> راسل %(project_name)s\n"
 
 #: taiga/projects/contact/templates/emails/contact_notification-body-html.jinja:28
 #, python-format
@@ -1878,14 +1878,14 @@ msgid ""
 "prevent such contacts. Regular communications amongst members of the project "
 "will not be affected.\n"
 "    "
-msgstr "\\n        أنت تستلم هذه الرسالة لأنك مُدرج كمسؤول إداري للمشروع %(project_name)s. إذا كنت لا ترغب في أن يتواصل أعضاء مجتمع Taiga مع مشروعك، يُرجى <a href=\"%(project_settings_url)s\">تحديث إعدادات مشروعك</a> لمنع مثل هذه المراسلات. لن تتأثر المراسلات الاعتيادية بين أعضاء المشروع.\\n"
+msgstr "\n        أنت تستلم هذه الرسالة لأنك مُدرج كمسؤول إداري للمشروع %(project_name)s. إذا كنت لا ترغب في أن يتواصل أعضاء مجتمع Taiga مع مشروعك، يُرجى <a href=\"%(project_settings_url)s\">تحديث إعدادات مشروعك</a> لمنع مثل هذه المراسلات. لن تتأثر المراسلات الاعتيادية بين أعضاء المشروع.\n"
 
 #: taiga/projects/contact/templates/emails/contact_notification-body-text.jinja:9
 #, python-format
 msgid ""
 "\n"
 "%(full_name)s has written to %(project_name)s\n"
-msgstr "\\n%(full_name)s راسل %(project_name)s\\n"
+msgstr "\n%(full_name)s راسل %(project_name)s\n"
 
 #: taiga/projects/contact/templates/emails/contact_notification-body-text.jinja:15
 #, python-format
@@ -1896,14 +1896,14 @@ msgid ""
 "community contacting your project, please update your project settings in "
 "%(project_settings_url)s to prevent such contacts. Regular communications "
 "amongst members of the project will not be affected.\n"
-msgstr "\\nأنت تستلم هذه الرسالة لأنك مُدرج كمسؤول إداري للمشروع %(project_name)s. إذا كنت لا ترغب في أن يتواصل أعضاء مجتمع Taiga مع مشروعك، يُرجى تحديث إعدادات مشروعك في %(project_settings_url)s لمنع مثل هذه المراسلات. لن تتأثر المراسلات الاعتيادية بين أعضاء المشروع.\\n"
+msgstr "\nأنت تستلم هذه الرسالة لأنك مُدرج كمسؤول إداري للمشروع %(project_name)s. إذا كنت لا ترغب في أن يتواصل أعضاء مجتمع Taiga مع مشروعك، يُرجى تحديث إعدادات مشروعك في %(project_settings_url)s لمنع مثل هذه المراسلات. لن تتأثر المراسلات الاعتيادية بين أعضاء المشروع.\n"
 
 #: taiga/projects/contact/templates/emails/contact_notification-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[Taiga] %(full_name)s has sent a message to the project %(project_name)s\n"
-msgstr "\\n[Taiga] أرسل %(full_name)s رسالة إلى المشروع %(project_name)s\\n"
+msgstr "\n[Taiga] أرسل %(full_name)s رسالة إلى المشروع %(project_name)s\n"
 
 #: taiga/projects/custom_attributes/choices.py:21
 msgid "Text"
@@ -2672,7 +2672,7 @@ msgid ""
 "    <a class=\"button\" href=\"%(url)s\" title=\"See Epic #%(ref)s: "
 "%(subject)s\">See epic</a>\n"
 "    "
-msgstr "\\n    <h1>تم تحديث الملحمة</h1>\\n    <p>مرحباً %(user)s، <br> قام %(changer)s بتحديث ملحمة في %(project)s</p>\\n    <p>ملحمة #%(ref)s %(subject)s</p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"See Epic #%(ref)s: %(subject)s\">مشاهدة الملحمة</a>\\n"
+msgstr "\n    <h1>تم تحديث الملحمة</h1>\n    <p>مرحباً %(user)s، <br> قام %(changer)s بتحديث ملحمة في %(project)s</p>\n    <p>ملحمة #%(ref)s %(subject)s</p>\n    <a class=\"button\" href=\"%(url)s\" title=\"See Epic #%(ref)s: %(subject)s\">مشاهدة الملحمة</a>\n"
 
 #: taiga/projects/notifications/templates/emails/epics/epic-change-body-text.jinja:11
 #, python-format
@@ -2681,14 +2681,14 @@ msgid ""
 "Epic updated\n"
 "Hello %(user)s, %(changer)s has updated a epic on %(project)s\n"
 "See epic #%(ref)s %(subject)s at %(url)s\n"
-msgstr "\\nتم تحديث الملحمة\\nمرحباً %(user)s، قام %(changer)s بتحديث ملحمة في %(project)s\\nمشاهدة الملحمة #%(ref)s %(subject)s على %(url)s\\n"
+msgstr "\nتم تحديث الملحمة\nمرحباً %(user)s، قام %(changer)s بتحديث ملحمة في %(project)s\nمشاهدة الملحمة #%(ref)s %(subject)s على %(url)s\n"
 
 #: taiga/projects/notifications/templates/emails/epics/epic-change-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Updated the epic #%(ref)s \"%(subject)s\"\n"
-msgstr "\\n[%(project)s] تم تحديث الملحمة #%(ref)s \"%(subject)s\"\\n"
+msgstr "\n[%(project)s] تم تحديث الملحمة #%(ref)s \"%(subject)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/epics/epic-create-body-html.jinja:12
 #, python-format
@@ -2702,7 +2702,7 @@ msgid ""
 "%(subject)s\">See epic</a>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم إنشاء ملحمة جديدة</h1>\\n    <p>مرحباً %(user)s،<br />قام %(changer)s بإنشاء ملحمة جديدة في %(project)s</p>\\n    <p>ملحمة #%(ref)s %(subject)s</p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"See Epic #%(ref)s %(subject)s\">مشاهدة الملحمة</a>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم إنشاء ملحمة جديدة</h1>\n    <p>مرحباً %(user)s،<br />قام %(changer)s بإنشاء ملحمة جديدة في %(project)s</p>\n    <p>ملحمة #%(ref)s %(subject)s</p>\n    <a class=\"button\" href=\"%(url)s\" title=\"See Epic #%(ref)s %(subject)s\">مشاهدة الملحمة</a>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/notifications/templates/emails/epics/epic-create-body-text.jinja:9
 #, python-format
@@ -2714,14 +2714,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتم إنشاء ملحمة جديدة\\nمرحباً %(user)s، قام %(changer)s بإنشاء ملحمة جديدة في %(project)s\\nمشاهدة الملحمة #%(ref)s %(subject)s على %(url)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتم إنشاء ملحمة جديدة\nمرحباً %(user)s، قام %(changer)s بإنشاء ملحمة جديدة في %(project)s\nمشاهدة الملحمة #%(ref)s %(subject)s على %(url)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/notifications/templates/emails/epics/epic-create-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Created the epic #%(ref)s \"%(subject)s\"\n"
-msgstr "\\n[%(project)s] تم إنشاء الملحمة #%(ref)s \"%(subject)s\"\\n"
+msgstr "\n[%(project)s] تم إنشاء الملحمة #%(ref)s \"%(subject)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/epics/epic-delete-body-html.jinja:12
 #, python-format
@@ -2733,7 +2733,7 @@ msgid ""
 "    <p>Epic #%(ref)s %(subject)s</p>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم حذف الملحمة</h1>\\n    <p>مرحباً %(user)s،<br />قام %(changer)s بحذف ملحمة في %(project)s</p>\\n    <p>ملحمة #%(ref)s %(subject)s</p>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم حذف الملحمة</h1>\n    <p>مرحباً %(user)s،<br />قام %(changer)s بحذف ملحمة في %(project)s</p>\n    <p>ملحمة #%(ref)s %(subject)s</p>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/notifications/templates/emails/epics/epic-delete-body-text.jinja:9
 #, python-format
@@ -2745,14 +2745,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتم حذف الملحمة\\nمرحباً %(user)s، قام %(changer)s بحذف ملحمة في %(project)s\\nملحمة #%(ref)s %(subject)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتم حذف الملحمة\nمرحباً %(user)s، قام %(changer)s بحذف ملحمة في %(project)s\nملحمة #%(ref)s %(subject)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/notifications/templates/emails/epics/epic-delete-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Deleted the epic #%(ref)s \"%(subject)s\"\n"
-msgstr "\\n[%(project)s] تم حذف الملحمة #%(ref)s \"%(subject)s\"\\n"
+msgstr "\n[%(project)s] تم حذف الملحمة #%(ref)s \"%(subject)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/issues/issue-change-body-html.jinja:12
 #, python-format
@@ -2764,7 +2764,7 @@ msgid ""
 "    <a class=\"button\" href=\"%(url)s\" title=\"See Issue #%(ref)s: "
 "%(subject)s\">See issue</a>\n"
 "    "
-msgstr "\\n    <h1>تم تحديث مشكلة في %(project)s</h1>\\n    <p>مرحباً %(user)s، <br> قام %(changer)s بتحديث مشكلة:</p>\\n    <p><strong>#%(ref)s %(subject)s</strong></p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"See Issue #%(ref)s: %(subject)s\">مشاهدة المشكلة</a>\\n"
+msgstr "\n    <h1>تم تحديث مشكلة في %(project)s</h1>\n    <p>مرحباً %(user)s، <br> قام %(changer)s بتحديث مشكلة:</p>\n    <p><strong>#%(ref)s %(subject)s</strong></p>\n    <a class=\"button\" href=\"%(url)s\" title=\"See Issue #%(ref)s: %(subject)s\">مشاهدة المشكلة</a>\n"
 
 #: taiga/projects/notifications/templates/emails/issues/issue-change-body-text.jinja:11
 #, python-format
@@ -2777,14 +2777,14 @@ msgid ""
 "#%(ref)s %(subject)s\n"
 "\n"
 "See issue at %(url)s\n"
-msgstr "\\nتم تحديث مشكلة في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بتحديث مشكلة:\\n\\n#%(ref)s %(subject)s\\n\\nمشاهدة المشكلة على %(url)s\\n"
+msgstr "\nتم تحديث مشكلة في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بتحديث مشكلة:\n\n#%(ref)s %(subject)s\n\nمشاهدة المشكلة على %(url)s\n"
 
 #: taiga/projects/notifications/templates/emails/issues/issue-change-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Updated the issue #%(ref)s \"%(subject)s\"\n"
-msgstr "\\n[%(project)s] تم تحديث المشكلة #%(ref)s \"%(subject)s\"\\n"
+msgstr "\n[%(project)s] تم تحديث المشكلة #%(ref)s \"%(subject)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/issues/issue-create-body-html.jinja:12
 #, python-format
@@ -2797,7 +2797,7 @@ msgid ""
 "%(subject)s\">See issue</a>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم إنشاء مشكلة جديدة في %(project)s</h1>\\n    <p>مرحباً %(user)s،<br />قام %(changer)s بإنشاء مشكلة جديدة:</p>\\n    <p><strong>#%(ref)s %(subject)s</strong></p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"See Issue #%(ref)s %(subject)s\">مشاهدة المشكلة</a>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم إنشاء مشكلة جديدة في %(project)s</h1>\n    <p>مرحباً %(user)s،<br />قام %(changer)s بإنشاء مشكلة جديدة:</p>\n    <p><strong>#%(ref)s %(subject)s</strong></p>\n    <a class=\"button\" href=\"%(url)s\" title=\"See Issue #%(ref)s %(subject)s\">مشاهدة المشكلة</a>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/notifications/templates/emails/issues/issue-create-body-text.jinja:9
 #, python-format
@@ -2813,14 +2813,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتم إنشاء مشكلة جديدة في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بإنشاء مشكلة جديدة:\\n\\n#%(ref)s %(subject)s\\n\\nمشاهدة المشكلة على %(url)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتم إنشاء مشكلة جديدة في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بإنشاء مشكلة جديدة:\n\n#%(ref)s %(subject)s\n\nمشاهدة المشكلة على %(url)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/notifications/templates/emails/issues/issue-create-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Created the issue #%(ref)s \"%(subject)s\"\n"
-msgstr "\\n[%(project)s] تم إنشاء المشكلة #%(ref)s \"%(subject)s\"\\n"
+msgstr "\n[%(project)s] تم إنشاء المشكلة #%(ref)s \"%(subject)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/issues/issue-delete-body-html.jinja:12
 #, python-format
@@ -2831,7 +2831,7 @@ msgid ""
 "    <p><strong>#%(ref)s %(subject)s</strong></p>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم حذف مشكلة في %(project)s</h1>\\n    <p>مرحباً %(user)s،<br />قام %(changer)s بحذف مشكلة:</p>\\n    <p><strong>#%(ref)s %(subject)s</strong></p>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم حذف مشكلة في %(project)s</h1>\n    <p>مرحباً %(user)s،<br />قام %(changer)s بحذف مشكلة:</p>\n    <p><strong>#%(ref)s %(subject)s</strong></p>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/notifications/templates/emails/issues/issue-delete-body-text.jinja:9
 #, python-format
@@ -2845,14 +2845,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتم حذف مشكلة في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بحذف مشكلة:\\n\\n#%(ref)s %(subject)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتم حذف مشكلة في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بحذف مشكلة:\n\n#%(ref)s %(subject)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/notifications/templates/emails/issues/issue-delete-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Deleted the issue #%(ref)s \"%(subject)s\"\n"
-msgstr "\\n[%(project)s] تم حذف المشكلة #%(ref)s \"%(subject)s\"\\n"
+msgstr "\n[%(project)s] تم حذف المشكلة #%(ref)s \"%(subject)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/milestones/milestone-change-body-html.jinja:12
 #, python-format
@@ -2864,7 +2864,7 @@ msgid ""
 "    <a class=\"button\" href=\"%(url)s\" title=\"See Sprint: %(name)s\">See "
 "sprint</a>\n"
 "    "
-msgstr "\\n    <h1>تم تحديث سبرنت في %(project)s</h1>\\n    <p>مرحباً %(user)s، <br> قام %(changer)s بتحديث سبرنت:</p>\\n    <p><strong>%(name)s</strong></p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"See Sprint: %(name)s\">مشاهدة السبرنت</a>\\n"
+msgstr "\n    <h1>تم تحديث سبرنت في %(project)s</h1>\n    <p>مرحباً %(user)s، <br> قام %(changer)s بتحديث سبرنت:</p>\n    <p><strong>%(name)s</strong></p>\n    <a class=\"button\" href=\"%(url)s\" title=\"See Sprint: %(name)s\">مشاهدة السبرنت</a>\n"
 
 #: taiga/projects/notifications/templates/emails/milestones/milestone-change-body-text.jinja:11
 #, python-format
@@ -2877,14 +2877,14 @@ msgid ""
 "%(name)s\n"
 "\n"
 "See sprint at %(url)s\n"
-msgstr "\\nتم تحديث سبرنت في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بتحديث سبرنت:\\n\\n%(name)s\\n\\nمشاهدة السبرنت على %(url)s\\n"
+msgstr "\nتم تحديث سبرنت في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بتحديث سبرنت:\n\n%(name)s\n\nمشاهدة السبرنت على %(url)s\n"
 
 #: taiga/projects/notifications/templates/emails/milestones/milestone-change-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Updated the sprint \"%(milestone)s\"\n"
-msgstr "\\n[%(project)s] تم تحديث السبرنت \"%(milestone)s\"\\n"
+msgstr "\n[%(project)s] تم تحديث السبرنت \"%(milestone)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/milestones/milestone-create-body-html.jinja:12
 #, python-format
@@ -2897,7 +2897,7 @@ msgid ""
 "sprint</a>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم إنشاء سبرنت جديد في %(project)s</h1>\\n    <p>مرحباً %(user)s،<br />قام %(changer)s بإنشاء سبرنت جديد</p>\\n    <p><strong>%(name)s</strong></p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"See Sprint %(name)s\">مشاهدة السبرنت</a>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم إنشاء سبرنت جديد في %(project)s</h1>\n    <p>مرحباً %(user)s،<br />قام %(changer)s بإنشاء سبرنت جديد</p>\n    <p><strong>%(name)s</strong></p>\n    <a class=\"button\" href=\"%(url)s\" title=\"See Sprint %(name)s\">مشاهدة السبرنت</a>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/notifications/templates/emails/milestones/milestone-create-body-text.jinja:9
 #, python-format
@@ -2913,14 +2913,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتم إنشاء سبرنت جديد في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بإنشاء سبرنت جديد:\\n\\n%(name)s\\n\\nمشاهدة السبرنت على %(url)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتم إنشاء سبرنت جديد في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بإنشاء سبرنت جديد:\n\n%(name)s\n\nمشاهدة السبرنت على %(url)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/notifications/templates/emails/milestones/milestone-create-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Created the sprint \"%(milestone)s\"\n"
-msgstr "\\n[%(project)s] تم إنشاء السبرنت \"%(milestone)s\"\\n"
+msgstr "\n[%(project)s] تم إنشاء السبرنت \"%(milestone)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/milestones/milestone-delete-body-html.jinja:12
 #, python-format
@@ -2931,7 +2931,7 @@ msgid ""
 "    <p><strong>%(name)s</strong></p>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم حذف سبرنت في %(project)s</h1>\\n    <p>مرحباً %(user)s،<br />قام %(changer)s بحذف سبرنت:</p>\\n    <p><strong>%(name)s</strong></p>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم حذف سبرنت في %(project)s</h1>\n    <p>مرحباً %(user)s،<br />قام %(changer)s بحذف سبرنت:</p>\n    <p><strong>%(name)s</strong></p>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/notifications/templates/emails/milestones/milestone-delete-body-text.jinja:9
 #, python-format
@@ -2945,14 +2945,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتم حذف سبرنت في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بحذف سبرنت:\\n\\n%(name)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتم حذف سبرنت في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بحذف سبرنت:\n\n%(name)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/notifications/templates/emails/milestones/milestone-delete-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Deleted the Sprint \"%(milestone)s\"\n"
-msgstr "\\n[%(project)s] تم حذف السبرنت \"%(milestone)s\"\\n"
+msgstr "\n[%(project)s] تم حذف السبرنت \"%(milestone)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/tasks/task-change-body-html.jinja:12
 #, python-format
@@ -2964,7 +2964,7 @@ msgid ""
 "    <a class=\"button\" href=\"%(url)s\" title=\"See Task #%(ref)s: "
 "%(subject)s\">See task</a>\n"
 "    "
-msgstr "\\n    <h1>تم تحديث مهمة في %(project)s</h1>\\n    <p>مرحباً %(user)s، <br> قام %(changer)s بتحديث مهمة:</p>\\n    <p><strong>#%(ref)s %(subject)s</strong></p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"See Task #%(ref)s: %(subject)s\">مشاهدة المهمة</a>\\n"
+msgstr "\n    <h1>تم تحديث مهمة في %(project)s</h1>\n    <p>مرحباً %(user)s، <br> قام %(changer)s بتحديث مهمة:</p>\n    <p><strong>#%(ref)s %(subject)s</strong></p>\n    <a class=\"button\" href=\"%(url)s\" title=\"See Task #%(ref)s: %(subject)s\">مشاهدة المهمة</a>\n"
 
 #: taiga/projects/notifications/templates/emails/tasks/task-change-body-text.jinja:11
 #, python-format
@@ -2977,14 +2977,14 @@ msgid ""
 "#%(ref)s %(subject)s\n"
 "\n"
 "See task at %(url)s\n"
-msgstr "\\nتم تحديث مهمة في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بتحديث مهمة:\\n\\n#%(ref)s %(subject)s\\n\\nمشاهدة المهمة على %(url)s\\n"
+msgstr "\nتم تحديث مهمة في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بتحديث مهمة:\n\n#%(ref)s %(subject)s\n\nمشاهدة المهمة على %(url)s\n"
 
 #: taiga/projects/notifications/templates/emails/tasks/task-change-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Updated the task #%(ref)s \"%(subject)s\"\n"
-msgstr "\\n[%(project)s] تم تحديث المهمة #%(ref)s \"%(subject)s\"\\n"
+msgstr "\n[%(project)s] تم تحديث المهمة #%(ref)s \"%(subject)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/tasks/task-create-body-html.jinja:12
 #, python-format
@@ -2997,7 +2997,7 @@ msgid ""
 "%(subject)s\">See task</a>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم إنشاء مهمة جديدة في %(project)s</h1>\\n    <p>مرحباً %(user)s،<br />قام %(changer)s بإنشاء مهمة جديدة:</p>\\n    <p><strong>#%(ref)s %(subject)s</strong></p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"See Task #%(ref)s %(subject)s\">مشاهدة المهمة</a>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم إنشاء مهمة جديدة في %(project)s</h1>\n    <p>مرحباً %(user)s،<br />قام %(changer)s بإنشاء مهمة جديدة:</p>\n    <p><strong>#%(ref)s %(subject)s</strong></p>\n    <a class=\"button\" href=\"%(url)s\" title=\"See Task #%(ref)s %(subject)s\">مشاهدة المهمة</a>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/notifications/templates/emails/tasks/task-create-body-text.jinja:9
 #, python-format
@@ -3013,14 +3013,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتم إنشاء مهمة جديدة في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بإنشاء مهمة جديدة:\\n\\n#%(ref)s %(subject)s\\n\\nمشاهدة المهمة على %(url)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتم إنشاء مهمة جديدة في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بإنشاء مهمة جديدة:\n\n#%(ref)s %(subject)s\n\nمشاهدة المهمة على %(url)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/notifications/templates/emails/tasks/task-create-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Created the task #%(ref)s \"%(subject)s\"\n"
-msgstr "\\n[%(project)s] تم إنشاء المهمة #%(ref)s \"%(subject)s\"\\n"
+msgstr "\n[%(project)s] تم إنشاء المهمة #%(ref)s \"%(subject)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/tasks/task-delete-body-html.jinja:12
 #, python-format
@@ -3031,7 +3031,7 @@ msgid ""
 "    <p><strong>#%(ref)s %(subject)s</strong></p>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم حذف مهمة في %(project)s</h1>\\n    <p>مرحباً %(user)s،<br />قام %(changer)s بحذف مهمة:</p>\\n    <p><strong>#%(ref)s %(subject)s</strong></p>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم حذف مهمة في %(project)s</h1>\n    <p>مرحباً %(user)s،<br />قام %(changer)s بحذف مهمة:</p>\n    <p><strong>#%(ref)s %(subject)s</strong></p>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/notifications/templates/emails/tasks/task-delete-body-text.jinja:9
 #, python-format
@@ -3045,14 +3045,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتم حذف مهمة في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بحذف مهمة:\\n\\n#%(ref)s %(subject)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتم حذف مهمة في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بحذف مهمة:\n\n#%(ref)s %(subject)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/notifications/templates/emails/tasks/task-delete-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Deleted the task #%(ref)s \"%(subject)s\"\n"
-msgstr "\\n[%(project)s] تم حذف المهمة #%(ref)s \"%(subject)s\"\\n"
+msgstr "\n[%(project)s] تم حذف المهمة #%(ref)s \"%(subject)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/userstories/userstory-change-body-html.jinja:12
 #, python-format
@@ -3064,7 +3064,7 @@ msgid ""
 "    <a class=\"button\" href=\"%(url)s\" title=\"See User Story #%(ref)s: "
 "%(subject)s\">See user story</a>\n"
 "    "
-msgstr "\\n    <h1>تم تحديث قصة مستخدم في %(project)s</h1>\\n    <p>مرحباً %(user)s، <br> قام %(changer)s بتحديث قصة مستخدم:</p>\\n    <p><strong>#%(ref)s %(subject)s</strong></p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"See User Story #%(ref)s: %(subject)s\">مشاهدة قصة المستخدم</a>\\n"
+msgstr "\n    <h1>تم تحديث قصة مستخدم في %(project)s</h1>\n    <p>مرحباً %(user)s، <br> قام %(changer)s بتحديث قصة مستخدم:</p>\n    <p><strong>#%(ref)s %(subject)s</strong></p>\n    <a class=\"button\" href=\"%(url)s\" title=\"See User Story #%(ref)s: %(subject)s\">مشاهدة قصة المستخدم</a>\n"
 
 #: taiga/projects/notifications/templates/emails/userstories/userstory-change-body-text.jinja:11
 #, python-format
@@ -3077,14 +3077,14 @@ msgid ""
 "#%(ref)s %(subject)s\n"
 "\n"
 "See user story at %(url)s\n"
-msgstr "\\nتم تحديث قصة مستخدم في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بتحديث قصة مستخدم:\\n\\n#%(ref)s %(subject)s\\n\\nمشاهدة قصة المستخدم على %(url)s\\n"
+msgstr "\nتم تحديث قصة مستخدم في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بتحديث قصة مستخدم:\n\n#%(ref)s %(subject)s\n\nمشاهدة قصة المستخدم على %(url)s\n"
 
 #: taiga/projects/notifications/templates/emails/userstories/userstory-change-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Updated the US #%(ref)s \"%(subject)s\"\n"
-msgstr "\\n[%(project)s] تم تحديث قصة المستخدم #%(ref)s \"%(subject)s\"\\n"
+msgstr "\n[%(project)s] تم تحديث قصة المستخدم #%(ref)s \"%(subject)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/userstories/userstory-create-body-html.jinja:12
 #, python-format
@@ -3097,7 +3097,7 @@ msgid ""
 "%(subject)s\">See user story</a>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم إنشاء قصة مستخدم جديدة في %(project)s</h1>\\n    <p>مرحباً %(user)s،<br />قام %(changer)s بإنشاء قصة مستخدم جديدة:</p>\\n    <p><strong>#%(ref)s %(subject)s</strong></p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"See User Story #%(ref)s %(subject)s\">مشاهدة قصة المستخدم</a>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم إنشاء قصة مستخدم جديدة في %(project)s</h1>\n    <p>مرحباً %(user)s،<br />قام %(changer)s بإنشاء قصة مستخدم جديدة:</p>\n    <p><strong>#%(ref)s %(subject)s</strong></p>\n    <a class=\"button\" href=\"%(url)s\" title=\"See User Story #%(ref)s %(subject)s\">مشاهدة قصة المستخدم</a>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/notifications/templates/emails/userstories/userstory-create-body-text.jinja:9
 #, python-format
@@ -3113,14 +3113,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتم إنشاء قصة مستخدم جديدة في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بإنشاء قصة مستخدم جديدة:\\n\\n#%(ref)s %(subject)s\\n\\nمشاهدة قصة المستخدم على %(url)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتم إنشاء قصة مستخدم جديدة في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بإنشاء قصة مستخدم جديدة:\n\n#%(ref)s %(subject)s\n\nمشاهدة قصة المستخدم على %(url)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/notifications/templates/emails/userstories/userstory-create-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Created the US #%(ref)s \"%(subject)s\"\n"
-msgstr "\\n[%(project)s] تم إنشاء قصة المستخدم #%(ref)s \"%(subject)s\"\\n"
+msgstr "\n[%(project)s] تم إنشاء قصة المستخدم #%(ref)s \"%(subject)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/userstories/userstory-delete-body-html.jinja:12
 #, python-format
@@ -3131,7 +3131,7 @@ msgid ""
 "    <p><strong>#%(ref)s %(subject)s</strong></p>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم حذف قصة مستخدم في %(project)s</h1>\\n    <p>مرحباً %(user)s،<br />قام %(changer)s بحذف قصة مستخدم:</p>\\n    <p><strong>#%(ref)s %(subject)s</strong></p>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم حذف قصة مستخدم في %(project)s</h1>\n    <p>مرحباً %(user)s،<br />قام %(changer)s بحذف قصة مستخدم:</p>\n    <p><strong>#%(ref)s %(subject)s</strong></p>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/notifications/templates/emails/userstories/userstory-delete-body-text.jinja:9
 #, python-format
@@ -3145,14 +3145,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتم حذف قصة مستخدم في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بحذف قصة مستخدم\\n\\n#%(ref)s %(subject)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتم حذف قصة مستخدم في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بحذف قصة مستخدم\n\n#%(ref)s %(subject)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/notifications/templates/emails/userstories/userstory-delete-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Deleted the US #%(ref)s \"%(subject)s\"\n"
-msgstr "\\n[%(project)s] تم حذف قصة المستخدم #%(ref)s \"%(subject)s\"\\n"
+msgstr "\n[%(project)s] تم حذف قصة المستخدم #%(ref)s \"%(subject)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/wiki/wikipage-change-body-html.jinja:12
 #, python-format
@@ -3164,7 +3164,7 @@ msgid ""
 "    <a class=\"button\" href=\"%(url)s\" title=\"See wiki page\">See Wiki "
 "Page</a>\n"
 "    "
-msgstr "\\n    <h1>تم تحديث صفحة ويكي في %(project)s</h1>\\n    <p>مرحباً %(user)s، <br> قام %(changer)s بتحديث صفحة ويكي:</p>\\n    <p>%(page)s</p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"See wiki page\">مشاهدة صفحة الويكي</a>\\n"
+msgstr "\n    <h1>تم تحديث صفحة ويكي في %(project)s</h1>\n    <p>مرحباً %(user)s، <br> قام %(changer)s بتحديث صفحة ويكي:</p>\n    <p>%(page)s</p>\n    <a class=\"button\" href=\"%(url)s\" title=\"See wiki page\">مشاهدة صفحة الويكي</a>\n"
 
 #: taiga/projects/notifications/templates/emails/wiki/wikipage-change-body-text.jinja:11
 #, python-format
@@ -3177,14 +3177,14 @@ msgid ""
 "%(page)s\n"
 "\n"
 "See wiki page at %(url)s\n"
-msgstr "\\nتم تحديث صفحة ويكي في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بتحديث صفحة ويكي:\\n\\n%(page)s\\n\\nمشاهدة صفحة الويكي على %(url)s\\n"
+msgstr "\nتم تحديث صفحة ويكي في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بتحديث صفحة ويكي:\n\n%(page)s\n\nمشاهدة صفحة الويكي على %(url)s\n"
 
 #: taiga/projects/notifications/templates/emails/wiki/wikipage-change-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Updated the Wiki Page \"%(page)s\"\n"
-msgstr "\\n[%(project)s] تم تحديث صفحة الويكي \"%(page)s\"\\n"
+msgstr "\n[%(project)s] تم تحديث صفحة الويكي \"%(page)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/wiki/wikipage-create-body-html.jinja:12
 #, python-format
@@ -3197,7 +3197,7 @@ msgid ""
 "wiki page</a>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم إنشاء صفحة ويكي جديدة في %(project)s</h1>\\n    <p>مرحباً %(user)s،<br />قام %(changer)s بإنشاء صفحة ويكي جديدة:</p>\\n    <p>%(page)s</p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"Wiki page %(page)s\">مشاهدة صفحة الويكي</a>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم إنشاء صفحة ويكي جديدة في %(project)s</h1>\n    <p>مرحباً %(user)s،<br />قام %(changer)s بإنشاء صفحة ويكي جديدة:</p>\n    <p>%(page)s</p>\n    <a class=\"button\" href=\"%(url)s\" title=\"Wiki page %(page)s\">مشاهدة صفحة الويكي</a>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/notifications/templates/emails/wiki/wikipage-create-body-text.jinja:9
 #, python-format
@@ -3213,14 +3213,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتم إنشاء صفحة ويكي جديدة في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بإنشاء صفحة ويكي جديدة:\\n\\n%(page)s\\n\\nمشاهدة صفحة الويكي على %(url)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتم إنشاء صفحة ويكي جديدة في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بإنشاء صفحة ويكي جديدة:\n\n%(page)s\n\nمشاهدة صفحة الويكي على %(url)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/notifications/templates/emails/wiki/wikipage-create-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Created the Wiki Page \"%(page)s\"\n"
-msgstr "\\n[%(project)s] تم إنشاء صفحة الويكي \"%(page)s\"\\n"
+msgstr "\n[%(project)s] تم إنشاء صفحة الويكي \"%(page)s\"\n"
 
 #: taiga/projects/notifications/templates/emails/wiki/wikipage-delete-body-html.jinja:12
 #, python-format
@@ -3231,7 +3231,7 @@ msgid ""
 "    <p>%(page)s</p>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تم حذف صفحة ويكي في %(project)s</h1>\\n    <p>مرحباً %(user)s،<br />قام %(changer)s بحذف صفحة ويكي:</p>\\n    <p>%(page)s</p>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تم حذف صفحة ويكي في %(project)s</h1>\n    <p>مرحباً %(user)s،<br />قام %(changer)s بحذف صفحة ويكي:</p>\n    <p>%(page)s</p>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/notifications/templates/emails/wiki/wikipage-delete-body-text.jinja:9
 #, python-format
@@ -3245,14 +3245,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتم حذف صفحة ويكي في %(project)s\\n\\nمرحباً %(user)s، قام %(changer)s بحذف صفحة ويكي:\\n\\n%(page)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتم حذف صفحة ويكي في %(project)s\n\nمرحباً %(user)s، قام %(changer)s بحذف صفحة ويكي:\n\n%(page)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/notifications/templates/emails/wiki/wikipage-delete-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Deleted the Wiki Page \"%(page)s\"\n"
-msgstr "\\n[%(project)s] تم حذف صفحة الويكي \"%(page)s\"\\n"
+msgstr "\n[%(project)s] تم حذف صفحة الويكي \"%(page)s\"\n"
 
 #: taiga/projects/notifications/validators.py:37
 msgid "Watchers contains invalid users"
@@ -3484,7 +3484,7 @@ msgid ""
 "<em>%(project)s</em> in %(product_name)s.</br> Taiga is an Open Source Agile "
 "Project Management Tool. There is no cost for you to be a Taiga user.</p>\n"
 "    "
-msgstr "\\n    <h2>لقد تمت دعوتك إلى %(product_name)s!</h2>\\n<p>مرحباً! أرسل لك %(full_name)s دعوة للانضمام إلى مشروع <em>%(project)s</em> في %(product_name)s.</br> Taiga أداة مفتوحة المصدر لإدارة المشاريع بمنهجية Agile. لا توجد أي تكلفة لتصبح مستخدماً في Taiga.</p>\\n"
+msgstr "\n    <h2>لقد تمت دعوتك إلى %(product_name)s!</h2>\n<p>مرحباً! أرسل لك %(full_name)s دعوة للانضمام إلى مشروع <em>%(project)s</em> في %(product_name)s.</br> Taiga أداة مفتوحة المصدر لإدارة المشاريع بمنهجية Agile. لا توجد أي تكلفة لتصبح مستخدماً في Taiga.</p>\n"
 
 #: taiga/projects/templates/emails/membership_invitation-body-html.jinja:25
 #, python-format
@@ -3494,7 +3494,7 @@ msgid ""
 "who thought so kindly as to invite you</small></p>\n"
 "    <p><strong>%(extra)s</strong></p>\n"
 "        "
-msgstr "\\n    <p><small>والآن بضع كلمات من الشخص اللطيف الذي فكّر بدعوتك</small></p>\\n    <p><strong>%(extra)s</strong></p>\\n"
+msgstr "\n    <p><small>والآن بضع كلمات من الشخص اللطيف الذي فكّر بدعوتك</small></p>\n    <p><strong>%(extra)s</strong></p>\n"
 
 #: taiga/projects/templates/emails/membership_invitation-body-html.jinja:32
 msgid "Accept your invitation to Taiga"
@@ -3513,7 +3513,7 @@ msgid ""
 "\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/templates/emails/membership_invitation-body-text.jinja:14
 #, python-format
@@ -3526,7 +3526,7 @@ msgid ""
 "Taiga is an Open Source Agile Project Management Tool. There is no cost for "
 "you to be a Taiga user.\n"
 "\n"
-msgstr "\\nلقد قام شخص ما بدعوتك إلى %(product_name)s\\n\\nمرحباً! أرسل لك %(full_name)s دعوة للانضمام إلى مشروع باسم %(project)s في %(product_name)s.\\nTaiga أداة مفتوحة المصدر لإدارة المشاريع بمنهجية Agile. لا توجد أي تكلفة لتصبح مستخداً في Taiga.\\n\\n"
+msgstr "\nلقد قام شخص ما بدعوتك إلى %(product_name)s\n\nمرحباً! أرسل لك %(full_name)s دعوة للانضمام إلى مشروع باسم %(project)s في %(product_name)s.\nTaiga أداة مفتوحة المصدر لإدارة المشاريع بمنهجية Agile. لا توجد أي تكلفة لتصبح مستخداً في Taiga.\n\n"
 
 #: taiga/projects/templates/emails/membership_invitation-body-text.jinja:22
 #, python-format
@@ -3537,7 +3537,7 @@ msgid ""
 "\n"
 "%(extra)s\n"
 "    "
-msgstr "\\nوالآن بضع كلمات من الشخص اللطيف الذي فكّر بدعوتك:\\n\\n%(extra)s\\n"
+msgstr "\nوالآن بضع كلمات من الشخص اللطيف الذي فكّر بدعوتك:\n\n%(extra)s\n"
 
 #: taiga/projects/templates/emails/membership_invitation-body-text.jinja:28
 msgid "Accept your invitation to Taiga following this link:"
@@ -3548,7 +3548,7 @@ msgstr "اقبل دعوتك إلى Taiga باتباع هذا الرابط:"
 msgid ""
 "\n"
 "[Taiga] Invitation to join to the project '%(project)s'\n"
-msgstr "\\n[Taiga] دعوة للانضمام إلى المشروع '%(project)s'\\n"
+msgstr "\n[Taiga] دعوة للانضمام إلى المشروع '%(project)s'\n"
 
 #: taiga/projects/templates/emails/membership_notification-body-html.jinja:12
 #, python-format
@@ -3561,7 +3561,7 @@ msgid ""
 "project</a>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تمت إضافتك إلى مشروع</h1>\\n    <p>مرحباً %(full_name)s،<br />تمت إضافتك إلى المشروع %(project)s</p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"Go to%(project)s\">اذهب إلى المشروع</a>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تمت إضافتك إلى مشروع</h1>\n    <p>مرحباً %(full_name)s،<br />تمت إضافتك إلى المشروع %(project)s</p>\n    <a class=\"button\" href=\"%(url)s\" title=\"Go to%(project)s\">اذهب إلى المشروع</a>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/projects/templates/emails/membership_notification-body-text.jinja:9
 #, python-format
@@ -3575,14 +3575,14 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nتمت إضافتك إلى مشروع\\n\\nمرحباً %(full_name)s، تمت إضافتك إلى المشروع %(project)s\\n\\nمشاهدة المشروع على %(url)s\\n\\n---\\n%(signature)s\\n"
+msgstr "\nتمت إضافتك إلى مشروع\n\nمرحباً %(full_name)s، تمت إضافتك إلى المشروع %(project)s\n\nمشاهدة المشروع على %(url)s\n\n---\n%(signature)s\n"
 
 #: taiga/projects/templates/emails/membership_notification-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[Taiga] Added to the project '%(project)s'\n"
-msgstr "\\n[Taiga] تمت الإضافة إلى المشروع '%(project)s'\\n"
+msgstr "\n[Taiga] تمت الإضافة إلى المشروع '%(project)s'\n"
 
 #: taiga/projects/templates/emails/transfer_accept-body-html.jinja:12
 #, python-format
@@ -3592,7 +3592,7 @@ msgid ""
 "        <p>%(new_owner_name)s has accepted your offer and will become the "
 "new project owner of \"%(project_name)s\".</p>\n"
 "    "
-msgstr "\\n        <p>مرحباً %(old_owner_name)s،</p>\\n        <p>قبل %(new_owner_name)s عرضك وسيصبح مالكاً جديداً للمشروع \"%(project_name)s\".</p>\\n"
+msgstr "\n        <p>مرحباً %(old_owner_name)s،</p>\n        <p>قبل %(new_owner_name)s عرضك وسيصبح مالكاً جديداً للمشروع \"%(project_name)s\".</p>\n"
 
 #: taiga/projects/templates/emails/transfer_accept-body-html.jinja:18
 #, python-format
@@ -3605,7 +3605,7 @@ msgid ""
 "        <p>From now on, your new status for this project will be \"admin\".</"
 "p>\n"
 "    "
-msgstr "\\n        <p>من الآن فصاعداً، ستصبح حالتك الجديدة في هذا المشروع \"مسؤول\".</p>\\n"
+msgstr "\n        <p>من الآن فصاعداً، ستصبح حالتك الجديدة في هذا المشروع \"مسؤول\".</p>\n"
 
 #: taiga/projects/templates/emails/transfer_accept-body-text.jinja:9
 #, python-format
@@ -3614,7 +3614,7 @@ msgid ""
 "Hi %(old_owner_name)s,\n"
 "%(new_owner_name)s has accepted your offer and will become the new project "
 "owner of \"%(project_name)s\".\n"
-msgstr "\\nمرحباً %(old_owner_name)s،\\nقبل %(new_owner_name)s عرضك وسيصبح مالكاً جديداً للمشروع \"%(project_name)s\".\\n"
+msgstr "\nمرحباً %(old_owner_name)s،\nقبل %(new_owner_name)s عرضك وسيصبح مالكاً جديداً للمشروع \"%(project_name)s\".\n"
 
 #: taiga/projects/templates/emails/transfer_accept-body-text.jinja:15
 #, python-format
@@ -3625,14 +3625,14 @@ msgstr "يقول %(new_owner_name)s:"
 msgid ""
 "\n"
 "From now on, your new status for this project will be \"admin\".\n"
-msgstr "\\nمن الآن فصاعداً، ستصبح حالتك الجديدة في هذا المشروع \"مسؤول\".\\n"
+msgstr "\nمن الآن فصاعداً، ستصبح حالتك الجديدة في هذا المشروع \"مسؤول\".\n"
 
 #: taiga/projects/templates/emails/transfer_accept-subject.jinja:9
 #, python-format
 msgid ""
 "\n"
 "[%(project)s] Project ownership transfer offer accepted!\n"
-msgstr "\\n[%(project)s] تم قبول عرض نقل ملكية المشروع!\\n"
+msgstr "\n[%(project)s] تم قبول عرض نقل ملكية المشروع!\n"
 
 #: taiga/projects/templates/emails/transfer_reject-body-html.jinja:12
 #, python-format
@@ -3642,7 +3642,7 @@ msgid ""
 "        <p>%(rejecter_name)s has declined your offer and will not become the "
 "new project owner of \"%(project_name)s\".</p>\n"
 "    "
-msgstr "\\n        <p>مرحباً %(owner_name)s،</p>\\n        <p>رفض %(rejecter_name)s عرضك ولن يصبح مالكاً جديداً للمشروع \"%(project_name)s\".</p>\\n"
+msgstr "\n        <p>مرحباً %(owner_name)s،</p>\n        <p>رفض %(rejecter_name)s عرضك ولن يصبح مالكاً جديداً للمشروع \"%(project_name)s\".</p>\n"
 
 #: taiga/projects/templates/emails/transfer_reject-body-html.jinja:18
 #, python-format
@@ -3650,7 +3650,7 @@ msgid ""
 "\n"
 "    <p>%(rejecter_name)s says:</p>\n"
 "    "
-msgstr "\\n    <p>يقول %(rejecter_name)s:</p>\\n"
+msgstr "\n    <p>يقول %(rejecter_name)s:</p>\n"
 
 #: taiga/projects/templates/emails/transfer_reject-body-html.jinja:24
 msgid ""
@@ -3658,7 +3658,7 @@ msgid ""
 "    <p>If you want, you can still try to transfer the project ownership to a "
 "different person.</p>\n"
 "    "
-msgstr "\\n    <p>إذا أردت، لا يزال بإمكانك محاولة نقل ملكية المشروع إلى شخص آخر.</p>\\n"
+msgstr "\n    <p>إذا أردت، لا يزال بإمكانك محاولة نقل ملكية المشروع إلى شخص آخر.</p>\n"
 
 #: taiga/projects/templates/emails/transfer_reject-body-html.jinja:29
 #: taiga/projects/templates/emails/transfer_reject-body-html.jinja:30
@@ -3672,7 +3672,7 @@ msgid ""
 "Hi %(owner_name)s,\n"
 "%(rejecter_name)s has declined your offer and will not become the new "
 "project owner of \"%(project_name)s\".\n"
-msgstr "\\nمرحباً %(owner_name)s،\\nرفض %(rejecter_name)s عرضك ولن يصبح مالكاً جديداً للمشروع \"%(project_name)s\".\\n"
+msgstr "\nمرحباً %(owner_name)s،\nرفض %(rejecter_name)s عرضك ولن يصبح مالكاً جديداً للمشروع \"%(project_name)s\".\n"
 
 #: taiga/projects/templates/emails/transfer_reject-body-text.jinja:15
 #, python-format
@@ -3684,7 +3684,7 @@ msgid ""
 "\n"
 "If you want, you can still try to transfer the project ownership to a "
 "different person.\n"
-msgstr "\\nإذا أردت، لا يزال بإمكانك محاولة نقل ملكية المشروع إلى شخص آخر.\\n"
+msgstr "\nإذا أردت، لا يزال بإمكانك محاولة نقل ملكية المشروع إلى شخص آخر.\n"
 
 #: taiga/projects/templates/emails/transfer_reject-body-text.jinja:23
 msgid "Request transfer to a different person:"
@@ -3695,7 +3695,7 @@ msgstr "طلب النقل إلى شخص آخر:"
 msgid ""
 "\n"
 "[%(project)s] Project ownership transfer declined\n"
-msgstr "\\n[%(project)s] تم رفض عرض نقل ملكية المشروع\\n"
+msgstr "\n[%(project)s] تم رفض عرض نقل ملكية المشروع\n"
 
 #: taiga/projects/templates/emails/transfer_request-body-html.jinja:12
 #, python-format
@@ -3705,7 +3705,7 @@ msgid ""
 "        <p>%(requester_name)s has requested to become the project owner of "
 "\"%(project_name)s\".</p>\n"
 "    "
-msgstr "\\n        <p>مرحباً %(owner_name)s،</p>\\n        <p>طلب %(requester_name)s أن يصبح مالك المشروع \"%(project_name)s\".</p>\\n"
+msgstr "\n        <p>مرحباً %(owner_name)s،</p>\n        <p>طلب %(requester_name)s أن يصبح مالك المشروع \"%(project_name)s\".</p>\n"
 
 #: taiga/projects/templates/emails/transfer_request-body-html.jinja:17
 msgid ""
@@ -3713,7 +3713,7 @@ msgid ""
 "        <p>Please, click on \"Continue\" if you would like to start the "
 "project transfer from the administration panel.</p>\n"
 "    "
-msgstr "\\n        <p>يُرجى الضغط على \"متابعة\" إذا كنت ترغب في بدء نقل ملكية المشروع من لوحة الإدارة.</p>\\n"
+msgstr "\n        <p>يُرجى الضغط على \"متابعة\" إذا كنت ترغب في بدء نقل ملكية المشروع من لوحة الإدارة.</p>\n"
 
 #: taiga/projects/templates/emails/transfer_request-body-html.jinja:22
 #: taiga/projects/templates/emails/transfer_start-body-html.jinja:30
@@ -3727,14 +3727,14 @@ msgid ""
 "Hi %(owner_name)s,\n"
 "%(requester_name)s has requested to become the project owner of "
 "\"%(project_name)s\".\n"
-msgstr "\\nمرحباً %(owner_name)s،\\nطلب %(requester_name)s أن يصبح مالك المشروع \"%(project_name)s\".\\n"
+msgstr "\nمرحباً %(owner_name)s،\nطلب %(requester_name)s أن يصبح مالك المشروع \"%(project_name)s\".\n"
 
 #: taiga/projects/templates/emails/transfer_request-body-text.jinja:14
 msgid ""
 "\n"
 "Please, go to your project settings if you would like to start the project "
 "transfer from the administration panel.\n"
-msgstr "\\nيُرجى الذهاب إلى إعدادات مشروعك إذا كنت ترغب في بدء نقل ملكية المشروع من لوحة الإدارة.\\n"
+msgstr "\nيُرجى الذهاب إلى إعدادات مشروعك إذا كنت ترغب في بدء نقل ملكية المشروع من لوحة الإدارة.\n"
 
 #: taiga/projects/templates/emails/transfer_request-body-text.jinja:18
 msgid "Go to your project settings:"
@@ -3745,7 +3745,7 @@ msgstr "اذهب إلى إعدادات مشروعك:"
 msgid ""
 "\n"
 "[%(project)s] Project ownership transfer request\n"
-msgstr "\\n[%(project)s] طلب نقل ملكية المشروع\\n"
+msgstr "\n[%(project)s] طلب نقل ملكية المشروع\n"
 
 #: taiga/projects/templates/emails/transfer_start-body-html.jinja:12
 #, python-format
@@ -3755,7 +3755,7 @@ msgid ""
 "        <p>%(owner_name)s, the current project owner at \"%(project_name)s\" "
 "would like you to become the new project owner.</p>\n"
 "    "
-msgstr "\\n        <p>مرحباً %(receiver_name)s،</p>\\n        <p>%(owner_name)s، مالك المشروع الحالي في \"%(project_name)s\"، يرغب في أن تصبح مالك المشروع الجديد.</p>\\n"
+msgstr "\n        <p>مرحباً %(receiver_name)s،</p>\n        <p>%(owner_name)s، مالك المشروع الحالي في \"%(project_name)s\"، يرغب في أن تصبح مالك المشروع الجديد.</p>\n"
 
 #: taiga/projects/templates/emails/transfer_start-body-html.jinja:18
 #, python-format
@@ -3763,7 +3763,7 @@ msgid ""
 "\n"
 "        <p>%(owner_name)s says:</p>\n"
 "        "
-msgstr "\\n        <p>يقول %(owner_name)s:</p>\\n"
+msgstr "\n        <p>يقول %(owner_name)s:</p>\n"
 
 #: taiga/projects/templates/emails/transfer_start-body-html.jinja:25
 msgid ""
@@ -3771,7 +3771,7 @@ msgid ""
 "        <p>Please, click on \"Continue\" to either accept or reject this "
 "proposal.</p>\n"
 "    "
-msgstr "\\n        <p>يُرجى الضغط على \"متابعة\" لقبول أو رفض هذا العرض.</p>\\n"
+msgstr "\n        <p>يُرجى الضغط على \"متابعة\" لقبول أو رفض هذا العرض.</p>\n"
 
 #: taiga/projects/templates/emails/transfer_start-body-text.jinja:9
 #, python-format
@@ -3780,7 +3780,7 @@ msgid ""
 "Hi %(receiver_name)s,\n"
 "%(owner_name)s, the current project owner at \"%(project_name)s\" would like "
 "you to become the new project owner.\n"
-msgstr "\\nمرحباً %(receiver_name)s،\\n%(owner_name)s، مالك المشروع الحالي في \"%(project_name)s\"، يرغب في أن تصبح مالك المشروع الجديد.\\n"
+msgstr "\nمرحباً %(receiver_name)s،\n%(owner_name)s، مالك المشروع الحالي في \"%(project_name)s\"، يرغب في أن تصبح مالك المشروع الجديد.\n"
 
 #: taiga/projects/templates/emails/transfer_start-body-text.jinja:14
 #, python-format
@@ -3792,7 +3792,7 @@ msgid ""
 "\n"
 "Please, go to the following link to either accept or reject this proposal.</"
 "p>\n"
-msgstr "\\nيُرجى الذهاب إلى الرابط التالي لقبول أو رفض هذا العرض.</p>\\n"
+msgstr "\nيُرجى الذهاب إلى الرابط التالي لقبول أو رفض هذا العرض.</p>\n"
 
 #: taiga/projects/templates/emails/transfer_start-body-text.jinja:23
 msgid "Accept or reject the project ownership transfer:"
@@ -3803,7 +3803,7 @@ msgstr "اقبل أو ارفض نقل ملكية المشروع:"
 msgid ""
 "\n"
 "[%(project)s] Project ownership transfer offer\n"
-msgstr "\\n[%(project)s] عرض نقل ملكية المشروع\\n"
+msgstr "\n[%(project)s] عرض نقل ملكية المشروع\n"
 
 #. Translators: Name of scrum project template.
 #: taiga/projects/translations.py:19
@@ -4496,7 +4496,7 @@ msgid ""
 "    <p>You can ignore this message if you did not request.</p>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>غيّر بريدك الإلكتروني</h1>\\n    <p>مرحباً %(full_name)s،<br />يُرجى تأكيد بريدك الإلكتروني</p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"Confirm email\">تأكيد البريد الإلكتروني</a>\\n    <p>يمكنك تجاهل هذه الرسالة إذا لم تطلب ذلك.</p>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>غيّر بريدك الإلكتروني</h1>\n    <p>مرحباً %(full_name)s،<br />يُرجى تأكيد بريدك الإلكتروني</p>\n    <a class=\"button\" href=\"%(url)s\" title=\"Confirm email\">تأكيد البريد الإلكتروني</a>\n    <p>يمكنك تجاهل هذه الرسالة إذا لم تطلب ذلك.</p>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/users/templates/emails/change_email-body-text.jinja:9
 #, python-format
@@ -4510,7 +4510,7 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nمرحباً %(full_name)s، يُرجى تأكيد بريدك الإلكتروني\\n\\n%(url)s\\n\\nيمكنك تجاهل هذه الرسالة إذا لم تطلب ذلك.\\n\\n---\\n%(signature)s\\n"
+msgstr "\nمرحباً %(full_name)s، يُرجى تأكيد بريدك الإلكتروني\n\n%(url)s\n\nيمكنك تجاهل هذه الرسالة إذا لم تطلب ذلك.\n\n---\n%(signature)s\n"
 
 #: taiga/users/templates/emails/change_email-subject.jinja:9
 msgid "[Taiga] Change email"
@@ -4527,7 +4527,7 @@ msgid ""
 "    <p>You can ignore this message if you did not request.</p>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>استعد كلمة المرور</h1>\\n    <p>مرحباً %(full_name)s، <br /> لقد طلبت استعادة كلمة المرور</p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"Recover your password\">استعادة كلمة المرور</a>\\n    <p>يمكنك تجاهل هذه الرسالة إذا لم تطلب ذلك.</p>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>استعد كلمة المرور</h1>\n    <p>مرحباً %(full_name)s، <br /> لقد طلبت استعادة كلمة المرور</p>\n    <a class=\"button\" href=\"%(url)s\" title=\"Recover your password\">استعادة كلمة المرور</a>\n    <p>يمكنك تجاهل هذه الرسالة إذا لم تطلب ذلك.</p>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/users/templates/emails/password_recovery-body-text.jinja:9
 #, python-format
@@ -4541,7 +4541,7 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nمرحباً %(full_name)s، لقد طلبت استعادة كلمة المرور\\n\\n%(url)s\\n\\nيمكنك تجاهل هذه الرسالة إذا لم تطلب ذلك.\\n\\n---\\n%(signature)s\\n"
+msgstr "\nمرحباً %(full_name)s، لقد طلبت استعادة كلمة المرور\n\n%(url)s\n\nيمكنك تجاهل هذه الرسالة إذا لم تطلب ذلك.\n\n---\n%(signature)s\n"
 
 #: taiga/users/templates/emails/password_recovery-subject.jinja:9
 msgid "[Taiga] Password recovery"
@@ -4555,7 +4555,7 @@ msgid ""
 "            <a class=\"button\" href=\"%(url)s\" title=\"Confirm "
 "email\">Confirm email</a>\n"
 "            "
-msgstr "\\n            <p>يُرجى تأكيد بريدك الإلكتروني</p>\\n            <a class=\"button\" href=\"%(url)s\" title=\"Confirm email\">تأكيد البريد الإلكتروني</a>\\n"
+msgstr "\n            <p>يُرجى تأكيد بريدك الإلكتروني</p>\n            <a class=\"button\" href=\"%(url)s\" title=\"Confirm email\">تأكيد البريد الإلكتروني</a>\n"
 
 #: taiga/users/templates/emails/registered_user-body-html.jinja:21
 #, python-format
@@ -4570,7 +4570,7 @@ msgid ""
 "            <p><small>%(signature)s</small></p>\n"
 "        </td>\n"
 "        "
-msgstr "\\n            <h2>شكراً لتسجيلك في %(product_name)s</h2>\\n            <p>يسعدنا انضمامك إلى مجتمعنا المتنامي من المحترفين الذين يُحدثون ثورة في طريقة عملهم، ونأمل أن تستمتع بذلك.</p>\\n            <p>لديك سؤال؟ لا تتردد في التواصل معنا إذا احتجت للمساعدة، نحن هنا على %(support_email)s.</p>\\n            <p><small>%(signature)s</small></p>\\n        </td>\\n"
+msgstr "\n            <h2>شكراً لتسجيلك في %(product_name)s</h2>\n            <p>يسعدنا انضمامك إلى مجتمعنا المتنامي من المحترفين الذين يُحدثون ثورة في طريقة عملهم، ونأمل أن تستمتع بذلك.</p>\n            <p>لديك سؤال؟ لا تتردد في التواصل معنا إذا احتجت للمساعدة، نحن هنا على %(support_email)s.</p>\n            <p><small>%(signature)s</small></p>\n        </td>\n"
 
 #: taiga/users/templates/emails/registered_user-body-html.jinja:36
 #, python-format
@@ -4580,7 +4580,7 @@ msgid ""
 "href=\"%(url)s\" title=\"Remove your account\" style=\"color: "
 "#9dce0a\">clicking here</a>\n"
 "    "
-msgstr "\\n    <strong>يمكنك إزالة حسابك من هذه الخدمة</strong> <a href=\"%(url)s\" title=\"Remove your account\" style=\"color: #9dce0a\">بالضغط هنا</a>\\n"
+msgstr "\n    <strong>يمكنك إزالة حسابك من هذه الخدمة</strong> <a href=\"%(url)s\" title=\"Remove your account\" style=\"color: #9dce0a\">بالضغط هنا</a>\n"
 
 #: taiga/users/templates/emails/registered_user-body-text.jinja:9
 #, python-format
@@ -4590,14 +4590,14 @@ msgid ""
 "\n"
 "We're thrilled you've joined our growing community of professionals "
 "revolutionizing their way of working and hope you enjoy it.\n"
-msgstr "\\nشكراً لتسجيلك في %(product_name)s\\n\\nيسعدنا انضمامك إلى مجتمعنا المتنامي من المحترفين الذين يُحدثون ثورة في طريقة عملهم، ونأمل أن تستمتع بذلك.\\n"
+msgstr "\nشكراً لتسجيلك في %(product_name)s\n\nيسعدنا انضمامك إلى مجتمعنا المتنامي من المحترفين الذين يُحدثون ثورة في طريقة عملهم، ونأمل أن تستمتع بذلك.\n"
 
 #: taiga/users/templates/emails/registered_user-body-text.jinja:16
 #, python-format
 msgid ""
 "\n"
 "Please confirm your email: %(url)s\n"
-msgstr "\\nيُرجى تأكيد بريدك الإلكتروني: %(url)s\\n"
+msgstr "\nيُرجى تأكيد بريدك الإلكتروني: %(url)s\n"
 
 #: taiga/users/templates/emails/registered_user-body-text.jinja:21
 #, python-format
@@ -4607,14 +4607,14 @@ msgid ""
 "%(support_email)s.\n"
 "--\n"
 "%(signature)s\n"
-msgstr "\\nلديك سؤال؟ لا تتردد في التواصل معنا إذا احتجت للمساعدة، نحن هنا على %(support_email)s.\\n--\\n%(signature)s\\n"
+msgstr "\nلديك سؤال؟ لا تتردد في التواصل معنا إذا احتجت للمساعدة، نحن هنا على %(support_email)s.\n--\n%(signature)s\n"
 
 #: taiga/users/templates/emails/registered_user-body-text.jinja:26
 #, python-format
 msgid ""
 "\n"
 "You may remove your account from this service: %(url)s\n"
-msgstr "\\nيمكنك إزالة حسابك من هذه الخدمة: %(url)s\\n"
+msgstr "\nيمكنك إزالة حسابك من هذه الخدمة: %(url)s\n"
 
 #: taiga/users/templates/emails/registered_user-subject.jinja:9
 msgid "You've been Taigatized!"
@@ -4631,7 +4631,7 @@ msgid ""
 "    <p>You can ignore this message if you did not request.</p>\n"
 "    <p><small>%(signature)s</small></p>\n"
 "    "
-msgstr "\\n    <h1>تحقق من بريدك الإلكتروني</h1>\\n    <p>مرحباً %(full_name)s،<br />يُرجى التحقق من بريدك الإلكتروني</p>\\n    <a class=\"button\" href=\"%(url)s\" title=\"Verify email\">التحقق من البريد الإلكتروني</a>\\n    <p>يمكنك تجاهل هذه الرسالة إذا لم تطلب ذلك.</p>\\n    <p><small>%(signature)s</small></p>\\n"
+msgstr "\n    <h1>تحقق من بريدك الإلكتروني</h1>\n    <p>مرحباً %(full_name)s،<br />يُرجى التحقق من بريدك الإلكتروني</p>\n    <a class=\"button\" href=\"%(url)s\" title=\"Verify email\">التحقق من البريد الإلكتروني</a>\n    <p>يمكنك تجاهل هذه الرسالة إذا لم تطلب ذلك.</p>\n    <p><small>%(signature)s</small></p>\n"
 
 #: taiga/users/templates/emails/send_verification-body-text.jinja:9
 #, python-format
@@ -4645,7 +4645,7 @@ msgid ""
 "\n"
 "---\n"
 "%(signature)s\n"
-msgstr "\\nمرحباً %(full_name)s، يُرجى التحقق من بريدك الإلكتروني\\n\\n%(url)s\\n\\nيمكنك تجاهل هذه الرسالة إذا لم تطلب ذلك.\\n\\n---\\n%(signature)s\\n"
+msgstr "\nمرحباً %(full_name)s، يُرجى التحقق من بريدك الإلكتروني\n\n%(url)s\n\nيمكنك تجاهل هذه الرسالة إذا لم تطلب ذلك.\n\n---\n%(signature)s\n"
 
 #: taiga/users/templates/emails/send_verification-subject.jinja:9
 msgid "[Taiga] Verify email"
