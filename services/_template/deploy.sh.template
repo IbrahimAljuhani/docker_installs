@@ -50,6 +50,57 @@ prompt_mem_limit() {
     done
 }
 
+valid_port() { [[ "$1" =~ ^[0-9]+$ ]] && (( 10#$1 >= 1024 && 10#$1 <= 65535 )); }
+
+port_in_use() {
+    local port="$1"
+    if command -v ss &>/dev/null; then
+        ss -tuln 2>/dev/null | grep -q ":$port\b"
+    elif command -v netstat &>/dev/null; then
+        netstat -tuln 2>/dev/null | grep -q ":$port\b"
+    else
+        return 1
+    fi
+}
+
+# Prompts once (on first deploy only) for an optional host port (direct
+# access without NPM, e.g. for quick testing). Default is NO — every service
+# in this repo reaches its app container by name over 'main-net' unless the
+# user explicitly opts into a direct port. Sets HOST_PORT in the caller's
+# shell (no command substitution — same reasoning as prompt_mem_limit above).
+#
+# IMPORTANT — read before wiring this into your service: if the app forces
+# HTTPS-only redirects or sets secure-only cookies by default (common in
+# OpenProject/Nextcloud/n8n-style apps), those must be flipped to their
+# plain-HTTP-safe equivalents whenever HOST_PORT is set, or the direct port
+# will be completely unreachable (redirect loop, or the browser silently
+# refusing to send the cookie back over plain HTTP). Same for any
+# "trusted/allowed host" setting the app validates the Host header against —
+# it must become `<server-ip>:<port>` instead of a placeholder domain. See
+# services/openproject/deploy.sh, services/nextcloud/deploy.sh, or
+# services/n8n/deploy.sh for three worked examples of this exact pattern —
+# this bug bit all three independently before it became a fixed convention.
+HOST_PORT=""
+prompt_host_port() {
+    local default="$1" answer port cont
+    read -rp "Also publish a host port for direct access without NPM (e.g. http://<server-ip>:<port>)? (y/N): " answer
+    [[ "${answer,,}" == "y" ]] || return 0
+    while true; do
+        read -rp "Host port (default: $default): " port
+        port="${port:-$default}"
+        if ! valid_port "$port"; then
+            echo "Invalid port — must be a number between 1024 and 65535." >&2
+            continue
+        fi
+        if port_in_use "$port"; then
+            read -rp "Port $port looks already in use — continue anyway? (y/N): " cont
+            [[ "${cont,,}" == "y" ]] || continue
+        fi
+        HOST_PORT="$port"
+        return 0
+    done
+}
+
 # detect docker compose command
 if docker compose version &>/dev/null; then
     COMPOSE_CMD="docker compose"
@@ -83,22 +134,37 @@ else
     cp "$SOURCE_DIR/docker-compose.yml" "$SOURCE_DIR/.env" "$RUNTIME_DIR/"
     chmod 600 "$RUNTIME_DIR/.env"
     prompt_mem_limit "512m"
+    prompt_host_port "8080"
     [[ -n "$MEM_LIMIT" ]] && echo "MEM_LIMIT=$MEM_LIMIT" >> "$RUNTIME_DIR/.env"
+    [[ -n "$HOST_PORT" ]] && echo "HOST_PORT=$HOST_PORT" >> "$RUNTIME_DIR/.env"
+    # TODO if you wired in prompt_host_port: also set whatever HTTPS-only /
+    # trusted-host env var(s) your app needs, conditional on HOST_PORT — see
+    # the comment above prompt_host_port's definition for why, and one of
+    # openproject/nextcloud/n8n's deploy.sh for the exact pattern.
     print_info "Copied service files to $RUNTIME_DIR."
 fi
 
 # docker-compose.override.yml is fully owned by this script (never hand-edit
-# it), so it's always safe to regenerate from whatever MEM_LIMIT .env has.
-# To change the limit later: edit MEM_LIMIT= in $RUNTIME_DIR/.env (or delete
-# the line to remove the cap), then rerun this script.
-if grep -q '^MEM_LIMIT=' "$RUNTIME_DIR/.env" 2>/dev/null; then
-    MEM_LIMIT_VALUE=$(grep '^MEM_LIMIT=' "$RUNTIME_DIR/.env" | cut -d= -f2)
-    cat > "$RUNTIME_DIR/docker-compose.override.yml" <<EOF
-services:
-  app:
-    mem_limit: $MEM_LIMIT_VALUE
-EOF
-    print_info "Memory limit $MEM_LIMIT_VALUE applied to the 'app' container (db stays unbounded)."
+# it), so it's always safe to regenerate from whatever .env currently has.
+# To change these later: edit MEM_LIMIT=/HOST_PORT= in $RUNTIME_DIR/.env (or
+# delete the line to remove it), then rerun this script.
+ENV_MEM_LIMIT=""
+ENV_HOST_PORT=""
+grep -q '^MEM_LIMIT=' "$RUNTIME_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$RUNTIME_DIR/.env" | cut -d= -f2)
+grep -q '^HOST_PORT=' "$RUNTIME_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$RUNTIME_DIR/.env" | cut -d= -f2)
+
+if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" ]]; then
+    {
+        echo "services:"
+        echo "  app:"
+        [[ -n "$ENV_MEM_LIMIT" ]] && echo "    mem_limit: $ENV_MEM_LIMIT"
+        if [[ -n "$ENV_HOST_PORT" ]]; then
+            echo "    ports:"
+            echo "      - \"$ENV_HOST_PORT:8080\"" # adjust 8080 to your app's real container port
+        fi
+    } > "$RUNTIME_DIR/docker-compose.override.yml"
+    [[ -n "$ENV_MEM_LIMIT" ]] && print_info "Memory limit $ENV_MEM_LIMIT applied to the 'app' container (db stays unbounded)."
+    [[ -n "$ENV_HOST_PORT" ]] && print_info "Host port $ENV_HOST_PORT published for direct access."
 else
     rm -f "$RUNTIME_DIR/docker-compose.override.yml"
 fi

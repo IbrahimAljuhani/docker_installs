@@ -27,7 +27,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Extra files (besides deploy.sh) each service needs — keep this in sync with
 # that service's own README.md "Installation" curl commands.
 declare -A SERVICE_FILES=(
-    [odoo]=""
+    [odoo]="docker-compose.yml"
     [openproject]="docker-compose.yml"
     [nextcloud]="docker-compose.yml"
     [n8n]="docker-compose.yml init-data.sh"

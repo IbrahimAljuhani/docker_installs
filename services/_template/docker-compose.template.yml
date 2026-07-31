@@ -12,10 +12,13 @@
 #   - private network: <service>-net   (app <-> db only, never published)
 #   - shared network:  main-net        (app only — lets NPM reach it by name;
 #                                        created by ../../install_docker_core.sh)
-#   - all secrets/ports come from .env — never hardcode them here
-#   - optional per-service memory cap: deploy.sh.template prompts for it once
-#     and applies it via a generated docker-compose.override.yml — don't add
-#     mem_limit here directly
+#   - all secrets come from .env — never hardcode them here
+#   - optional per-service memory cap AND optional host port: both prompted
+#     for once by deploy.sh.template and applied via a generated
+#     docker-compose.override.yml — never add mem_limit or ports: here
+#     directly (see deploy.sh.template's prompt_host_port for why ports:
+#     specifically must never be hardcoded — it needs to stay absent by
+#     default so NPM/main-net is the only path in unless the user opts in)
 
 services:
   app:
@@ -29,10 +32,6 @@ services:
     networks:
       - <service>-net
       - main-net
-    # Only publish a host port if you need direct access without NPM.
-    # Prefer proxying via container name (<service>-app) over main-net instead.
-    # ports:
-    #   - "${APP_PORT}:8080"
 
   db:
     image: 'postgres:17'

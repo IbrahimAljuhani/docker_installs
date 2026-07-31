@@ -40,6 +40,17 @@
 #      its own config -> crash loop). Now it's chowned to the odoo
 #      user/group first, then locked to 640 (falls back to 644, with a
 #      warning, if chown isn't possible without sudo).
+#  12. Host ports are now OPTIONAL (default: no) instead of always asked and
+#      always published, matching the convention every other service in
+#      this repo follows — reach the container by name over 'main-net'
+#      (for NPM) unless you explicitly opt into direct access. Also added
+#      an optional memory cap on the 'odoo' container (was previously
+#      hardcoded to 2g with no way to change it without hand-editing the
+#      generated compose file).
+#  13. docker-compose.yml is now a tracked template file (services/odoo/
+#      docker-compose.yml) that deploy.sh copies per-instance, instead of
+#      being generated inline via heredoc — matches every other service in
+#      this repo, and makes the compose file reviewable/diffable on its own.
 
 set -euo pipefail
 
@@ -55,6 +66,7 @@ if [[ $# -gt 0 ]]; then
     esac
 fi
 
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="$HOME/docker/odoo"
 LOGFILE="$INSTALL_DIR/deploy.log"
 SECRETS_FILE="$INSTALL_DIR/.odoo-docker-secrets.txt"
@@ -227,6 +239,59 @@ check_port() {
 }
 
 # -----------------------------
+# 🔌 Optional host ports (default: no — reach the container by name over
+#    'main-net' for NPM, same convention every other service here follows).
+#    Sets ODOO_PORT/LONGPOLLING_PORT (empty if declined).
+# -----------------------------
+ODOO_PORT=""
+LONGPOLLING_PORT=""
+prompt_odoo_ports() {
+    local answer
+    read -rp "Also publish host ports for direct access without NPM (e.g. http://<server-ip>:<port>)? (y/N): " answer
+    [[ "${answer,,}" == "y" ]] || return 0
+
+    read -rp "Enter HTTP port (default 8069): " ODOO_PORT
+    ODOO_PORT="${ODOO_PORT:-8069}"
+    if ! [[ "$ODOO_PORT" =~ ^[0-9]+$ ]] || [ "$ODOO_PORT" -lt 1024 ] || [ "$ODOO_PORT" -gt 65535 ]; then
+        print_error "Port must be between 1024 and 65535."
+    fi
+    check_port "$ODOO_PORT"
+
+    local longpolling_default=$((ODOO_PORT + 3))
+    read -rp "Enter WebSocket/longpolling port (default $longpolling_default): " LONGPOLLING_PORT
+    LONGPOLLING_PORT="${LONGPOLLING_PORT:-$longpolling_default}"
+    if ! [[ "$LONGPOLLING_PORT" =~ ^[0-9]+$ ]] || [ "$LONGPOLLING_PORT" -lt 1024 ] || [ "$LONGPOLLING_PORT" -gt 65535 ]; then
+        print_error "Port must be between 1024 and 65535."
+    fi
+    if [ "$LONGPOLLING_PORT" -eq "$ODOO_PORT" ]; then
+        print_error "WebSocket/longpolling port must be different from the HTTP port."
+    fi
+    check_port "$LONGPOLLING_PORT"
+}
+
+# -----------------------------
+# 💾 Optional memory cap on the 'odoo' container only ('db' stays unbounded,
+#    same "main container only" convention every other service here follows).
+#    Sets MEM_LIMIT/MEM_RESERVATION (empty if declined — meaning unbounded).
+# -----------------------------
+valid_mem_limit() { [[ "$1" =~ ^[0-9]+[bkmgBKMG]?$ ]]; }
+MEM_LIMIT=""
+prompt_mem_limit() {
+    local default="$1" answer value
+    read -rp "Set a memory limit for the 'odoo' container? (y/N): " answer
+    [[ "${answer,,}" == "y" ]] || return 0
+    while true; do
+        read -rp "Memory limit (default: $default, e.g. 2g, 512m): " value
+        value="${value:-$default}"
+        if valid_mem_limit "$value"; then
+            MEM_LIMIT="$value"
+            return 0
+        fi
+        echo "Invalid format — use a number followed by b/k/m/g (e.g. 2g)." >&2
+    done
+}
+
+# -----------------------------
 # 🆔 Detect the real UID/GID of the "odoo" user inside the image
 #     (avoids hardcoding 100:101, which can differ between image builds
 #     and may collide with reserved system UIDs like _apt/systemd-journal)
@@ -272,23 +337,8 @@ main() {
         CUSTOM_IMAGE="odoo:$ODOO_VERSION"
     fi
 
-    read -rp "Enter HTTP port (default 8069): " ODOO_PORT
-    ODOO_PORT="${ODOO_PORT:-8069}"
-    if ! [[ "$ODOO_PORT" =~ ^[0-9]+$ ]] || [ "$ODOO_PORT" -lt 1024 ] || [ "$ODOO_PORT" -gt 65535 ]; then
-        print_error "Port must be between 1024 and 65535."
-    fi
-    check_port "$ODOO_PORT"
-
-    LONGPOLLING_DEFAULT=$((ODOO_PORT + 3))
-    read -rp "Enter WebSocket/longpolling port (default $LONGPOLLING_DEFAULT): " LONGPOLLING_PORT
-    LONGPOLLING_PORT="${LONGPOLLING_PORT:-$LONGPOLLING_DEFAULT}"
-    if ! [[ "$LONGPOLLING_PORT" =~ ^[0-9]+$ ]] || [ "$LONGPOLLING_PORT" -lt 1024 ] || [ "$LONGPOLLING_PORT" -gt 65535 ]; then
-        print_error "Port must be between 1024 and 65535."
-    fi
-    if [ "$LONGPOLLING_PORT" -eq "$ODOO_PORT" ]; then
-        print_error "WebSocket/longpolling port must be different from the HTTP port."
-    fi
-    check_port "$LONGPOLLING_PORT"
+    prompt_odoo_ports
+    prompt_mem_limit "2g"
 
     echo
     echo "Database Configuration:"
@@ -361,85 +411,49 @@ main() {
     # DB_NAME database here would make Odoo think it's already initialized
     # and fail with "ir_module_module does not exist".
     cat >"$INSTANCE_DIR/.env" <<EOF
+ODOO_IMAGE=$CUSTOM_IMAGE
+INSTANCE_NAME=$INSTANCE_NAME
 POSTGRES_DB=postgres
 POSTGRES_USER=$DB_USER
 POSTGRES_PASSWORD=$DB_PASS
 ADMIN_PASS=$ADMIN_PASS
 EOF
+    [[ -n "$MEM_LIMIT" ]] && echo "MEM_LIMIT=$MEM_LIMIT" >> "$INSTANCE_DIR/.env"
+    [[ -n "$ODOO_PORT" ]] && echo "ODOO_PORT=$ODOO_PORT" >> "$INSTANCE_DIR/.env"
+    [[ -n "$LONGPOLLING_PORT" ]] && echo "LONGPOLLING_PORT=$LONGPOLLING_PORT" >> "$INSTANCE_DIR/.env"
     chmod 600 "$INSTANCE_DIR/.env"
 
     # -----------------------------
-    # 🧱 Generate docker-compose.yml
+    # 🧱 docker-compose.yml: copied from the tracked template (never
+    # overwritten if it somehow already exists — matches every other
+    # service's convention, even though the duplicate-instance check above
+    # makes that unreachable today).
     # -----------------------------
-    cat >"$INSTANCE_DIR/docker-compose.yml" <<EOF
-services:
-  odoo:
-    image: $CUSTOM_IMAGE
-    container_name: odoo-$INSTANCE_NAME
-    depends_on:
-      db:
-        condition: service_healthy
-    ports:
-      - "$ODOO_PORT:8069"
-      - "$LONGPOLLING_PORT:8072"
-    volumes:
-      - ./config:/etc/odoo
-      - ./addons:/mnt/extra-addons
-      - odoo-data:/var/lib/odoo
-    restart: unless-stopped
-    env_file:
-      - .env
-    networks:
-      - odoo-net-$INSTANCE_NAME
-      - main-net
-    mem_limit: 2g
-    mem_reservation: 512m
-    healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request as u,sys; sys.exit(0 if u.urlopen('http://localhost:8069/web/health').status==200 else 1)"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    deploy:
-      resources:
-        limits:
-          memory: 2g
-        reservations:
-          memory: 512m
+    if [[ -f "$INSTANCE_DIR/docker-compose.yml" ]]; then
+        print_info "Existing docker-compose.yml found at $INSTANCE_DIR — keeping it (not overwritten)."
+    else
+        cp "$SOURCE_DIR/docker-compose.yml" "$INSTANCE_DIR/docker-compose.yml"
+    fi
 
-  db:
-    image: postgres:17
-    container_name: odoo-$INSTANCE_NAME-db
-    env_file:
-      - .env
-    volumes:
-      - ./db-data:/var/lib/postgresql/data
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \$POSTGRES_USER -d postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    networks:
-      - odoo-net-$INSTANCE_NAME
-    mem_limit: 1g
-    mem_reservation: 256m
-    deploy:
-      resources:
-        limits:
-          memory: 1g
-        reservations:
-          memory: 256m
-
-volumes:
-  odoo-data:
-
-networks:
-  odoo-net-$INSTANCE_NAME:
-    driver: bridge
-  main-net:
-    external: true
-EOF
+    # docker-compose.override.yml adds the optional host ports / memory cap
+    # on top of the static template above. Unlike this repo's other
+    # services, deploy.sh only ever runs once per instance (it refuses to
+    # touch an existing one), so this file is generated here and then never
+    # regenerated automatically — to change it later, hand-edit this file
+    # directly (or delete it to go back to unbounded/main-net-only), then
+    # cd $INSTANCE_DIR && $COMPOSE_CMD up -d
+    if [[ -n "$MEM_LIMIT" || -n "$ODOO_PORT" ]]; then
+        {
+            echo "services:"
+            echo "  odoo:"
+            [[ -n "$MEM_LIMIT" ]] && echo "    mem_limit: $MEM_LIMIT"
+            if [[ -n "$ODOO_PORT" ]]; then
+                echo "    ports:"
+                echo "      - \"$ODOO_PORT:8069\""
+                echo "      - \"$LONGPOLLING_PORT:8072\""
+            fi
+        } > "$INSTANCE_DIR/docker-compose.override.yml"
+    fi
 
     # Odoo config — explicit DB connection settings avoid reliance on entrypoint defaults.
     # db_name is intentionally left unset so Odoo shows the database
@@ -497,9 +511,11 @@ EOF
     print_info "Odoo instance '$INSTANCE_NAME' is running!"
     echo
     echo "──────────────────────────────────────────────"
-    echo "🌐 URL:          http://$SERVER_IP:$ODOO_PORT"
-    echo "🔌 WebSocket:    http://$SERVER_IP:$LONGPOLLING_PORT  (live chat / POS / bus notifications)"
-    echo "🔗 Proxy target: odoo-$INSTANCE_NAME:8069 (and :8072 for WS) on the 'main-net' network — use this in NGINX Proxy Manager instead of a host port"
+    if [[ -n "$ODOO_PORT" ]]; then
+        echo "🌐 URL:          http://$SERVER_IP:$ODOO_PORT"
+        echo "🔌 WebSocket:    http://$SERVER_IP:$LONGPOLLING_PORT  (live chat / POS / bus notifications)"
+    fi
+    echo "🔗 Proxy target: odoo-$INSTANCE_NAME:8069 (and :8072 for WS) on the 'main-net' network — use this in NGINX Proxy Manager"
     echo "📦 Odoo Version: $ODOO_VERSION"
     echo "🖼️  Image:        $CUSTOM_IMAGE"
     echo "🗄️  Database:     $DB_NAME  (not yet created — see next step below)"
@@ -515,7 +531,12 @@ EOF
     echo "──────────────────────────────────────────────"
     echo
     echo "👉 NEXT STEP (first run only):"
-    echo "   Open http://$SERVER_IP:$ODOO_PORT/web/database/manager"
+    if [[ -n "$ODOO_PORT" ]]; then
+        echo "   Open http://$SERVER_IP:$ODOO_PORT/web/database/manager"
+    else
+        echo "   Set up NGINX Proxy Manager first (see above), then open"
+        echo "   https://<your-domain>/web/database/manager"
+    fi
     echo "   and click 'Create Database' using:"
     echo "     - Master Password: $ADMIN_PASS"
     echo "     - Database Name:   $DB_NAME"

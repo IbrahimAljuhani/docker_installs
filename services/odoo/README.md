@@ -47,7 +47,8 @@ Perfect for developers, agencies, and businesses running **multiple isolated Odo
 | 🆔 **Correct file ownership** | Auto-detects the real UID/GID of the `odoo` user *inside the image* (instead of assuming `100:101`) and applies it to bind-mounted folders |
 | 💬 **Real-time WebSocket support** | Exposes and enables the `gevent`/longpolling worker (port `8072`) — Live Chat, POS sync, and bus notifications work out of the box |
 | ❤️ **Health checks** | Both Odoo and PostgreSQL containers ship with working `healthcheck` definitions |
-| 📊 **Resource limits** | Memory limits applied via `mem_limit`/`mem_reservation` (so they actually work with plain `docker compose`, not just Swarm) |
+| 📊 **Optional resource limit** | Ask once for a memory cap on the `odoo` container (`db` always stays unbounded) — say no and it runs unbounded |
+| 🔒 **NPM-only by default** | No host ports published unless you opt in — the container is reachable over `main-net` for NGINX Proxy Manager either way |
 | 🗃️ **Isolated, durable storage** | Each instance gets its own Postgres volume, Odoo filestore volume, addons folder, and config file |
 | 🧼 **No system pollution** | Everything runs in containers — nothing installed globally on the host |
 
@@ -57,12 +58,12 @@ Perfect for developers, agencies, and businesses running **multiple isolated Odo
 
 ```
                          ┌─────────────────────────────────────────┐
-                         │        odoo-net-<instance>  (bridge)     │
+                         │     odoo-net (per-instance, bridge)      │
                          │                                           │
-   Host                  │   ┌───────────────┐     ┌───────────────┐│
-   ─────                 │   │   odoo         │     │   db          ││
-   HTTP  → :ODOO_PORT ───┼──►│   :8069        │────►│  postgres:17  ││
-   WS    → :WS_PORT   ───┼──►│   :8072 gevent │     │  (internal    ││
+   Host (optional)       │   ┌───────────────┐     ┌───────────────┐│
+   HTTP  → :ODOO_PORT ───┼──►│   odoo         │     │   db          ││
+   WS    → :WS_PORT   ───┼──►│   :8069        │────►│  postgres:17  ││
+                         │   │   :8072 gevent │     │  (internal    ││
                          │   │                │     │   only)       ││
                          │   └───────┬───────┘     └───────────────┘│
                          │           │                               │
@@ -81,12 +82,15 @@ Perfect for developers, agencies, and businesses running **multiple isolated Odo
      ./db-data → /var/lib/postgresql/data
 ```
 
+Host ports are **optional** (default: no) — the `odoo` container always joins `main-net` so NGINX Proxy Manager can reach it by container name regardless; only opt into publishing `ODOO_PORT`/`WS_PORT` if you want quick direct access without NPM. Network/volume names above have no instance suffix in the compose file itself — Docker Compose automatically prefixes them with the per-instance directory's project name, which is what actually keeps multiple instances from colliding.
+
 Key design decisions baked into the script:
 
 - **`POSTGRES_DB` is set to `postgres`, not the instance's database name.** Odoo creates and initializes its own database the first time you open the database manager. Pre-creating an empty database with the instance's name would make Odoo think it's already initialized and crash with `ir_module_module does not exist`.
 - **The Odoo filestore (`/var/lib/odoo`) is a named Docker volume**, not a bind-mounted host folder — this avoids the classic `Permission denied: /var/lib/odoo/sessions` error caused by UID mismatches between the host and the container.
 - **`config/` and `addons/`** stay as bind mounts (you need to edit them from the host), but the script chowns them to the *actual* UID/GID of the `odoo` user inside the image you picked — detected dynamically, not hardcoded.
-- **The `odoo` app container also joins the shared `main-net` network** (the same one created by [`install_docker_core.sh`](../../install_docker_core.sh)), so NGINX Proxy Manager can reach it directly by container name (`odoo-<instance>:8069`) — no host port needs to stay published just for the proxy. `db` stays off `main-net` and is only reachable from `odoo` over the private `odoo-net-<instance>` network.
+- **The `odoo` app container also joins the shared `main-net` network** (the same one created by [`install_docker_core.sh`](../../install_docker_core.sh)), so NGINX Proxy Manager can reach it directly by container name (`odoo-<instance>:8069`) — no host port needs to stay published just for the proxy. `db` stays off `main-net` and is only reachable from `odoo` over the private, per-instance `odoo-net` network.
+- **`docker-compose.yml` is a tracked template** (`services/odoo/docker-compose.yml`), copied once per instance and never overwritten on top of an existing one — same convention as every other service in this repo, instead of being generated inline.
 
 ---
 
@@ -106,6 +110,8 @@ Pick **`1) Install / manage core infrastructure`** from the menu it shows, it in
 ```bash
 curl -fsSL -o deploy.sh \
   https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/odoo/deploy.sh
+curl -fsSL -o docker-compose.yml \
+  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/odoo/docker-compose.yml
 bash deploy.sh
 ```
 
@@ -119,11 +125,13 @@ bash deploy.sh
 |---|---|---|
 | 1 | **Instance name** (e.g. `odoo-shop`) | Validated: lowercase letters, digits, `-`, `_` only |
 | 2 | **Odoo version** | `19.0` (dev) / `18.0` (stable) / `17.0` (LTS) / **Custom image** |
-| 3 | **HTTP port** | Default `8069`, checked for conflicts |
-| 4 | **WebSocket/longpolling port** | Default = HTTP port `+ 3` (e.g. `8072`), checked for conflicts |
+| 3 | **Publish host ports?** (default: **no**) | If yes: **HTTP port** (default `8069`) and **WebSocket/longpolling port** (default = HTTP port `+ 3`, e.g. `8072`), both checked for conflicts. If no, reach the instance only via `main-net` / NGINX Proxy Manager — see [Reverse Proxy](#-reverse-proxy--ssl-recommended). |
+| 4 | **Memory limit for the `odoo` container?** (default: **no** → unbounded) | If yes, suggested default `2g`; `db` always stays unbounded regardless |
 | 5 | **PostgreSQL username** | Default `odoo` |
 | 6 | **PostgreSQL password** | Auto-generated if left blank |
 | 7 | **Database name** | Just a *label* — see next section, it isn't created yet |
+
+> 💡 **To change the host ports or memory limit later**: unlike this repo's other services, `deploy.sh` only runs once per instance (it refuses to touch an existing one), so it never regenerates `docker-compose.override.yml` on its own. Hand-edit `~/docker/odoo/<instance>/docker-compose.override.yml` directly (change the `mem_limit:` value, or add/remove the `ports:` list — delete the file entirely to go back to fully unbounded/main-net-only), then `cd ~/docker/odoo/<instance> && docker compose up -d`.
 
 ---
 
@@ -133,9 +141,8 @@ Unlike installers that pre-create the database for you, this script lets **Odoo 
 
 After the containers start, open:
 
-```
-http://<server-ip>:<ODOO_PORT>/web/database/manager
-```
+- **If you published host ports**: `http://<server-ip>:<ODOO_PORT>/web/database/manager`
+- **If you didn't** (main-net/NPM-only): set up NGINX Proxy Manager first (see [Reverse Proxy](#-reverse-proxy--ssl-recommended)), then open `https://<your-domain>/web/database/manager`
 
 Click **Create Database** and use:
 - **Master Password** → the `Admin Pass` printed at the end of installation
@@ -150,8 +157,9 @@ Odoo will create the schema and install the `base` module automatically. This st
 ```
 ~/docker/odoo/
 └── your-instance-name/
-    ├── .env                  # DB credentials & admin password        (600)
-    ├── docker-compose.yml    # Stack definition
+    ├── .env                             # DB credentials & admin password        (600)
+    ├── docker-compose.yml               # Stack definition (copied from services/odoo/docker-compose.yml)
+    ├── docker-compose.override.yml      # Only present if you opted into host ports and/or a memory limit
     ├── config/
     │   └── odoo.conf         # Odoo config (db host, workers, gevent)  (640, owned by the container's odoo uid)
     ├── addons/                # Your custom modules                    (owned by the container's odoo uid)
@@ -177,7 +185,7 @@ Example with multiple instances:
 - **`~/docker/odoo/.odoo-docker-secrets.txt`**: append-only log of every instance's credentials, `600` permissions.
 - **`.env`**: `600` permissions, per instance.
 - **`config/odoo.conf`**: owned by the container's `odoo` user and locked to `640` — readable by the container, not world-readable. (Falls back to `644` with a warning if ownership can't be changed, e.g. no `sudo` access — the container must be able to read its own config to start.)
-- **PostgreSQL is never exposed on the host** — it's reachable only from the Odoo container over the internal `odoo-net-<instance>` bridge network.
+- **PostgreSQL is never exposed on the host** — it's reachable only from the Odoo container over the internal, per-instance `odoo-net` bridge network.
 
 ```
 🔒  SECURITY REMINDER
@@ -322,6 +330,9 @@ docker exec odoo-your-instance-name-db \
 - Healthcheck switched from `curl` (not guaranteed present) to bundled `python3`
 - `odoo.conf` ownership/permissions hardened without breaking container readability
 - Input validation extended to DB username/name
+- Host ports are now **optional** (default: no, main-net/NPM-only) instead of always asked and always published — matches every other service in this repo
+- Optional memory cap on the `odoo` container (was previously hardcoded to `2g` with no way to change it without hand-editing the generated compose file)
+- `docker-compose.yml` is now a tracked template file, copied per instance, instead of generated inline
 
 ---
 
