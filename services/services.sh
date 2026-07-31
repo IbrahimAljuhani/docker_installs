@@ -31,7 +31,7 @@ declare -A SERVICE_FILES=(
     [openproject]="docker-compose.yml"
     [nextcloud]="docker-compose.yml"
     [n8n]="docker-compose.yml init-data.sh"
-    [taiga]="docker-compose.yml taiga-gateway/taiga.conf"
+    [taiga]="docker-compose.yml docker-compose-inits.yml taiga-gateway/taiga.conf"
 )
 
 print_info() { echo -e "[✓] $1" >&2; }

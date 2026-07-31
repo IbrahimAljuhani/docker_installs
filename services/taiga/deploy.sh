@@ -130,15 +130,18 @@ if ! docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
     fi
 fi
 
+FRESH_DEPLOY=false
 if [[ -f "$INSTALL_DIR/.env" ]]; then
     print_info "Existing deployment found at $INSTALL_DIR — reusing its .env (not regenerated)."
 else
+    FRESH_DEPLOY=true
     print_warn "Taiga needs roughly 4 GB RAM for a small team (Postgres + 2x RabbitMQ + backend workers add up)."
 
     SECRET_KEY=$(generate_secret)
     POSTGRES_PASSWORD=$(generate_secret)
     RABBITMQ_PASS=$(generate_secret)
     RABBITMQ_ERLANG_COOKIE=$(generate_secret)
+    ADMIN_PASSWORD=$(generate_secret)
     prompt_mem_limit "512m"
     prompt_host_port "9000"
 
@@ -192,6 +195,8 @@ EOF
     {
         echo "# Auto-generated Taiga secrets - DO NOT SHARE"
         echo "$(date '+%F %T'): domain=$TAIGA_DOMAIN_VALUE"
+        echo "  Admin user:     admin"
+        echo "  Admin password: $ADMIN_PASSWORD"
         echo "  SECRET_KEY=$SECRET_KEY"
         echo "  POSTGRES_PASSWORD=$POSTGRES_PASSWORD"
         echo "  RABBITMQ_PASS=$RABBITMQ_PASS"
@@ -205,6 +210,7 @@ if [[ -f "$INSTALL_DIR/docker-compose.yml" ]]; then
     print_info "Existing docker-compose.yml found at $INSTALL_DIR — keeping it (not overwritten). Delete it yourself first if you want the latest version from this repo."
 else
     cp "$SOURCE_DIR/docker-compose.yml" "$INSTALL_DIR/docker-compose.yml"
+    cp "$SOURCE_DIR/docker-compose-inits.yml" "$INSTALL_DIR/docker-compose-inits.yml"
     mkdir -p "$INSTALL_DIR/taiga-gateway"
     cp "$SOURCE_DIR/taiga-gateway/taiga.conf" "$INSTALL_DIR/taiga-gateway/taiga.conf"
 fi
@@ -236,6 +242,33 @@ print_info "Starting Taiga (first run can take a few minutes to pull 9 images)..
 (cd "$INSTALL_DIR" && $COMPOSE_CMD up -d 2>&1 | tee -a "$LOGFILE") \
     || print_error "Failed to start Taiga. Check log: $LOGFILE"
 
+# Taiga does NOT auto-create an admin account from 'up -d' alone (unlike
+# OpenProject/Nextcloud) — it needs this separate one-off command, per the
+# official repo's own README. Retried a few times since taiga-back's own
+# migrations (which create the user table) may not be finished yet the
+# instant 'up -d' returns.
+ADMIN_CREATED=false
+if [[ "$FRESH_DEPLOY" == true ]]; then
+    print_info "Creating the admin account (retrying while migrations finish)..."
+    for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+        if (cd "$INSTALL_DIR" && $COMPOSE_CMD -f docker-compose.yml -f docker-compose-inits.yml run --rm \
+            -e DJANGO_SUPERUSER_USERNAME=admin \
+            -e DJANGO_SUPERUSER_EMAIL=admin@example.com \
+            -e DJANGO_SUPERUSER_PASSWORD="$ADMIN_PASSWORD" \
+            taiga-manage createsuperuser --noinput >> "$LOGFILE" 2>&1); then
+            ADMIN_CREATED=true
+            break
+        fi
+        sleep 5
+    done
+    if [[ "$ADMIN_CREATED" == true ]]; then
+        print_info "Admin account created."
+    else
+        print_warn "Could not create the admin account automatically after several attempts — check $LOGFILE, then run manually:"
+        print_warn "  cd $INSTALL_DIR && $COMPOSE_CMD -f docker-compose.yml -f docker-compose-inits.yml run --rm taiga-manage createsuperuser"
+    fi
+fi
+
 print_info "Taiga is starting."
 echo
 echo "──────────────────────────────────────────────"
@@ -245,7 +278,13 @@ if [[ -n "$ENV_HOST_PORT" ]]; then
     echo "🌐 URL:          http://$SERVER_IP:$ENV_HOST_PORT"
 fi
 echo "🔗 Proxy target: taiga-app:80 on 'main-net'"
-echo "👤 First login:  admin / 123123 — change this immediately"
+if [[ "$FRESH_DEPLOY" == true && "$ADMIN_CREATED" == true ]]; then
+    echo "👤 First login:  admin / $ADMIN_PASSWORD — also saved to $SECRETS_FILE"
+elif [[ "$FRESH_DEPLOY" == true ]]; then
+    echo "👤 First login:  admin account creation failed — see warning above"
+else
+    echo "👤 First login:  admin account from the original deploy — see $SECRETS_FILE"
+fi
 echo "📜 Log:          $LOGFILE"
 [[ -f "$SECRETS_FILE" ]] && echo "🔒 Secrets:      $SECRETS_FILE"
 echo "──────────────────────────────────────────────"
