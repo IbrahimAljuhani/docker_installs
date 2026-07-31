@@ -361,10 +361,10 @@ main() {
     # folders are owned correctly. This also pre-pulls the image.
     detect_odoo_ids "$CUSTOM_IMAGE"
 
-    # Shared reverse-proxy network (created by install_docker_core.sh). Created
+    # Shared reverse-proxy network (created by install_dockhub.sh). Created
     # here too, idempotently, so this script also works standalone/out of order.
     if ! docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
-        # '|| true': install_docker_core.sh (or another service) may win a
+        # '|| true': install_dockhub.sh (or another service) may win a
         # create race between the check above and this line — that's harmless,
         # but re-verify below so a genuine failure isn't reported as OK.
         docker network create main-net || true

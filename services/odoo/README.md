@@ -11,7 +11,7 @@ A smart, interactive Bash installer that spins up **production-ready Odoo instan
 Perfect for developers, agencies, and businesses running **multiple isolated Odoo instances** on the same host with minimal manual setup.
 
 > 🔗 **Prerequisite**: Docker CE, Docker Compose, `openssl`, and `curl`.
-> Don't have Docker yet? Use: <https://github.com/IbrahimAljuhani/docker_installs>
+> Don't have Docker yet? Use: <https://github.com/IbrahimAljuhani/dockhub>
 
 ---
 
@@ -89,7 +89,7 @@ Key design decisions baked into the script:
 - **`POSTGRES_DB` is set to `postgres`, not the instance's database name.** Odoo creates and initializes its own database the first time you open the database manager. Pre-creating an empty database with the instance's name would make Odoo think it's already initialized and crash with `ir_module_module does not exist`.
 - **The Odoo filestore (`/var/lib/odoo`) is a named Docker volume**, not a bind-mounted host folder — this avoids the classic `Permission denied: /var/lib/odoo/sessions` error caused by UID mismatches between the host and the container.
 - **`config/` and `addons/`** stay as bind mounts (you need to edit them from the host), but the script chowns them to the *actual* UID/GID of the `odoo` user inside the image you picked — detected dynamically, not hardcoded.
-- **The `odoo` app container also joins the shared `main-net` network** (the same one created by [`install_docker_core.sh`](../../install_docker_core.sh)), so NGINX Proxy Manager can reach it directly by container name (`odoo-<instance>:8069`) — no host port needs to stay published just for the proxy. `db` stays off `main-net` and is only reachable from `odoo` over the private, per-instance `odoo-net` network.
+- **The `odoo` app container also joins the shared `main-net` network** (the same one created by [`install_dockhub.sh`](../../install_dockhub.sh)), so NGINX Proxy Manager can reach it directly by container name (`odoo-<instance>:8069`) — no host port needs to stay published just for the proxy. `db` stays off `main-net` and is only reachable from `odoo` over the private, per-instance `odoo-net` network.
 - **`docker-compose.yml` is a tracked template** (`services/odoo/docker-compose.yml`), copied once per instance and never overwritten on top of an existing one — same convention as every other service in this repo, instead of being generated inline.
 
 ---
@@ -99,9 +99,9 @@ Key design decisions baked into the script:
 ### 1. Install Prerequisites (Docker + Compose)
 
 ```bash
-curl -fsSL -o install_docker_core.sh \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/install_docker_core.sh
-sudo bash install_docker_core.sh
+curl -fsSL -o install_dockhub.sh \
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/install_dockhub.sh
+sudo bash install_dockhub.sh
 ```
 Pick **`1) Install / manage core infrastructure`** from the menu it shows, it installs the full bundle automatically (skipping anything already installed). ✅ This also installs **NGINX Proxy Manager** and **Portainer CE** (optional, recommended for production), and creates the shared `main-net` network this service attaches to.
 
@@ -109,9 +109,9 @@ Pick **`1) Install / manage core infrastructure`** from the menu it shows, it in
 
 ```bash
 curl -fsSL -o deploy.sh \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/odoo/deploy.sh
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/odoo/deploy.sh
 curl -fsSL -o docker-compose.yml \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/odoo/docker-compose.yml
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/odoo/docker-compose.yml
 bash deploy.sh
 ```
 

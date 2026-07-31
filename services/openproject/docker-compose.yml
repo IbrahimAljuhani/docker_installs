@@ -4,7 +4,7 @@
 # Deliberate deviations from upstream:
 #   - Upstream's own 'proxy' (Caddy) and 'autoheal' services are dropped.
 #     This framework uses NGINX Proxy Manager as the single reverse proxy for
-#     every service (see ../../install_docker_core.sh), so a second
+#     every service (see ../../install_dockhub.sh), so a second
 #     per-service proxy is redundant. 'autoheal' needs a docker.sock mount
 #     that isn't worth the extra attack surface for a first deployment.
 #   - Only 'web' (the app) and 'hocuspocus' (real-time/collaborative editing)

@@ -13,9 +13,9 @@ Adapted from the official [n8n-io/n8n-hosting](https://github.com/n8n-io/n8n-hos
 ### 1. Install prerequisites (if not already done)
 
 ```bash
-curl -fsSL -o install_docker_core.sh \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/install_docker_core.sh
-sudo bash install_docker_core.sh
+curl -fsSL -o install_dockhub.sh \
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/install_dockhub.sh
+sudo bash install_dockhub.sh
 ```
 Pick **`1) Install / manage core infrastructure`** from the menu it shows, it installs the full bundle automatically (skipping anything already installed).
 
@@ -23,9 +23,9 @@ Pick **`1) Install / manage core infrastructure`** from the menu it shows, it in
 
 ```bash
 mkdir n8n-deploy && cd n8n-deploy
-curl -fsSL -o deploy.sh https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/n8n/deploy.sh
-curl -fsSL -o docker-compose.yml https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/n8n/docker-compose.yml
-curl -fsSL -o init-data.sh https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/n8n/init-data.sh
+curl -fsSL -o deploy.sh https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/n8n/deploy.sh
+curl -fsSL -o docker-compose.yml https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/n8n/docker-compose.yml
+curl -fsSL -o init-data.sh https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/n8n/init-data.sh
 bash deploy.sh
 ```
 

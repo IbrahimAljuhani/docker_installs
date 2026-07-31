@@ -21,7 +21,7 @@ if [[ $EUID -eq 0 ]]; then
     exit 1
 fi
 
-REPO_RAW_BASE="https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services"
+REPO_RAW_BASE="https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Extra files (besides deploy.sh) each service needs — keep this in sync with
@@ -34,6 +34,63 @@ declare -A SERVICE_FILES=(
     [n8n]="docker-compose.yml init-data.sh"
     [taiga]="docker-compose.yml docker-compose-inits.yml taiga-gateway/taiga.conf i18n-overrides/django-ar.po i18n-overrides/locale-ar.json i18n-overrides/apply-front-locale.sh"
 )
+
+# Full target catalog, grouped by category: CATEGORY|slug|Display Name.
+# 'slug' is the folder name a service will eventually live under (matches
+# SERVICE_FILES keys once built). This list is the project roadmap, not just
+# what's built today — see is_available() below. Add a new category by just
+# adding its first entry here; the category menu picks it up automatically
+# in the order entries first appear.
+CATALOG=(
+    "AI|ollama|Ollama"
+    "AI|open-webui|Open WebUI"
+    "AI|dify|Dify"
+    "Automation|n8n|n8n"
+    "Automation|openclaw|OpenClaw"
+    "Automation|hermes|Hermes"
+    "DNS|pi-hole|Pi-hole"
+    "DNS|adguard|AdGuard"
+    "ERP|erpnext|ERPNext"
+    "ERP|dolibarr|Dolibarr"
+    "ERP|odoo|Odoo"
+    "Home-Automation|home-assistant|Home Assistant"
+    "Home-Automation|zigbee2mqtt|Zigbee2MQTT"
+    "Home-Automation|mosquitto|Eclipse Mosquitto"
+    "Media|jellyfin|Jellyfin"
+    "Media|plex|Plex"
+    "Photos|immich|Immich"
+    "Photos|photoprism|PhotoPrism"
+    "Projects|openproject|OpenProject"
+    "Projects|plane|Plane"
+    "Projects|vikunja|Vikunja"
+    "Projects|redmine|Redmine"
+    "Projects|taiga|Taiga"
+    "Security|vaultwarden|Vaultwarden"
+    "Security|authentik|Authentik"
+    "Security|keycloak|Keycloak"
+    "Storage|nextcloud|Nextcloud"
+    "Storage|seafile|Seafile"
+    "Storage|owncloud|ownCloud"
+    "VPN|wireguard|WireGuard"
+    "VPN|headscale|Headscale"
+    "VPN|netbird|NetBird"
+    "VPN|openvpn|OpenVPN"
+    "Web|wordpress|WordPress"
+    "Web|ghost|Ghost"
+    "Web|strapi|Strapi"
+)
+
+# A catalog entry is deployable now if either its local <slug>/deploy.sh
+# folder exists (repo checkout mode) or it's a registered SERVICE_FILES key
+# (standalone/curl mode) — either signal alone is enough, so this works
+# identically in both of deploy_service's two modes. Anything in CATALOG
+# that matches neither is a roadmap placeholder: shown, but not deployable.
+is_available() {
+    local slug="$1"
+    [[ -f "$SCRIPT_DIR/$slug/deploy.sh" ]] && return 0
+    [[ -n "${SERVICE_FILES[$slug]+set}" ]] && return 0
+    return 1
+}
 
 print_info() { echo -e "[✓] $1" >&2; }
 print_warn() { echo -e "[!] $1" >&2; }
@@ -217,36 +274,71 @@ service_menu() {
     done
 }
 
-main_menu() {
-    # --- Mode 1: local checkout ---
-    local -a local_services=()
-    local d name
-    for d in "$SCRIPT_DIR"/*/; do
-        name="$(basename "$d")"
-        [[ "$name" == "_template" ]] && continue
-        [[ -f "$d/deploy.sh" ]] && local_services+=("$name")
-    done
+# Lists the services within one category, marking not-yet-built ones. Picking
+# an available one hands off to the existing service_menu (deploy/remove/
+# reinstall); picking a roadmap placeholder just prints a notice and stays
+# in this same category list.
+category_menu() {
+    local category="$1"
+    while true; do
+        local -a slugs=() names=() marks=()
+        local entry cat slug name
+        for entry in "${CATALOG[@]}"; do
+            IFS='|' read -r cat slug name <<< "$entry"
+            [[ "$cat" == "$category" ]] || continue
+            slugs+=("$slug")
+            names+=("$name")
+            if is_available "$slug"; then
+                marks+=("")
+            else
+                marks+=("  (coming soon)")
+            fi
+        done
 
-    local -a names=()
-    if (( ${#local_services[@]} > 0 )); then
-        names=("${local_services[@]}")
-    else
-        echo "No local service folders found next to this script — service list is the known-services table (deploying downloads from GitHub)."
-        names=("${!SERVICE_FILES[@]}")
-        IFS=$'\n' names=($(sort <<<"${names[*]}")); unset IFS
-    fi
+        echo
+        echo "$category:"
+        local i
+        for ((i = 1; i <= ${#names[@]}; i++)); do
+            echo "  $i) ${names[$((i - 1))]}${marks[$((i - 1))]}"
+        done
+        prompt_choice "${#names[@]}" "Back" || continue
+        (( CHOSEN_INDEX > ${#names[@]} )) && return
+
+        local picked_slug="${slugs[$((CHOSEN_INDEX - 1))]}"
+        local picked_name="${names[$((CHOSEN_INDEX - 1))]}"
+        if is_available "$picked_slug"; then
+            service_menu "$picked_slug"
+        else
+            echo
+            print_warn "$picked_name isn't available yet — coming soon!"
+        fi
+    done
+}
+
+main_menu() {
+    # Category list, in first-appearance order from CATALOG — add a new
+    # category by adding its first CATALOG entry, nothing else to update here.
+    local -a categories=()
+    local entry cat slug name c already_listed
+    for entry in "${CATALOG[@]}"; do
+        IFS='|' read -r cat slug name <<< "$entry"
+        already_listed=false
+        for c in "${categories[@]}"; do
+            [[ "$c" == "$cat" ]] && { already_listed=true; break; }
+        done
+        [[ "$already_listed" == false ]] && categories+=("$cat")
+    done
 
     while true; do
         echo
-        echo "Available services:"
-        local i=1 s
-        for s in "${names[@]}"; do
-            echo "  $i) $s"
-            i=$((i + 1))
+        echo "Categories:"
+        local i
+        for ((i = 1; i <= ${#categories[@]}; i++)); do
+            echo "  $i) ${categories[$((i - 1))]}"
         done
-        prompt_choice "${#names[@]}" "Exit" || continue
-        (( CHOSEN_INDEX > ${#names[@]} )) && exit 0
-        service_menu "${names[$((CHOSEN_INDEX - 1))]}"
+        prompt_choice "${#categories[@]}" "Exit" || continue
+        (( CHOSEN_INDEX > ${#categories[@]} )) && exit 0
+        category_menu "${categories[$((CHOSEN_INDEX - 1))]}"
     done
 }
 

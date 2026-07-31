@@ -1,4 +1,4 @@
-# 🐳 Docker & NGINX Proxy Manager Installer
+# 🐳 DockHub
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Shell](https://img.shields.io/badge/Shell-Bash-4EAA25?logo=gnu-bash&logoColor=white)](#)
@@ -7,7 +7,7 @@
 [![Portainer](https://img.shields.io/badge/Portainer--CE-latest-13BEF9)](#-environment-variable-overrides)
 [![Platforms](https://img.shields.io/badge/Platforms-Debian%20%7C%20Ubuntu%20%7C%20RHEL%20%7C%20Arch%20%7C%20openSUSE-lightgrey)](#-supported-operating-systems)
 
-A hardened, interactive Bash installer for **Docker CE, Docker Compose, NGINX Proxy Manager (NPM), and Portainer‑CE** on Linux — including ARM64 devices like Raspberry Pi.
+A hardened, interactive Bash installer for **Docker CE, Docker Compose, NGINX Proxy Manager (NPM), and Portainer‑CE** on Linux — including ARM64 devices like Raspberry Pi — plus a growing, categorized catalog of self-hosted services ([AI, Automation, ERP, Projects, Storage, and more](#-services)) that deploy behind that same reverse proxy with one command each.
 
 One command → a reproducible Docker host with a reverse proxy and a container management UI, ready to sit behind a domain and SSL.
 
@@ -61,7 +61,7 @@ Auto-detected via `/etc/os-release` (falls back to `ID_LIKE` for derivatives). I
 | ⚙️ **Configurable ports** | Every published port is an environment variable override |
 | 👤 **`sudo` vs pure-root aware** | Installs into the *invoking* user's home (not `/root`), fixes ownership, adds them to the `docker` group correctly |
 | 🛡️ **Proper error propagation** | `set -Eeuo pipefail` + a global `ERR` trap reporting file, line, and function |
-| 🗒️ **Log rotation** | Each run archives the previous `~/docker/install_docker_core.log` to `.old` |
+| 🗒️ **Log rotation** | Each run archives the previous `~/docker/install_dockhub.log` to `.old` |
 | 🔥 **Firewalld hint** | Prints ready-to-paste `firewall-cmd` commands on RHEL-family systems |
 | 🎨 **Color-coded, EOF-safe prompts** | Won't crash if piped or run non-interactively |
 
@@ -101,7 +101,7 @@ Both services are plain `docker-compose.yml` stacks under `~/docker/<service>/`,
 
 ## 🧱 Services
 
-This repo installs the **core infrastructure** (`install_docker_core.sh` → Docker CE, Compose, NPM, Portainer, and the shared `main-net` network). Everything else lives under [`services/`](services/README.md) as its own self-contained, independently-deployed folder — run only the ones you actually need. See [`services/README.md`](services/README.md) for the full list, quick-start, and conventions:
+This repo installs the **core infrastructure** (`install_dockhub.sh` → Docker CE, Compose, NPM, Portainer, and the shared `main-net` network). Everything else lives under [`services/`](services/README.md) as its own self-contained, independently-deployed folder — run only the ones you actually need. See [`services/README.md`](services/README.md) for the full list, quick-start, and conventions:
 
 ```
 services/
@@ -126,27 +126,27 @@ Convention for every service: its own `.env` (never committed, `chmod 600`), a p
 **Recommended: clone the full repo.** This is what the "Install a service" menu option below needs anyway — with a clone, every service's files are already on disk, so picking one from the menu launches it immediately instead of downloading it on the spot.
 
 ```bash
-git clone https://github.com/IbrahimAljuhani/docker_installs.git
-cd docker_installs
-sudo bash install_docker_core.sh
+git clone https://github.com/IbrahimAljuhani/dockhub.git
+cd dockhub
+sudo bash install_dockhub.sh
 ```
 
 <details>
-<summary>Alternative: just <code>install_docker_core.sh</code> alone (no git, no services)</summary>
+<summary>Alternative: just <code>install_dockhub.sh</code> alone (no git, no services)</summary>
 
 If you only want the core infrastructure (Docker CE, Compose, NPM, Portainer) and don't care about `services/` at all:
 
 ```bash
-curl -fsSL -o install_docker_core.sh \
-  https://raw.githubusercontent.com/ibrahimaljuhani/docker_installs/main/install_docker_core.sh
-sudo bash install_docker_core.sh
+curl -fsSL -o install_dockhub.sh \
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/install_dockhub.sh
+sudo bash install_dockhub.sh
 ```
 
 Picking **"Install a service"** from the menu without a local clone still works — it falls back to downloading the service you pick from GitHub on the spot (see [`services/README.md`](services/README.md)).
 
 </details>
 
-> ⚠️ Must be run with `sudo` (or as root). Use `sudo -E bash install_docker_core.sh` if you're setting env-var overrides (`-E` preserves them across the `sudo` boundary). Note it's `bash install_docker_core.sh`, not `./install_docker_core.sh` — a fresh `git clone`/`git pull` doesn't reliably preserve the executable bit, and `bash <file>` works regardless of it.
+> ⚠️ Must be run with `sudo` (or as root). Use `sudo -E bash install_dockhub.sh` if you're setting env-var overrides (`-E` preserves them across the `sudo` boundary). Note it's `bash install_dockhub.sh`, not `./install_dockhub.sh` — a fresh `git clone`/`git pull` doesn't reliably preserve the executable bit, and `bash <file>` works regardless of it.
 
 You'll get a menu:
 
@@ -187,13 +187,13 @@ Export before running to customize images or host ports:
 
 > 💡 **`NPM_IMAGE` defaults to `:latest`** — you always get the newest NPM release, at the cost of reproducibility (a re-run next month may pull a different image than today). If you need a **pinned, repeatable** version instead (e.g. for production), override it explicitly:
 > ```bash
-> NPM_IMAGE=jc21/nginx-proxy-manager:2.14.0 sudo -E bash install_docker_core.sh
+> NPM_IMAGE=jc21/nginx-proxy-manager:2.14.0 sudo -E bash install_dockhub.sh
 > ```
 
 Example (move NPM's HTTP/HTTPS off the standard ports):
 
 ```bash
-NPM_HTTP_PORT=8080 NPM_HTTPS_PORT=8443 sudo -E bash install_docker_core.sh
+NPM_HTTP_PORT=8080 NPM_HTTPS_PORT=8443 sudo -E bash install_dockhub.sh
 ```
 
 ---
@@ -219,7 +219,7 @@ This script only creates `npm/` and `portainer/`, plus its own log file — but 
 
 ```
 ~/docker/
-├── install_docker_core.log      # this script's own log (rotated to .old on rerun)
+├── install_dockhub.log      # this script's own log (rotated to .old on rerun)
 ├── npm/
 │   ├── docker-compose.yml
 │   ├── data/            # NPM SQLite DB + config      (owned by you)
@@ -281,7 +281,7 @@ docker inspect --format='{{.State.Health.Status}}' portainer
 | Services unreachable on RHEL/Fedora | `firewalld` blocks ports even though Docker bypasses `ufw` | The script prints the exact `firewall-cmd` lines it needs at the end of the run |
 | Port already in use | Another service is bound to it | The script pre-checks with `ss`/`netstat` and offers to continue or abort. Re-run with the relevant `_PORT` env var to pick a different one |
 | Containers not running after install | Varies | `cd ~/docker/npm && docker compose logs` / `cd ~/docker/portainer && docker compose logs` |
-| Installation failed mid-way | Varies — check the log | `~/docker/install_docker_core.log` (previous run preserved as `.old`) |
+| Installation failed mid-way | Varies — check the log | `~/docker/install_dockhub.log` (previous run preserved as `.old`) |
 
 ---
 
@@ -300,6 +300,7 @@ docker inspect --format='{{.State.Health.Status}}' portainer
 - **Changed:** `NPM_IMAGE` now defaults to `jc21/nginx-proxy-manager:latest` instead of a pinned version. See the [override note](#-environment-variable-overrides) if you need reproducibility instead.
 - **Fixed:** NPM's healthcheck path corrected to the documented `/usr/bin/check-health` (the previous `/bin/check-health` likely worked too on this Debian-based image thanks to the usr-merge symlink, but this removes any ambiguity).
 - **Documented:** `docker_compose_NPM.yml` (the standalone reference template) now states its `main-net` external-network prerequisite explicitly, and is kept in sync with the installer's generated compose file.
+- **Renamed:** project renamed from `docker_installs` to **DockHub**, and `install_docker_core.sh` to `install_dockhub.sh`, ahead of the project growing into a categorized multi-service catalog (see [Services](#-services)). The GitHub repo itself was renamed too — old `raw.githubusercontent.com/.../docker_installs/...` links will redirect for a while, but update any bookmarked install commands to the `dockhub` URLs shown throughout this README.
 
 ---
 
@@ -311,4 +312,4 @@ MIT — see [LICENSE](LICENSE).
 
 ## 🙌 Author
 
-**Ibrahim Aljuhani** — [@ibrahimaljuhani](https://github.com/ibrahimaljuhani)
+**Ibrahim Aljuhani** — [@IbrahimAljuhani](https://github.com/IbrahimAljuhani)

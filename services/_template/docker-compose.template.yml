@@ -11,7 +11,7 @@
 #   - container_name: <service>-app / <service>-db
 #   - private network: <service>-net   (app <-> db only, never published)
 #   - shared network:  main-net        (app only — lets NPM reach it by name;
-#                                        created by ../../install_docker_core.sh)
+#                                        created by ../../install_dockhub.sh)
 #   - all secrets come from .env — never hardcode them here
 #   - optional per-service memory cap AND optional host port: both prompted
 #     for once by deploy.sh.template and applied via a generated

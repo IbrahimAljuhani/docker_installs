@@ -15,9 +15,9 @@ This is a 9-container stack: `taiga-db` (Postgres), `taiga-back` + `taiga-async`
 ### 1. Install prerequisites (if not already done)
 
 ```bash
-curl -fsSL -o install_docker_core.sh \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/install_docker_core.sh
-sudo bash install_docker_core.sh
+curl -fsSL -o install_dockhub.sh \
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/install_dockhub.sh
+sudo bash install_dockhub.sh
 ```
 Pick **`1) Install / manage core infrastructure`** from the menu it shows, it installs the full bundle automatically (skipping anything already installed).
 
@@ -25,20 +25,20 @@ Pick **`1) Install / manage core infrastructure`** from the menu it shows, it in
 
 ```bash
 curl -fsSL -o deploy.sh \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/deploy.sh
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/taiga/deploy.sh
 curl -fsSL -o docker-compose.yml \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/docker-compose.yml
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/taiga/docker-compose.yml
 curl -fsSL -o docker-compose-inits.yml \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/docker-compose-inits.yml
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/taiga/docker-compose-inits.yml
 mkdir -p taiga-gateway i18n-overrides
 curl -fsSL -o taiga-gateway/taiga.conf \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/taiga-gateway/taiga.conf
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/taiga/taiga-gateway/taiga.conf
 curl -fsSL -o i18n-overrides/django-ar.po \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/i18n-overrides/django-ar.po
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/taiga/i18n-overrides/django-ar.po
 curl -fsSL -o i18n-overrides/locale-ar.json \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/i18n-overrides/locale-ar.json
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/taiga/i18n-overrides/locale-ar.json
 curl -fsSL -o i18n-overrides/apply-front-locale.sh \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/i18n-overrides/apply-front-locale.sh
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/taiga/i18n-overrides/apply-front-locale.sh
 bash deploy.sh
 ```
 

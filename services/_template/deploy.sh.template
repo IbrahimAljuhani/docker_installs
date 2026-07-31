@@ -8,7 +8,7 @@
 # Convention: this script's own folder (services/<name>/ in the repo) holds
 # the SOURCE docker-compose.yml/.env you edit and commit (.env excluded via
 # .gitignore). Actual runtime state (containers, bind-mounted data) lives
-# under ~/docker/<name>/ — the same root used by install_docker_core.sh and
+# under ~/docker/<name>/ — the same root used by install_dockhub.sh and
 # services/odoo/deploy.sh — so the whole host's state stays backupable as one
 # ~/docker/ tree. Never generate data/db-data/etc. inside the repo folder.
 #
@@ -107,10 +107,10 @@ if docker compose version &>/dev/null; then
 elif docker-compose version &>/dev/null; then
     COMPOSE_CMD="docker-compose"
 else
-    print_error "Docker Compose not found. Run install_docker_core.sh first."
+    print_error "Docker Compose not found. Run install_dockhub.sh first."
 fi
 
-# Shared reverse-proxy network (created by install_docker_core.sh; created here
+# Shared reverse-proxy network (created by install_dockhub.sh; created here
 # too, idempotently, so this script also works standalone/out of order).
 if ! docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
     # '|| true': another service's deploy.sh may win a create race between the

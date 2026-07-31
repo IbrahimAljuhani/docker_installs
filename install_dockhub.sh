@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# install_docker_core.sh
+# install_dockhub.sh
 # Author: Ibrahim Aljuhani
-# GitHub: https://github.com/ibrahimaljuhani/docker_installs
+# GitHub: https://github.com/IbrahimAljuhani/dockhub
 # Purpose: Install Docker CE, Docker Compose, NGINX Proxy Manager, and Portainer-CE
 #          — the core infrastructure every service under services/ builds on top of.
 #
 # Environment overrides (export before running, e.g.:
-#   NPM_HTTP_PORT=8080 sudo -E bash install_docker_core.sh):
+#   NPM_HTTP_PORT=8080 sudo -E bash install_dockhub.sh):
 #
 #   NPM_IMAGE             default: jc21/nginx-proxy-manager:latest
 #   NPM_HTTP_PORT         default: 80
@@ -44,7 +44,7 @@ set -Eeuo pipefail
 
 # --- Require root ---
 if [[ $EUID -ne 0 ]]; then
-    echo "ERROR: This script must be run with sudo (e.g. 'sudo bash install_docker_core.sh')." >&2
+    echo "ERROR: This script must be run with sudo (e.g. 'sudo bash install_dockhub.sh')." >&2
     exit 1
 fi
 
@@ -87,7 +87,7 @@ REAL_GROUP="$(id -gn "$REAL_USER" 2>/dev/null || echo "$REAL_USER")"
 mkdir -p "$REAL_HOME/docker"
 chown "$REAL_USER":"$REAL_GROUP" "$REAL_HOME/docker" 2>/dev/null || true
 
-LOGFILE="$REAL_HOME/docker/install_docker_core.log"
+LOGFILE="$REAL_HOME/docker/install_dockhub.log"
 
 # --- Color codes ---
 INFO='\033[0;36m'
@@ -664,7 +664,7 @@ show_services_menu() {
     fi
     echo
     print_info "Download the services picker and run it as your regular user (not root):"
-    echo "  curl -fsSL -o services.sh https://raw.githubusercontent.com/ibrahimaljuhani/docker_installs/main/services/services.sh"
+    echo "  curl -fsSL -o services.sh https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/services.sh"
     echo "  bash services.sh"
     echo "(Or browse services/ in the repo and run any <service>/deploy.sh directly.)"
 }

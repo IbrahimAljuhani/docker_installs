@@ -1,19 +1,29 @@
 # 🧱 Services
 
-Optional services that run on top of the core infrastructure ([`install_docker_core.sh`](../install_docker_core.sh) — Docker CE, Compose, NGINX Proxy Manager, Portainer, and the shared `main-net` network). Each one lives in its own folder here, is deployed independently, and you only run the ones you actually need.
+Optional services that run on top of the core infrastructure ([`install_dockhub.sh`](../install_dockhub.sh) — Docker CE, Compose, NGINX Proxy Manager, Portainer, and the shared `main-net` network). Each one lives in its own folder here, is deployed independently, and you only run the ones you actually need.
 
 ---
 
-## 📋 Available Services
+## 📋 Services Roadmap
 
-| Service | What it is | Docs |
-|---|---|---|
-| [`odoo/`](odoo/) | ERP (multi-instance — run several isolated instances side by side) | [README](odoo/README.md) |
-| [`openproject/`](openproject/) | Project management / issue tracking | [README](openproject/README.md) |
-| [`redmine/`](redmine/) | Project management / issue tracking (lighter-weight alternative to OpenProject) | [README](redmine/README.md) |
-| [`taiga/`](taiga/) | Agile/kanban project management | [README](taiga/README.md) |
-| [`nextcloud/`](nextcloud/) | File sync & sharing | [README](nextcloud/README.md) |
-| [`n8n/`](n8n/) | Workflow automation | [README](n8n/README.md) |
+[`services.sh`](services.sh) presents these grouped by category. ✅ = deployable now, 🚧 = listed in the menu already (shows "coming soon" if picked) but not built yet.
+
+| Category | Services |
+|---|---|
+| **AI** | 🚧 Ollama · 🚧 Open WebUI · 🚧 Dify |
+| **Automation** | ✅ [n8n](n8n/) · 🚧 OpenClaw · 🚧 Hermes |
+| **DNS** | 🚧 Pi-hole · 🚧 AdGuard |
+| **ERP** | 🚧 ERPNext · 🚧 Dolibarr · ✅ [Odoo](odoo/) (multi-instance) |
+| **Home-Automation** | 🚧 Home Assistant · 🚧 Zigbee2MQTT · 🚧 Eclipse Mosquitto |
+| **Media** | 🚧 Jellyfin · 🚧 Plex |
+| **Photos** | 🚧 Immich · 🚧 PhotoPrism |
+| **Projects** | ✅ [OpenProject](openproject/) · 🚧 Plane · 🚧 Vikunja · ✅ [Redmine](redmine/) · ✅ [Taiga](taiga/) |
+| **Security** | 🚧 Vaultwarden · 🚧 Authentik · 🚧 Keycloak |
+| **Storage** | ✅ [Nextcloud](nextcloud/) · 🚧 Seafile · 🚧 ownCloud |
+| **VPN** | 🚧 WireGuard · 🚧 Headscale · 🚧 NetBird · 🚧 OpenVPN |
+| **Web** | 🚧 WordPress · 🚧 Ghost · 🚧 Strapi |
+
+This is the project roadmap, not a promise of order — services get built one at a time. The category/service list itself lives in [`services.sh`](services.sh)'s `CATALOG` array; a service becomes ✅ automatically the moment its `services/<slug>/deploy.sh` exists, no separate flag to flip.
 
 ---
 
@@ -22,15 +32,17 @@ Optional services that run on top of the core infrastructure ([`install_docker_c
 ### 1. Clone the repo and install the core infrastructure (if you haven't)
 
 ```bash
-git clone https://github.com/IbrahimAljuhani/docker_installs.git
-cd docker_installs
-sudo bash install_docker_core.sh
+git clone https://github.com/IbrahimAljuhani/dockhub.git
+cd dockhub
+sudo bash install_dockhub.sh
 ```
 Pick **`1) Install / manage core infrastructure`** from the menu it shows.
 
 ### 2. Pick and deploy a service
 
-Pick **`2) Install a service`** from that same menu — it launches [`services.sh`](services.sh) right there, which lists every service here and, once you pick one, gives you:
+Pick **`2) Install a service`** from that same menu — it launches [`services.sh`](services.sh) right there. It's a two-level menu: pick a **category** (AI, Automation, ERP, Projects, ...), then a **service** within it. Services not built yet are shown too, marked `(coming soon)` — picking one just prints a notice and drops you back in that category's list instead of failing.
+
+Pick an available (✅) service and you get:
 
 ```
 1) Deploy / manage (runs deploy.sh — safe for new or existing deployments)
@@ -45,11 +57,11 @@ Pick **`2) Install a service`** from that same menu — it launches [`services.s
 
 Or run `bash services/services.sh` (or `bash deploy.sh` inside any service's own folder, see that service's own README) yourself at any time.
 
-> 💡 **Didn't clone the repo** (just curled `install_docker_core.sh` alone)? "Install a service" still works — `services.sh` detects there's no local checkout and downloads the service you pick fresh from GitHub instead. See [`services.sh`](services.sh) usage in that case: `curl -fsSL -o services.sh https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/services.sh && bash services.sh`.
+> 💡 **Didn't clone the repo** (just curled `install_dockhub.sh` alone)? "Install a service" still works — `services.sh` detects there's no local checkout and downloads the service you pick fresh from GitHub instead. See [`services.sh`](services.sh) usage in that case: `curl -fsSL -o services.sh https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/services.sh && bash services.sh`.
 >
 > Everywhere in this repo, run scripts as `bash <file>` rather than `chmod +x <file> && ./<file>` — a fresh `git clone`/`git pull` doesn't reliably preserve the executable bit, and `bash <file>` works regardless of it.
 
-> ⚠️ **Do not run `services.sh` or any `deploy.sh` as root.** Your user must be in the `docker` group (set up by `install_docker_core.sh`).
+> ⚠️ **Do not run `services.sh` or any `deploy.sh` as root.** Your user must be in the `docker` group (set up by `install_dockhub.sh`).
 
 ---
 
@@ -67,6 +79,8 @@ Or run `bash services/services.sh` (or `bash deploy.sh` inside any service's own
 
 ## ➕ Adding a New Service
 
-Copy [`_template/`](_template/) to `services/<name>/` and adapt `deploy.sh.template` and `docker-compose.template.yml` to the new service, following the conventions above. See [`services/odoo/deploy.sh`](odoo/deploy.sh) for a full-featured example (multi-instance, interactive secret generation) or [`services/nextcloud/deploy.sh`](nextcloud/deploy.sh) for a simpler single-instance one.
+1. Copy [`_template/`](_template/) to `services/<slug>/` and adapt `deploy.sh.template` and `docker-compose.template.yml` to the new service, following the conventions above. See [`services/odoo/deploy.sh`](odoo/deploy.sh) for a full-featured example (multi-instance, interactive secret generation) or [`services/nextcloud/deploy.sh`](nextcloud/deploy.sh) for a simpler single-instance one.
+2. Add `[<slug>]="docker-compose.yml ..."` to `services.sh`'s `SERVICE_FILES` table, listing every file besides `deploy.sh` the service needs (keep in sync with that service's own README "Installation" curl commands).
+3. If `<slug>` isn't already in `services.sh`'s `CATALOG` array as a `🚧` placeholder, add it there too (`Category|slug|Display Name`) — otherwise it's already there and just flips to ✅ automatically.
 
 Don't guess at a new service's official Docker image, required environment variables, or ports — check that project's own official Docker/Compose documentation first.

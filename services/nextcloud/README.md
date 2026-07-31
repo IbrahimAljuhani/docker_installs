@@ -13,9 +13,9 @@ Adapted from the official [nextcloud/docker](https://github.com/nextcloud/docker
 ### 1. Install prerequisites (if not already done)
 
 ```bash
-curl -fsSL -o install_docker_core.sh \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/install_docker_core.sh
-sudo bash install_docker_core.sh
+curl -fsSL -o install_dockhub.sh \
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/install_dockhub.sh
+sudo bash install_dockhub.sh
 ```
 Pick **`1) Install / manage core infrastructure`** from the menu it shows, it installs the full bundle automatically (skipping anything already installed).
 
@@ -23,9 +23,9 @@ Pick **`1) Install / manage core infrastructure`** from the menu it shows, it in
 
 ```bash
 curl -fsSL -o deploy.sh \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/nextcloud/deploy.sh
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/nextcloud/deploy.sh
 curl -fsSL -o docker-compose.yml \
-  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/nextcloud/docker-compose.yml
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/nextcloud/docker-compose.yml
 bash deploy.sh
 ```
 

@@ -45,7 +45,7 @@ check_prerequisites() {
     fi
     command -v openssl &>/dev/null || missing+=("openssl")
     if (( ${#missing[@]} != 0 )); then
-        print_error "Missing required components: ${missing[*]}. Run install_docker_core.sh first."
+        print_error "Missing required components: ${missing[*]}. Run install_dockhub.sh first."
     fi
 }
 
@@ -118,7 +118,7 @@ check_prerequisites
 
 mkdir -p "$INSTALL_DIR"
 
-# Shared reverse-proxy network (created by install_docker_core.sh; created here
+# Shared reverse-proxy network (created by install_dockhub.sh; created here
 # too, idempotently, so this script also works standalone/out of order).
 if ! docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
     docker network create main-net || true
