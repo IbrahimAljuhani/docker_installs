@@ -126,6 +126,33 @@ prompt_host_port() {
     done
 }
 
+# Prompts once for an optional, community-maintained Arabic translation
+# overlay (upstream Taiga's official Arabic translation is largely
+# incomplete as of this writing — see services/taiga/i18n-overrides/README.md
+# for where these files come from and how to refresh them). Sets
+# AR_I18N_OVERLAY in the caller's shell, same pattern as the other prompts.
+AR_I18N_OVERLAY=""
+prompt_ar_overlay() {
+    local answer
+    read -rp "Apply the community Arabic translation overlay (backend + frontend)? (y/N): " answer
+    [[ "${answer,,}" == "y" ]] && AR_I18N_OVERLAY="true"
+}
+
+# Compiles services/taiga/i18n-overrides/django-ar.po into django.mo using a
+# throwaway container (taiga-back's own image has gettext/msgfmt stripped out
+# after its build step, so it can't compile the .po itself at runtime).
+compile_ar_overlay() {
+    local overrides_dir="$INSTALL_DIR/i18n-overrides"
+    if [[ ! -f "$overrides_dir/django.mo" || "$overrides_dir/django-ar.po" -nt "$overrides_dir/django.mo" ]]; then
+        print_info "Compiling the Arabic backend translation (django.mo)..."
+        if ! docker run --rm -v "$overrides_dir:/data" alpine:3 \
+            sh -c "apk add --no-cache gettext >/dev/null 2>&1 && msgfmt /data/django-ar.po -o /data/django.mo" \
+            >> "$LOGFILE" 2>&1; then
+            print_warn "Could not compile django.mo (needs internet access to pull alpine:3 and gettext) — the backend will fall back to English. Check $LOGFILE."
+        fi
+    fi
+}
+
 check_prerequisites
 
 mkdir -p "$INSTALL_DIR"
@@ -155,6 +182,7 @@ else
     ADMIN_PASSWORD=$(generate_secret)
     prompt_mem_limit "512m"
     prompt_host_port "9000"
+    prompt_ar_overlay
 
     # TAIGA_SCHEME=https (the default) makes the front-end and backend build
     # https:// URLs and the backend validates the Host header against
@@ -201,6 +229,7 @@ ENABLE_TELEMETRY=True
 EOF
     [[ -n "$MEM_LIMIT" ]] && echo "MEM_LIMIT=$MEM_LIMIT" >> "$INSTALL_DIR/.env"
     [[ -n "$HOST_PORT" ]] && echo "HOST_PORT=$HOST_PORT" >> "$INSTALL_DIR/.env"
+    [[ -n "$AR_I18N_OVERLAY" ]] && echo "AR_I18N_OVERLAY=$AR_I18N_OVERLAY" >> "$INSTALL_DIR/.env"
     chmod 600 "$INSTALL_DIR/.env"
 
     {
@@ -232,14 +261,29 @@ if [[ ! -f "$INSTALL_DIR/docker-compose-inits.yml" ]]; then
     cp "$SOURCE_DIR/docker-compose-inits.yml" "$INSTALL_DIR/docker-compose-inits.yml"
 fi
 
+# Also copied independently — deployments made before this overlay existed
+# won't have it yet even though docker-compose.yml is already present.
+if [[ ! -d "$INSTALL_DIR/i18n-overrides" ]]; then
+    cp -r "$SOURCE_DIR/i18n-overrides" "$INSTALL_DIR/i18n-overrides"
+    # git doesn't preserve the executable bit — nginx's docker-entrypoint.d
+    # mechanism silently skips non-executable scripts.
+    chmod +x "$INSTALL_DIR/i18n-overrides/apply-front-locale.sh"
+fi
+
 # docker-compose.override.yml is fully owned by this script (never hand-edit
 # it), so it's always safe to regenerate from whatever .env currently has.
 ENV_MEM_LIMIT=""
 ENV_HOST_PORT=""
+ENV_AR_OVERLAY=""
 grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
 grep -q '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -q '^AR_I18N_OVERLAY=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_AR_OVERLAY=$(grep '^AR_I18N_OVERLAY=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
-if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" ]]; then
+if [[ "$ENV_AR_OVERLAY" == "true" ]]; then
+    compile_ar_overlay
+fi
+
+if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" || "$ENV_AR_OVERLAY" == "true" ]]; then
     {
         echo "services:"
         echo "  taiga-gateway:"
@@ -248,9 +292,22 @@ if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" ]]; then
             echo "    ports:"
             echo "      - \"$ENV_HOST_PORT:80\""
         fi
+        if [[ "$ENV_AR_OVERLAY" == "true" ]]; then
+            echo "  taiga-back:"
+            echo "    volumes:"
+            echo "      - ./i18n-overrides/django.mo:/taiga-back/taiga/locale/ar/LC_MESSAGES/django.mo:ro"
+            echo "  taiga-async:"
+            echo "    volumes:"
+            echo "      - ./i18n-overrides/django.mo:/taiga-back/taiga/locale/ar/LC_MESSAGES/django.mo:ro"
+            echo "  taiga-front:"
+            echo "    volumes:"
+            echo "      - ./i18n-overrides/locale-ar.json:/custom-i18n/locale-ar.json:ro"
+            echo "      - ./i18n-overrides/apply-front-locale.sh:/docker-entrypoint.d/09-apply-ar-locale.sh:ro"
+        fi
     } > "$INSTALL_DIR/docker-compose.override.yml"
     [[ -n "$ENV_MEM_LIMIT" ]] && print_info "Memory limit $ENV_MEM_LIMIT applied to the 'taiga-gateway' container (everything else stays unbounded)."
     [[ -n "$ENV_HOST_PORT" ]] && print_info "Host port $ENV_HOST_PORT published for direct access."
+    [[ "$ENV_AR_OVERLAY" == "true" ]] && print_info "Community Arabic translation overlay enabled (backend + frontend)."
 else
     rm -f "$INSTALL_DIR/docker-compose.override.yml"
 fi
@@ -328,6 +385,7 @@ else
 fi
 echo "📜 Log:          $LOGFILE"
 [[ -f "$SECRETS_FILE" ]] && echo "🔒 Secrets:      $SECRETS_FILE"
+[[ "$ENV_AR_OVERLAY" == "true" ]] && echo "🌍 AR overlay:   enabled (edit AR_I18N_OVERLAY=false in .env, then rerun deploy.sh, to disable)"
 echo "──────────────────────────────────────────────"
 echo
 if [[ -n "$ENV_HOST_PORT" ]]; then

@@ -28,9 +28,17 @@ curl -fsSL -o deploy.sh \
   https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/deploy.sh
 curl -fsSL -o docker-compose.yml \
   https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/docker-compose.yml
-mkdir -p taiga-gateway
+curl -fsSL -o docker-compose-inits.yml \
+  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/docker-compose-inits.yml
+mkdir -p taiga-gateway i18n-overrides
 curl -fsSL -o taiga-gateway/taiga.conf \
   https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/taiga-gateway/taiga.conf
+curl -fsSL -o i18n-overrides/django-ar.po \
+  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/i18n-overrides/django-ar.po
+curl -fsSL -o i18n-overrides/locale-ar.json \
+  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/i18n-overrides/locale-ar.json
+curl -fsSL -o i18n-overrides/apply-front-locale.sh \
+  https://raw.githubusercontent.com/IbrahimAljuhani/docker_installs/main/services/taiga/i18n-overrides/apply-front-locale.sh
 bash deploy.sh
 ```
 
@@ -52,6 +60,14 @@ You'll also be asked whether to publish a host port for direct access without NP
 Either way, this choice (like memory and secrets) is only asked once — rerunning `deploy.sh` reuses `.env` and **never overwrites an existing `docker-compose.yml`** at `~/docker/taiga/` (so any manual edits you make there survive reruns; delete it yourself first if you want the latest version from this repo).
 
 Once you switch to NPM+SSL, edit `TAIGA_DOMAIN` to your real domain, `TAIGA_SCHEME=https`, and `WEBSOCKETS_SCHEME=wss` (and remove `HOST_PORT=` if you no longer want the direct port) in `.env` and rerun `deploy.sh`.
+
+---
+
+## 🌍 Community Arabic Translation Overlay
+
+On first deploy you'll also be asked whether to apply a **community-completed Arabic translation** for both `taiga-back` and `taiga-front` — upstream Taiga's own official Arabic translation is largely incomplete (most UI strings silently fall back to English). Say yes and `deploy.sh` layers the completed translation on top of the stock images via volume mounts — no image rebuild, no fork.
+
+See [`i18n-overrides/README.md`](i18n-overrides/README.md) for exactly what gets mounted where, how to refresh it once upstream's own translation catches up, and how to turn it off later (`AR_I18N_OVERLAY=false` in `.env`, then rerun `deploy.sh`).
 
 ---
 
