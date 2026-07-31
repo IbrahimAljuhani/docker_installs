@@ -1,0 +1,73 @@
+# Vikunja stack — official combined image (API + frontend served from one
+# container) + Postgres: https://vikunja.io/docs/full-docker-example/
+#
+# Deliberate deviations from upstream's own docker-compose example:
+#   - No host port published for 'vikunja' by default — NGINX Proxy Manager
+#     reaches it by container name over the shared 'main-net' instead (see
+#     README.md). Upstream's own example publishes 3456:3456 directly on
+#     the host unconditionally.
+#   - POSTGRES_DB set explicitly (upstream's own example leaves it unset,
+#     relying on the postgres image defaulting it to POSTGRES_USER's value).
+#   - 'db' stays on the private 'vikunja-net' only; only 'vikunja' joins
+#     'main-net'.
+#   - db volume mount path (/var/lib/postgresql, not .../postgresql/data)
+#     matches upstream's own example exactly — not a typo.
+#
+# Like OpenProject/Nextcloud/n8n (and unlike Redmine/Taiga), Vikunja
+# validates VIKUNJA_SERVICE_PUBLICURL for CORS — upstream's own docs say
+# "The default configuration has CORS enabled, which requires a public URL
+# to be set" — so deploy.sh derives it from whether you opt into a direct
+# host port, same pattern as those three.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it (and
+# the generated .env) to ~/docker/vikunja/ and runs it from there.
+
+services:
+  vikunja:
+    image: vikunja/vikunja:${VIKUNJA_VERSION:-latest}
+    container_name: vikunja-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      VIKUNJA_DATABASE_HOST: db
+      VIKUNJA_DATABASE_TYPE: postgres
+      VIKUNJA_DATABASE_USER: "${POSTGRES_USER}"
+      VIKUNJA_DATABASE_PASSWORD: "${POSTGRES_PASSWORD}"
+      VIKUNJA_DATABASE_DATABASE: "${POSTGRES_DB}"
+      VIKUNJA_SERVICE_SECRET: "${SECRET_KEY}"
+      VIKUNJA_SERVICE_PUBLICURL: "${PUBLIC_URL}"
+    volumes:
+      - ./files:/app/vikunja/files
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - vikunja-net
+      - main-net
+
+  db:
+    image: postgres:18
+    container_name: vikunja-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - vikunja-net
+
+volumes:
+  db-data:
+
+networks:
+  vikunja-net:
+  main-net:
+    external: true
