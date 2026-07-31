@@ -57,12 +57,12 @@ Once you switch to NPM+SSL, edit `TAIGA_DOMAIN` to your real domain, `TAIGA_SCHE
 
 ## 👤 First Login
 
-Unlike this repo's other services, Taiga doesn't ship a seeded admin account — `deploy.sh` creates one for you automatically on first deploy, right after the containers come up (it needs `taiga-back`'s database migrations to finish first, so it retries for up to a minute):
+Unlike this repo's other services, Taiga doesn't ship a seeded admin account — `deploy.sh` creates one for you automatically, right after the containers come up (it needs `taiga-back`'s database migrations to finish first, so it retries for up to a minute). This check/create step runs on **every** `deploy.sh` run, not just the first — so even a deployment made before this step existed will get its admin account created the next time you rerun `deploy.sh`.
 
 - **Username**: `admin`
-- **Password**: a random secret, generated once and printed at the end of `deploy.sh`, and saved to `~/docker/taiga/.taiga-docker-secrets.txt` (`600`) alongside the other secrets.
+- **Password**: a random secret, generated on the run that actually creates the account and printed in that run's output, saved to `~/docker/taiga/.taiga-docker-secrets.txt` (`600`) alongside the other secrets.
 
-If you ever see `admin account creation failed` in the `deploy.sh` output (e.g. migrations took longer than the retry window), run it yourself:
+If you ever see `admin account setup failed` in the `deploy.sh` output (e.g. migrations took longer than the retry window), run it yourself:
 
 ```bash
 cd ~/docker/taiga

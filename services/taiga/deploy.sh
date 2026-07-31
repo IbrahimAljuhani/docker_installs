@@ -95,6 +95,17 @@ port_in_use() {
 # quick testing). Sets HOST_PORT in the caller's shell (no command
 # substitution — same reasoning as prompt_mem_limit above).
 HOST_PORT=""
+
+# Checks (against the live DB, not any local marker) whether the 'admin' user
+# already exists. Needed because createsuperuser --noinput fails identically
+# whether migrations just haven't finished yet or the account is already
+# there — this tells the two apart without depending on error-text parsing.
+admin_exists() {
+    (cd "$INSTALL_DIR" && $COMPOSE_CMD -f docker-compose.yml -f docker-compose-inits.yml run --rm taiga-manage \
+        shell -c "from django.contrib.auth import get_user_model; import sys; sys.exit(0 if get_user_model().objects.filter(username='admin').exists() else 1)" \
+        >> "$LOGFILE" 2>&1)
+}
+
 prompt_host_port() {
     local default="$1" answer port cont
     read -rp "Also publish a host port for direct access without NPM (e.g. http://<server-ip>:<port>)? (y/N): " answer
@@ -210,9 +221,15 @@ if [[ -f "$INSTALL_DIR/docker-compose.yml" ]]; then
     print_info "Existing docker-compose.yml found at $INSTALL_DIR — keeping it (not overwritten). Delete it yourself first if you want the latest version from this repo."
 else
     cp "$SOURCE_DIR/docker-compose.yml" "$INSTALL_DIR/docker-compose.yml"
-    cp "$SOURCE_DIR/docker-compose-inits.yml" "$INSTALL_DIR/docker-compose-inits.yml"
     mkdir -p "$INSTALL_DIR/taiga-gateway"
     cp "$SOURCE_DIR/taiga-gateway/taiga.conf" "$INSTALL_DIR/taiga-gateway/taiga.conf"
+fi
+
+# Copied independently of docker-compose.yml above: deployments made before
+# this file existed have docker-compose.yml already but are still missing
+# it, which would otherwise silently break admin-account creation below.
+if [[ ! -f "$INSTALL_DIR/docker-compose-inits.yml" ]]; then
+    cp "$SOURCE_DIR/docker-compose-inits.yml" "$INSTALL_DIR/docker-compose-inits.yml"
 fi
 
 # docker-compose.override.yml is fully owned by this script (never hand-edit
@@ -244,29 +261,53 @@ print_info "Starting Taiga (first run can take a few minutes to pull 9 images)..
 
 # Taiga does NOT auto-create an admin account from 'up -d' alone (unlike
 # OpenProject/Nextcloud) — it needs this separate one-off command, per the
-# official repo's own README. Retried a few times since taiga-back's own
-# migrations (which create the user table) may not be finished yet the
-# instant 'up -d' returns.
+# official repo's own README. This runs on EVERY deploy (not just fresh
+# ones) and self-detects whether the account already exists, because an
+# existing .env/docker-compose.yml only means "reuse config", not "the admin
+# account was ever successfully created" — e.g. a deployment made before
+# this step existed, or one where a previous attempt failed partway.
+[[ -n "${ADMIN_PASSWORD:-}" ]] || ADMIN_PASSWORD=$(generate_secret)
+
 ADMIN_CREATED=false
-if [[ "$FRESH_DEPLOY" == true ]]; then
-    print_info "Creating the admin account (retrying while migrations finish)..."
-    for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
-        if (cd "$INSTALL_DIR" && $COMPOSE_CMD -f docker-compose.yml -f docker-compose-inits.yml run --rm \
-            -e DJANGO_SUPERUSER_USERNAME=admin \
-            -e DJANGO_SUPERUSER_EMAIL=admin@example.com \
-            -e DJANGO_SUPERUSER_PASSWORD="$ADMIN_PASSWORD" \
-            taiga-manage createsuperuser --noinput >> "$LOGFILE" 2>&1); then
-            ADMIN_CREATED=true
-            break
-        fi
-        sleep 5
-    done
-    if [[ "$ADMIN_CREATED" == true ]]; then
-        print_info "Admin account created."
-    else
-        print_warn "Could not create the admin account automatically after several attempts — check $LOGFILE, then run manually:"
-        print_warn "  cd $INSTALL_DIR && $COMPOSE_CMD -f docker-compose.yml -f docker-compose-inits.yml run --rm taiga-manage createsuperuser"
+ADMIN_ALREADY_EXISTED=false
+print_info "Checking/creating the admin account (retrying while migrations finish)..."
+for attempt in 1 2 3 4 5 6 7 8 9 10 11 12; do
+    if (cd "$INSTALL_DIR" && $COMPOSE_CMD -f docker-compose.yml -f docker-compose-inits.yml run --rm \
+        -e DJANGO_SUPERUSER_USERNAME=admin \
+        -e DJANGO_SUPERUSER_EMAIL=admin@example.com \
+        -e DJANGO_SUPERUSER_PASSWORD="$ADMIN_PASSWORD" \
+        taiga-manage createsuperuser --noinput >> "$LOGFILE" 2>&1); then
+        ADMIN_CREATED=true
+        break
     fi
+    # createsuperuser --noinput fails the same way whether migrations just
+    # haven't finished yet or the account is already there — check the DB
+    # directly to tell those apart instead of parsing Django's error text.
+    if admin_exists; then
+        ADMIN_CREATED=true
+        ADMIN_ALREADY_EXISTED=true
+        break
+    fi
+    sleep 5
+done
+
+if [[ "$ADMIN_CREATED" == true && "$ADMIN_ALREADY_EXISTED" == false ]]; then
+    print_info "Admin account created."
+    if [[ "$FRESH_DEPLOY" == false ]]; then
+        # Fresh-deploy runs already wrote this to the secrets file earlier;
+        # this covers the "existing .env, account created just now" case.
+        {
+            echo "$(date '+%F %T'): admin account created on an existing deployment"
+            echo "  Admin user:     admin"
+            echo "  Admin password: $ADMIN_PASSWORD"
+        } >> "$SECRETS_FILE"
+        chmod 600 "$SECRETS_FILE"
+    fi
+elif [[ "$ADMIN_CREATED" == true ]]; then
+    print_info "Admin account already exists — leaving its password as-is."
+else
+    print_warn "Could not create/verify the admin account after several attempts — check $LOGFILE, then run manually:"
+    print_warn "  cd $INSTALL_DIR && $COMPOSE_CMD -f docker-compose.yml -f docker-compose-inits.yml run --rm taiga-manage createsuperuser"
 fi
 
 print_info "Taiga is starting."
@@ -278,12 +319,12 @@ if [[ -n "$ENV_HOST_PORT" ]]; then
     echo "🌐 URL:          http://$SERVER_IP:$ENV_HOST_PORT"
 fi
 echo "🔗 Proxy target: taiga-app:80 on 'main-net'"
-if [[ "$FRESH_DEPLOY" == true && "$ADMIN_CREATED" == true ]]; then
+if [[ "$ADMIN_CREATED" == true && "$ADMIN_ALREADY_EXISTED" == false ]]; then
     echo "👤 First login:  admin / $ADMIN_PASSWORD — also saved to $SECRETS_FILE"
-elif [[ "$FRESH_DEPLOY" == true ]]; then
-    echo "👤 First login:  admin account creation failed — see warning above"
+elif [[ "$ADMIN_CREATED" == true ]]; then
+    echo "👤 First login:  admin account already set up — see $SECRETS_FILE for its password"
 else
-    echo "👤 First login:  admin account from the original deploy — see $SECRETS_FILE"
+    echo "👤 First login:  admin account setup failed — see warning above, and $LOGFILE"
 fi
 echo "📜 Log:          $LOGFILE"
 [[ -f "$SECRETS_FILE" ]] && echo "🔒 Secrets:      $SECRETS_FILE"
