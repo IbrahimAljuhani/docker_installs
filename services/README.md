@@ -10,6 +10,7 @@ Optional services that run on top of the core infrastructure ([`install_docker_c
 |---|---|---|
 | [`odoo/`](odoo/) | ERP (multi-instance — run several isolated instances side by side) | [README](odoo/README.md) |
 | [`openproject/`](openproject/) | Project management / issue tracking | [README](openproject/README.md) |
+| [`redmine/`](redmine/) | Project management / issue tracking (lighter-weight alternative to OpenProject) | [README](redmine/README.md) |
 | [`taiga/`](taiga/) | Agile/kanban project management | [README](taiga/README.md) |
 | [`nextcloud/`](nextcloud/) | File sync & sharing | [README](nextcloud/README.md) |
 | [`n8n/`](n8n/) | Workflow automation | [README](n8n/README.md) |

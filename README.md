@@ -107,6 +107,7 @@ This repo installs the **core infrastructure** (`install_docker_core.sh` → Doc
 services/
 ├── odoo/                  # ERP — services/odoo/deploy.sh (multi-instance)
 ├── openproject/           # Project management — services/openproject/deploy.sh
+├── redmine/               # Project management / issue tracking — services/redmine/deploy.sh
 ├── taiga/                 # Agile/kanban project management — services/taiga/deploy.sh
 ├── nextcloud/             # File sync & sharing — services/nextcloud/deploy.sh
 ├── n8n/                   # Workflow automation — services/n8n/deploy.sh

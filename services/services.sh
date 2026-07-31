@@ -29,6 +29,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 declare -A SERVICE_FILES=(
     [odoo]="docker-compose.yml"
     [openproject]="docker-compose.yml"
+    [redmine]="docker-compose.yml"
     [nextcloud]="docker-compose.yml"
     [n8n]="docker-compose.yml init-data.sh"
     [taiga]="docker-compose.yml docker-compose-inits.yml taiga-gateway/taiga.conf i18n-overrides/django-ar.po i18n-overrides/locale-ar.json i18n-overrides/apply-front-locale.sh"
