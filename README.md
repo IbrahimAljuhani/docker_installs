@@ -103,15 +103,21 @@ Both services are plain `docker-compose.yml` stacks under `~/docker/<service>/`,
 
 This repo installs the **core infrastructure** (`install_dockhub.sh` → Docker CE, Compose, NPM, Portainer, and the shared `main-net` network). Everything else lives under [`services/`](services/README.md) as its own self-contained, independently-deployed folder — run only the ones you actually need. See [`services/README.md`](services/README.md) for the full list, quick-start, and conventions:
 
+Organized by category (see [`services/README.md`](services/README.md) for the full roadmap — most categories are still `🚧 coming soon` placeholders in the menu, not real folders yet):
+
 ```
 services/
-├── odoo/                  # ERP — services/odoo/deploy.sh (multi-instance)
-├── openproject/           # Project management — services/openproject/deploy.sh
-├── redmine/               # Project management / issue tracking — services/redmine/deploy.sh
-├── taiga/                 # Agile/kanban project management — services/taiga/deploy.sh
-├── nextcloud/             # File sync & sharing — services/nextcloud/deploy.sh
-├── n8n/                   # Workflow automation — services/n8n/deploy.sh
-└── _template/              # copy this to start a new service
+├── ERP/
+│   └── odoo/               # services/ERP/odoo/deploy.sh (multi-instance)
+├── Projects/
+│   ├── openproject/        # services/Projects/openproject/deploy.sh
+│   ├── redmine/            # services/Projects/redmine/deploy.sh
+│   └── taiga/               # services/Projects/taiga/deploy.sh
+├── Storage/
+│   └── nextcloud/          # services/Storage/nextcloud/deploy.sh
+├── Automation/
+│   └── n8n/                 # services/Automation/n8n/deploy.sh
+└── _template/               # copy this to start a new service (not a category)
     ├── deploy.sh.template
     ├── docker-compose.template.yml
     └── .env.example
@@ -226,7 +232,7 @@ This script only creates `npm/` and `portainer/`, plus its own log file — but 
 │   └── letsencrypt/      # TLS certs                   (owned by you)
 ├── portainer/
 │   └── docker-compose.yml
-└── odoo/                 # example: added by services/odoo/deploy.sh
+└── odoo/                 # example: added by services/ERP/odoo/deploy.sh — runtime state stays flat under ~/docker/ regardless of the repo's category folders
     ├── deploy.log
     ├── .odoo-docker-secrets.txt
     └── <instance-name>/

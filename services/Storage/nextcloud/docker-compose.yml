@@ -1,0 +1,91 @@
+# Nextcloud stack — adapted from the official nextcloud/docker reference at
+# .examples/docker-compose/insecure/postgres/apache/compose.yaml:
+# https://github.com/nextcloud/docker/tree/master/.examples/docker-compose/insecure/postgres/apache
+# (named "insecure" upstream only because it publishes a bare host port and
+# has no reverse-proxy env vars set — both addressed below.)
+#
+# Deliberate deviations from upstream:
+#   - No host port published for 'app' — NGINX Proxy Manager reaches it by
+#     container name over the shared 'main-net' instead (see README.md).
+#   - Added the reverse-proxy env vars (TRUSTED_PROXIES, OVERWRITEPROTOCOL,
+#     NEXTCLOUD_TRUSTED_DOMAINS, APACHE_DISABLE_REWRITE_IP) the official
+#     nextcloud/docker README documents as required when NOT exposing
+#     Nextcloud directly, which is our case.
+#   - Postgres pinned to 18-alpine (Nextcloud's current recommended version)
+#     instead of upstream's unpinned 'postgres:alpine'.
+#   - 'db' and 'redis' stay on the private 'nextcloud-net' only; only 'app'
+#     joins 'main-net'. 'cron' doesn't need either external network.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it (and
+# the generated .env) to ~/docker/nextcloud/ and runs it from there.
+
+networks:
+  nextcloud-net:
+  main-net:
+    external: true
+
+volumes:
+  db-data:
+  nextcloud-data:
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: nextcloud-db
+    restart: unless-stopped
+    volumes:
+      - db-data:/var/lib/postgresql
+    env_file:
+      - .env
+    networks:
+      - nextcloud-net
+
+  redis:
+    image: redis:alpine
+    container_name: nextcloud-cache
+    restart: unless-stopped
+    networks:
+      - nextcloud-net
+
+  app:
+    image: nextcloud:apache
+    container_name: nextcloud-app
+    restart: unless-stopped
+    volumes:
+      - nextcloud-data:/var/www/html
+    environment:
+      POSTGRES_HOST: db
+      REDIS_HOST: redis
+      # Reverse-proxy awareness: without these, Nextcloud rejects requests
+      # with "Trusted domain" errors and generates http:// links even behind
+      # NPM's HTTPS termination.
+      TRUSTED_PROXIES: "172.16.0.0/12"
+      APACHE_DISABLE_REWRITE_IP: "1"
+      # From .env, not hardcoded: 'https' assumes NPM/TLS in front and forces
+      # a redirect that breaks a bare-http:// direct host port entirely (see
+      # deploy.sh's HOST_PORT handling and README "Reverse Proxy" section).
+      OVERWRITEPROTOCOL: "${OVERWRITEPROTOCOL:-https}"
+      NEXTCLOUD_TRUSTED_DOMAINS: "${NEXTCLOUD_TRUSTED_DOMAINS}"
+      NEXTCLOUD_ADMIN_USER: "${NEXTCLOUD_ADMIN_USER}"
+      NEXTCLOUD_ADMIN_PASSWORD: "${NEXTCLOUD_ADMIN_PASSWORD}"
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - redis
+    networks:
+      - nextcloud-net
+      - main-net
+
+  cron:
+    image: nextcloud:apache
+    container_name: nextcloud-cron
+    restart: unless-stopped
+    volumes:
+      - nextcloud-data:/var/www/html
+    entrypoint: /cron.sh
+    depends_on:
+      - db
+      - redis
+    networks:
+      - nextcloud-net

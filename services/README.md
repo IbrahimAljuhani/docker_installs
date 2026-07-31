@@ -11,19 +11,19 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 | Category | Services |
 |---|---|
 | **AI** | 🚧 Ollama · 🚧 Open WebUI · 🚧 Dify |
-| **Automation** | ✅ [n8n](n8n/) · 🚧 OpenClaw · 🚧 Hermes |
+| **Automation** | ✅ [n8n](Automation/n8n/) · 🚧 OpenClaw · 🚧 Hermes |
 | **DNS** | 🚧 Pi-hole · 🚧 AdGuard |
-| **ERP** | 🚧 ERPNext · 🚧 Dolibarr · ✅ [Odoo](odoo/) (multi-instance) |
+| **ERP** | 🚧 ERPNext · 🚧 Dolibarr · ✅ [Odoo](ERP/odoo/) (multi-instance) |
 | **Home-Automation** | 🚧 Home Assistant · 🚧 Zigbee2MQTT · 🚧 Eclipse Mosquitto |
 | **Media** | 🚧 Jellyfin · 🚧 Plex |
 | **Photos** | 🚧 Immich · 🚧 PhotoPrism |
-| **Projects** | ✅ [OpenProject](openproject/) · 🚧 Plane · 🚧 Vikunja · ✅ [Redmine](redmine/) · ✅ [Taiga](taiga/) |
+| **Projects** | ✅ [OpenProject](Projects/openproject/) · 🚧 Plane · 🚧 Vikunja · ✅ [Redmine](Projects/redmine/) · ✅ [Taiga](Projects/taiga/) |
 | **Security** | 🚧 Vaultwarden · 🚧 Authentik · 🚧 Keycloak |
-| **Storage** | ✅ [Nextcloud](nextcloud/) · 🚧 Seafile · 🚧 ownCloud |
+| **Storage** | ✅ [Nextcloud](Storage/nextcloud/) · 🚧 Seafile · 🚧 ownCloud |
 | **VPN** | 🚧 WireGuard · 🚧 Headscale · 🚧 NetBird · 🚧 OpenVPN |
 | **Web** | 🚧 WordPress · 🚧 Ghost · 🚧 Strapi |
 
-This is the project roadmap, not a promise of order — services get built one at a time. The category/service list itself lives in [`services.sh`](services.sh)'s `CATALOG` array; a service becomes ✅ automatically the moment its `services/<slug>/deploy.sh` exists, no separate flag to flip.
+This is the project roadmap, not a promise of order — services get built one at a time. The category/service list itself lives in [`services.sh`](services.sh)'s `CATALOG` array; a service becomes ✅ automatically the moment its `services/<Category>/<slug>/deploy.sh` exists, no separate flag to flip.
 
 ---
 
@@ -79,8 +79,8 @@ Or run `bash services/services.sh` (or `bash deploy.sh` inside any service's own
 
 ## ➕ Adding a New Service
 
-1. Copy [`_template/`](_template/) to `services/<slug>/` and adapt `deploy.sh.template` and `docker-compose.template.yml` to the new service, following the conventions above. See [`services/odoo/deploy.sh`](odoo/deploy.sh) for a full-featured example (multi-instance, interactive secret generation) or [`services/nextcloud/deploy.sh`](nextcloud/deploy.sh) for a simpler single-instance one.
+1. Pick the category it belongs to (see the roadmap table above, or `services.sh`'s `CATALOG` array), then copy [`_template/`](_template/) to `services/<Category>/<slug>/` and adapt `deploy.sh.template` and `docker-compose.template.yml` to the new service, following the conventions above. See [`services/ERP/odoo/deploy.sh`](ERP/odoo/deploy.sh) for a full-featured example (multi-instance, interactive secret generation) or [`services/Storage/nextcloud/deploy.sh`](Storage/nextcloud/deploy.sh) for a simpler single-instance one.
 2. Add `[<slug>]="docker-compose.yml ..."` to `services.sh`'s `SERVICE_FILES` table, listing every file besides `deploy.sh` the service needs (keep in sync with that service's own README "Installation" curl commands).
-3. If `<slug>` isn't already in `services.sh`'s `CATALOG` array as a `🚧` placeholder, add it there too (`Category|slug|Display Name`) — otherwise it's already there and just flips to ✅ automatically.
+3. If `<slug>` isn't already in `services.sh`'s `CATALOG` array as a `🚧` placeholder, add it there too (`Category|slug|Display Name`) — otherwise it's already there and just flips to ✅ automatically. `Category` here must exactly match the folder name from step 1.
 
 Don't guess at a new service's official Docker image, required environment variables, or ports — check that project's own official Docker/Compose documentation first.

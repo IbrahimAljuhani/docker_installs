@@ -80,14 +80,16 @@ CATALOG=(
     "Web|strapi|Strapi"
 )
 
-# A catalog entry is deployable now if either its local <slug>/deploy.sh
-# folder exists (repo checkout mode) or it's a registered SERVICE_FILES key
-# (standalone/curl mode) — either signal alone is enough, so this works
-# identically in both of deploy_service's two modes. Anything in CATALOG
-# that matches neither is a roadmap placeholder: shown, but not deployable.
+# A catalog entry is deployable now if either its local <category>/<slug>/
+# deploy.sh folder exists (repo checkout mode — services/ is organized into
+# one subfolder per category, matching CATALOG) or it's a registered
+# SERVICE_FILES key (standalone/curl mode) — either signal alone is enough,
+# so this works identically in both of deploy_service's two modes. Anything
+# in CATALOG that matches neither is a roadmap placeholder: shown, but not
+# deployable.
 is_available() {
-    local slug="$1"
-    [[ -f "$SCRIPT_DIR/$slug/deploy.sh" ]] && return 0
+    local category="$1" slug="$2"
+    [[ -f "$SCRIPT_DIR/$category/$slug/deploy.sh" ]] && return 0
     [[ -n "${SERVICE_FILES[$slug]+set}" ]] && return 0
     return 1
 }
@@ -167,25 +169,28 @@ remove_instance() {
     fi
 }
 
-# Deploys $1 — local checkout if available, otherwise downloads it fresh.
-# Terminal action: always ends the script (exec).
+# Deploys $1 (in category $2) — local checkout if available, otherwise
+# downloads it fresh. Terminal action: always ends the script (exec).
+# Downloads always land in a flat ./<slug>/ locally regardless of the
+# source repo's category/<slug>/ layout — no reason to make the user's own
+# working directory as deep as the repo's.
 deploy_service() {
-    local name="$1"
-    if [[ -f "$SCRIPT_DIR/$name/deploy.sh" ]]; then
+    local name="$1" category="$2"
+    if [[ -f "$SCRIPT_DIR/$category/$name/deploy.sh" ]]; then
         echo "Launching $name..."
-        exec bash "$SCRIPT_DIR/$name/deploy.sh"
+        exec bash "$SCRIPT_DIR/$category/$name/deploy.sh"
     fi
 
     local target_dir="./$name"
     mkdir -p "$target_dir"
     echo "Downloading $name into $target_dir/ ..."
-    curl -fsSL -o "$target_dir/deploy.sh" "$REPO_RAW_BASE/$name/deploy.sh"
+    curl -fsSL -o "$target_dir/deploy.sh" "$REPO_RAW_BASE/$category/$name/deploy.sh"
     local f
     for f in ${SERVICE_FILES[$name]:-}; do
         # mkdir first: some services ship files nested in a subfolder (e.g.
         # taiga/taiga-gateway/taiga.conf) — curl -o doesn't create parents.
         mkdir -p "$(dirname "$target_dir/$f")"
-        curl -fsSL -o "$target_dir/$f" "$REPO_RAW_BASE/$name/$f"
+        curl -fsSL -o "$target_dir/$f" "$REPO_RAW_BASE/$category/$name/$f"
     done
     chmod +x "$target_dir/deploy.sh"
 
@@ -225,7 +230,7 @@ service_menu() {
     # let the second assignment see the first's new value within the same
     # statement — it evaluates using whatever '$a' was before this line ran
     # (e.g. a stale value from a previous call to this function).
-    local name="$1"
+    local name="$1" category="$2"
     local svc_runtime_dir="$HOME/docker/$name"
     while true; do
         local -a instances=()
@@ -250,7 +255,7 @@ service_menu() {
         fi
         choice="$CHOSEN_INDEX"
         case "$choice" in
-            1) deploy_service "$name" ;;
+            1) deploy_service "$name" "$category" ;;
             2)
                 if (( ${#instances[@]} == 0 )); then
                     print_warn "Nothing to remove — '$name' isn't deployed."
@@ -267,7 +272,7 @@ service_menu() {
                     [[ -n "$INSTANCE_PATH" ]] && { remove_instance "$INSTANCE_PATH" || true; }
                 fi
                 print_info "Deploying $name fresh..."
-                deploy_service "$name"
+                deploy_service "$name" "$category"
                 ;;
             4) return ;;
         esac
@@ -288,7 +293,7 @@ category_menu() {
             [[ "$cat" == "$category" ]] || continue
             slugs+=("$slug")
             names+=("$name")
-            if is_available "$slug"; then
+            if is_available "$category" "$slug"; then
                 marks+=("")
             else
                 marks+=("  (coming soon)")
@@ -306,8 +311,8 @@ category_menu() {
 
         local picked_slug="${slugs[$((CHOSEN_INDEX - 1))]}"
         local picked_name="${names[$((CHOSEN_INDEX - 1))]}"
-        if is_available "$picked_slug"; then
-            service_menu "$picked_slug"
+        if is_available "$category" "$picked_slug"; then
+            service_menu "$picked_slug" "$category"
         else
             echo
             print_warn "$picked_name isn't available yet — coming soon!"

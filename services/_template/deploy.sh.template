@@ -1,16 +1,19 @@
 #!/bin/bash
-# deploy.sh template for a new service under services/<name>/.
-# Copy this file to services/<name>/deploy.sh, replace <service>/<SERVICE>
-# placeholders, and adapt the prompts/generated files to the service's needs.
-# See services/odoo/deploy.sh for a full-featured example of this same pattern
+# deploy.sh template for a new service under services/<category>/<name>/.
+# Copy this file to services/<category>/<name>/deploy.sh (pick the category
+# from services/services.sh's CATALOG array — add a new category there if
+# none fit), replace <service>/<SERVICE> placeholders, and adapt the
+# prompts/generated files to the service's needs.
+# See services/ERP/odoo/deploy.sh for a full-featured example of this same pattern
 # (prereq checks, port validation, secret generation, main-net wiring).
 #
-# Convention: this script's own folder (services/<name>/ in the repo) holds
-# the SOURCE docker-compose.yml/.env you edit and commit (.env excluded via
-# .gitignore). Actual runtime state (containers, bind-mounted data) lives
-# under ~/docker/<name>/ — the same root used by install_dockhub.sh and
-# services/odoo/deploy.sh — so the whole host's state stays backupable as one
-# ~/docker/ tree. Never generate data/db-data/etc. inside the repo folder.
+# Convention: this script's own folder (services/<category>/<name>/ in the
+# repo) holds the SOURCE docker-compose.yml/.env you edit and commit (.env
+# excluded via .gitignore). Actual runtime state (containers, bind-mounted
+# data) lives under ~/docker/<name>/ (flat, no category — the same root used
+# by install_dockhub.sh and every other service) — so the whole host's state
+# stays backupable as one ~/docker/ tree. Never generate data/db-data/etc.
+# inside the repo folder.
 #
 # In your new service's own README, document running this as
 # `bash deploy.sh` (not `chmod +x deploy.sh && ./deploy.sh`) — a fresh
@@ -77,8 +80,8 @@ port_in_use() {
 # refusing to send the cookie back over plain HTTP). Same for any
 # "trusted/allowed host" setting the app validates the Host header against —
 # it must become `<server-ip>:<port>` instead of a placeholder domain. See
-# services/openproject/deploy.sh, services/nextcloud/deploy.sh, or
-# services/n8n/deploy.sh for three worked examples of this exact pattern —
+# services/Projects/openproject/deploy.sh, services/Storage/nextcloud/deploy.sh, or
+# services/Automation/n8n/deploy.sh for three worked examples of this exact pattern —
 # this bug bit all three independently before it became a fixed convention.
 HOST_PORT=""
 prompt_host_port() {
