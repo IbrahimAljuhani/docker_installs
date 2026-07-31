@@ -1,0 +1,302 @@
+# Plane stack — official pre-built images (web, space, admin, live, api,
+# worker, beat-worker, migrator, db, redis, mq, minio, proxy) verified
+# directly against the release-attached docker-compose.yml at
+# https://github.com/makeplane/plane/releases/download/v1.4.0/docker-compose.yml
+# (the actual self-host distribution artifact, not the repo's root compose
+# file — that one builds from source and is for local development).
+#
+# Deliberate deviations from that upstream file:
+#   - Dropped every service's swarm-only `deploy: {replicas, restart_policy}`
+#     block in favor of plain `restart: unless-stopped` — `deploy:` is
+#     silently ignored (mostly) under plain `docker compose up` outside
+#     Swarm mode, so upstream's own restart-on-crash behavior wouldn't
+#     actually apply here. Same fix this repo already made for Odoo's
+#     compose file, for the identical reason.
+#   - 'proxy' (upstream's Caddy-based entrypoint routing to web/api/space/
+#     admin/live) is renamed to container 'plane-app' and is the ONLY
+#     service that joins the shared 'main-net' — matches this repo's
+#     '<service>-app' + main-net-only-entrypoint convention (same idea as
+#     Taiga's 'taiga-gateway' -> 'taiga-app'). No host port is published by
+#     default; NGINX Proxy Manager reaches it by container name instead of
+#     upstream's unconditional 80:443 host publish.
+#   - Caddy's own ACME/Let's Encrypt variables (CERT_EMAIL, CERT_ACME_CA,
+#     CERT_ACME_DNS) are left unset — NPM terminates TLS in front, so the
+#     proxy's own cert automation would be redundant (same reasoning as
+#     every other service here: SSL is NPM's job, not the app's).
+#   - Added a healthcheck on 'plane-db' and made api/worker/beat-worker/
+#     migrator wait on it via 'condition: service_healthy' instead of a
+#     bare depends_on — upstream relied on deploy.restart_policy to paper
+#     over startup-ordering races, which (per the point above) doesn't
+#     apply here without Swarm.
+#   - Everything except 'proxy' stays on the private 'plane-net' only.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it (and
+# the generated .env) to ~/docker/plane/ and runs it from there.
+
+x-db-env: &db-env
+  PGHOST: plane-db
+  PGDATABASE: "${POSTGRES_DB}"
+  POSTGRES_USER: "${POSTGRES_USER}"
+  POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+  POSTGRES_DB: "${POSTGRES_DB}"
+  POSTGRES_PORT: 5432
+  PGDATA: /var/lib/postgresql/data
+  DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@plane-db/${POSTGRES_DB}"
+
+x-redis-env: &redis-env
+  REDIS_HOST: plane-redis
+  REDIS_PORT: 6379
+  REDIS_URL: "redis://plane-redis:6379/"
+
+x-minio-env: &minio-env
+  MINIO_ROOT_USER: "${AWS_ACCESS_KEY_ID}"
+  MINIO_ROOT_PASSWORD: "${AWS_SECRET_ACCESS_KEY}"
+
+x-aws-s3-env: &aws-s3-env
+  AWS_REGION: ""
+  AWS_ACCESS_KEY_ID: "${AWS_ACCESS_KEY_ID}"
+  AWS_SECRET_ACCESS_KEY: "${AWS_SECRET_ACCESS_KEY}"
+  AWS_S3_ENDPOINT_URL: http://plane-minio:9000
+  AWS_S3_BUCKET_NAME: uploads
+
+x-proxy-env: &proxy-env
+  APP_DOMAIN: "${APP_DOMAIN}"
+  FILE_SIZE_LIMIT: 5242880
+  LISTEN_HTTP_PORT: 80
+  LISTEN_HTTPS_PORT: 443
+  BUCKET_NAME: uploads
+  SITE_ADDRESS: ":80"
+
+x-mq-env: &mq-env
+  RABBITMQ_HOST: plane-mq
+  RABBITMQ_PORT: 5672
+  RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER}"
+  RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD}"
+  RABBITMQ_DEFAULT_VHOST: plane
+  RABBITMQ_VHOST: plane
+
+x-live-env: &live-env
+  API_BASE_URL: http://api:8000
+  LIVE_SERVER_SECRET_KEY: "${LIVE_SERVER_SECRET_KEY}"
+
+x-app-env: &app-env
+  WEB_URL: "${WEB_URL}"
+  DEBUG: 0
+  CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS}"
+  GUNICORN_WORKERS: 1
+  USE_MINIO: 1
+  SECRET_KEY: "${SECRET_KEY}"
+  AMQP_URL: "amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD}@plane-mq:5672/plane"
+  API_KEY_RATE_LIMIT: 60/minute
+  AUTHENTICATION_RATE_LIMIT: 10/minute
+  MINIO_ENDPOINT_SSL: 0
+  LIVE_SERVER_SECRET_KEY: "${LIVE_SERVER_SECRET_KEY}"
+  WEBHOOK_ALLOWED_IPS: ""
+  WEBHOOK_ALLOWED_HOSTS: ""
+
+services:
+  web:
+    image: makeplane/plane-frontend:${APP_RELEASE:-stable}
+    container_name: plane-web
+    restart: unless-stopped
+    depends_on:
+      - api
+      - worker
+    networks:
+      - plane-net
+
+  space:
+    image: makeplane/plane-space:${APP_RELEASE:-stable}
+    container_name: plane-space
+    restart: unless-stopped
+    depends_on:
+      - api
+      - worker
+      - web
+    networks:
+      - plane-net
+
+  admin:
+    image: makeplane/plane-admin:${APP_RELEASE:-stable}
+    container_name: plane-admin
+    restart: unless-stopped
+    depends_on:
+      - api
+      - web
+    networks:
+      - plane-net
+
+  live:
+    image: makeplane/plane-live:${APP_RELEASE:-stable}
+    container_name: plane-live
+    restart: unless-stopped
+    environment:
+      <<: [*live-env, *redis-env]
+    depends_on:
+      - api
+      - web
+    networks:
+      - plane-net
+
+  api:
+    image: makeplane/plane-backend:${APP_RELEASE:-stable}
+    container_name: plane-api
+    command: ./bin/docker-entrypoint-api.sh
+    restart: unless-stopped
+    volumes:
+      - logs_api:/code/plane/logs
+    environment:
+      <<: [*app-env, *db-env, *redis-env, *minio-env, *aws-s3-env, *proxy-env]
+    depends_on:
+      plane-db:
+        condition: service_healthy
+      plane-redis:
+        condition: service_started
+      plane-mq:
+        condition: service_started
+    networks:
+      - plane-net
+
+  worker:
+    image: makeplane/plane-backend:${APP_RELEASE:-stable}
+    container_name: plane-worker
+    command: ./bin/docker-entrypoint-worker.sh
+    restart: unless-stopped
+    volumes:
+      - logs_worker:/code/plane/logs
+    environment:
+      <<: [*app-env, *db-env, *redis-env, *minio-env, *aws-s3-env, *proxy-env]
+    depends_on:
+      plane-db:
+        condition: service_healthy
+      plane-redis:
+        condition: service_started
+      plane-mq:
+        condition: service_started
+      api:
+        condition: service_started
+    networks:
+      - plane-net
+
+  beat-worker:
+    image: makeplane/plane-backend:${APP_RELEASE:-stable}
+    container_name: plane-beat-worker
+    command: ./bin/docker-entrypoint-beat.sh
+    restart: unless-stopped
+    volumes:
+      - logs_beat_worker:/code/plane/logs
+    environment:
+      <<: [*app-env, *db-env, *redis-env, *minio-env, *aws-s3-env, *proxy-env]
+    depends_on:
+      plane-db:
+        condition: service_healthy
+      plane-redis:
+        condition: service_started
+      plane-mq:
+        condition: service_started
+      api:
+        condition: service_started
+    networks:
+      - plane-net
+
+  migrator:
+    image: makeplane/plane-backend:${APP_RELEASE:-stable}
+    container_name: plane-migrator
+    command: ./bin/docker-entrypoint-migrator.sh
+    restart: "no"
+    volumes:
+      - logs_migrator:/code/plane/logs
+    environment:
+      <<: [*app-env, *db-env, *redis-env, *minio-env, *aws-s3-env, *proxy-env]
+    depends_on:
+      plane-db:
+        condition: service_healthy
+      plane-redis:
+        condition: service_started
+    networks:
+      - plane-net
+
+  plane-db:
+    image: postgres:15.7-alpine
+    container_name: plane-db
+    command: postgres -c 'max_connections=1000'
+    restart: unless-stopped
+    environment:
+      <<: *db-env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - plane-net
+
+  plane-redis:
+    image: valkey/valkey:7.2.11-alpine
+    container_name: plane-redis
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    networks:
+      - plane-net
+
+  plane-mq:
+    image: rabbitmq:3.13.6-management-alpine
+    container_name: plane-mq
+    restart: unless-stopped
+    environment:
+      <<: *mq-env
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - plane-net
+
+  plane-minio:
+    image: minio/minio:latest
+    container_name: plane-minio
+    command: server /export --console-address ":9090"
+    restart: unless-stopped
+    environment:
+      <<: *minio-env
+    volumes:
+      - uploads:/export
+    networks:
+      - plane-net
+
+  proxy:
+    image: makeplane/plane-proxy:${APP_RELEASE:-stable}
+    container_name: plane-app
+    restart: unless-stopped
+    environment:
+      <<: *proxy-env
+    volumes:
+      - proxy_config:/config
+      - proxy_data:/data
+    depends_on:
+      - web
+      - api
+      - space
+      - admin
+      - live
+    networks:
+      - plane-net
+      - main-net
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
+  logs_api:
+  logs_worker:
+  logs_beat_worker:
+  logs_migrator:
+  rabbitmq_data:
+  proxy_config:
+  proxy_data:
+
+networks:
+  plane-net:
+  main-net:
+    external: true
