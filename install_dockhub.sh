@@ -623,12 +623,12 @@ core_menu() {
             echo
             print_ok "Core infrastructure is already installed (Docker, Compose, NPM, Portainer)."
             echo "1) Reset NPM & Portainer (recreate containers; you'll be asked separately about wiping their data)"
-            echo "2) Back to main menu"
+            echo "0) Back to main menu"
             local choice
-            read -rp "Choice (1-2): " choice || exit 0
+            read -rp "Choice (0-1): " choice || exit 0
             case "$choice" in
                 1) reset_npm_portainer; run_core_install; return ;;
-                2) return ;;
+                0) return ;;
                 *) echo "Invalid choice." ;;
             esac
         else
@@ -675,16 +675,16 @@ main_menu() {
         echo "What would you like to do?"
         echo "1) Install / manage core infrastructure (Docker CE, Compose, NPM, Portainer)"
         echo "2) Install a service"
-        echo "3) Exit"
+        echo "0) Exit"
         local choice
-        read -rp "Choice (1-3): " choice || exit 0
+        read -rp "Choice (0-2): " choice || exit 0
         case "$choice" in
             # core_menu only ever returns here via its own "back to main menu"
             # choice (every other path inside it ends the script via exit 0
             # in run_core_install) — so loop back and show this menu again.
             1) core_menu ;;
             2) show_services_menu; return ;;
-            3) exit 0 ;;
+            0) exit 0 ;;
             *) echo "Invalid choice." ;;
         esac
     done

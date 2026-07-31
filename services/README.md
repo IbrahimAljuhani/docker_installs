@@ -10,18 +10,18 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 
 | Category | Services |
 |---|---|
-| **AI** | 🚧 Ollama · 🚧 Open WebUI · 🚧 Dify |
-| **Automation** | ✅ [n8n](Automation/n8n/) · 🚧 OpenClaw · 🚧 Hermes |
-| **DNS** | 🚧 Pi-hole · 🚧 AdGuard |
-| **ERP** | 🚧 ERPNext · 🚧 Dolibarr · ✅ [Odoo](ERP/odoo/) (multi-instance) |
-| **Home-Automation** | 🚧 Home Assistant · 🚧 Zigbee2MQTT · 🚧 Eclipse Mosquitto |
-| **Media** | 🚧 Jellyfin · 🚧 Plex |
-| **Photos** | 🚧 Immich · 🚧 PhotoPrism |
-| **Projects** | ✅ [OpenProject](Projects/openproject/) · 🚧 Plane · 🚧 Vikunja · ✅ [Redmine](Projects/redmine/) · ✅ [Taiga](Projects/taiga/) |
-| **Security** | 🚧 Vaultwarden · 🚧 Authentik · 🚧 Keycloak |
-| **Storage** | ✅ [Nextcloud](Storage/nextcloud/) · 🚧 Seafile · 🚧 ownCloud |
-| **VPN** | 🚧 WireGuard · 🚧 Headscale · 🚧 NetBird · 🚧 OpenVPN |
-| **Web** | 🚧 WordPress · 🚧 Ghost · 🚧 Strapi |
+| **AI** | 🚧 [Ollama](AI/ollama/) · 🚧 [Open WebUI](AI/open-webui/) · 🚧 [Dify](AI/dify/) |
+| **Automation** | ✅ [n8n](Automation/n8n/) · 🚧 [OpenClaw](Automation/openclaw/) · 🚧 [Hermes](Automation/hermes/) |
+| **DNS** | 🚧 [Pi-hole](DNS/pi-hole/) · 🚧 [AdGuard](DNS/adguard/) |
+| **ERP** | 🚧 [ERPNext](ERP/erpnext/) · 🚧 [Dolibarr](ERP/dolibarr/) · ✅ [Odoo](ERP/odoo/) (multi-instance) |
+| **Home-Automation** | 🚧 [Home Assistant](Home-Automation/home-assistant/) · 🚧 [Zigbee2MQTT](Home-Automation/zigbee2mqtt/) · 🚧 [Eclipse Mosquitto](Home-Automation/mosquitto/) |
+| **Media** | 🚧 [Jellyfin](Media/jellyfin/) · 🚧 [Plex](Media/plex/) |
+| **Photos** | 🚧 [Immich](Photos/immich/) · 🚧 [PhotoPrism](Photos/photoprism/) |
+| **Projects** | ✅ [OpenProject](Projects/openproject/) · 🚧 [Plane](Projects/plane/) · 🚧 [Vikunja](Projects/vikunja/) · ✅ [Redmine](Projects/redmine/) · ✅ [Taiga](Projects/taiga/) |
+| **Security** | 🚧 [Vaultwarden](Security/vaultwarden/) · 🚧 [Authentik](Security/authentik/) · 🚧 [Keycloak](Security/keycloak/) |
+| **Storage** | ✅ [Nextcloud](Storage/nextcloud/) · 🚧 [Seafile](Storage/seafile/) · 🚧 [ownCloud](Storage/owncloud/) |
+| **VPN** | 🚧 [WireGuard](VPN/wireguard/) · 🚧 [Headscale](VPN/headscale/) · 🚧 [NetBird](VPN/netbird/) · 🚧 [OpenVPN](VPN/openvpn/) |
+| **Web** | 🚧 [WordPress](Web/wordpress/) · 🚧 [Ghost](Web/ghost/) · 🚧 [Strapi](Web/strapi/) |
 
 This is the project roadmap, not a promise of order — services get built one at a time. The category/service list itself lives in [`services.sh`](services.sh)'s `CATALOG` array; a service becomes ✅ automatically the moment its `services/<Category>/<slug>/deploy.sh` exists, no separate flag to flip.
 

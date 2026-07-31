@@ -125,16 +125,15 @@ find_instances() {
 
 prompt_choice() {
     # $1 = number of items (the menu also gets an implicit "Exit"/"Back" at
-    # $1+1). Echoes the chosen index (1-based) via a global, not command
-    # substitution (same reasoning as the mem-limit prompts in the service
-    # deploy.sh files: keeps the prompt on the real terminal instead of a
-    # captured subshell).
-    local count="$1" label="${2:-Exit}" exit_num choice
-    exit_num=$((count + 1))
-    echo "  $exit_num) $label"
-    read -rp "Choice (1-$exit_num): " choice || { CHOSEN_INDEX="$exit_num"; return 0; }
-    if [[ "$choice" == "$exit_num" ]]; then
-        CHOSEN_INDEX="$exit_num"
+    # 0). Echoes the chosen index (1-based, or "0" for exit/back) via a
+    # global, not command substitution (same reasoning as the mem-limit
+    # prompts in the service deploy.sh files: keeps the prompt on the real
+    # terminal instead of a captured subshell).
+    local count="$1" label="${2:-Exit}" choice
+    echo "  0) $label"
+    read -rp "Choice (0-$count): " choice || { CHOSEN_INDEX="0"; return 0; }
+    if [[ "$choice" == "0" ]]; then
+        CHOSEN_INDEX="0"
         return 0
     fi
     if ! [[ "$choice" =~ ^[0-9]+$ ]] || (( choice < 1 || choice > count )); then
@@ -218,7 +217,7 @@ pick_instance() {
         INSTANCE_PATH=""
         return 1
     fi
-    if [[ "$CHOSEN_INDEX" -gt "${#instances[@]}" ]]; then
+    if [[ "$CHOSEN_INDEX" == "0" ]]; then
         INSTANCE_PATH=""
         return 1
     fi
@@ -274,7 +273,7 @@ service_menu() {
                 print_info "Deploying $name fresh..."
                 deploy_service "$name" "$category"
                 ;;
-            4) return ;;
+            0) return ;;
         esac
     done
 }
@@ -307,7 +306,7 @@ category_menu() {
             echo "  $i) ${names[$((i - 1))]}${marks[$((i - 1))]}"
         done
         prompt_choice "${#names[@]}" "Back" || continue
-        (( CHOSEN_INDEX > ${#names[@]} )) && return
+        [[ "$CHOSEN_INDEX" == "0" ]] && return
 
         local picked_slug="${slugs[$((CHOSEN_INDEX - 1))]}"
         local picked_name="${names[$((CHOSEN_INDEX - 1))]}"
@@ -342,7 +341,7 @@ main_menu() {
             echo "  $i) ${categories[$((i - 1))]}"
         done
         prompt_choice "${#categories[@]}" "Exit" || continue
-        (( CHOSEN_INDEX > ${#categories[@]} )) && exit 0
+        [[ "$CHOSEN_INDEX" == "0" ]] && exit 0
         category_menu "${categories[$((CHOSEN_INDEX - 1))]}"
     done
 }
