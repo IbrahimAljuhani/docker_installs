@@ -31,6 +31,7 @@ declare -A SERVICE_FILES=(
     [openproject]="docker-compose.yml"
     [nextcloud]="docker-compose.yml"
     [n8n]="docker-compose.yml init-data.sh"
+    [taiga]="docker-compose.yml taiga-gateway/taiga.conf"
 )
 
 print_info() { echo -e "[✓] $1" >&2; }
@@ -123,6 +124,9 @@ deploy_service() {
     curl -fsSL -o "$target_dir/deploy.sh" "$REPO_RAW_BASE/$name/deploy.sh"
     local f
     for f in ${SERVICE_FILES[$name]:-}; do
+        # mkdir first: some services ship files nested in a subfolder (e.g.
+        # taiga/taiga-gateway/taiga.conf) — curl -o doesn't create parents.
+        mkdir -p "$(dirname "$target_dir/$f")"
         curl -fsSL -o "$target_dir/$f" "$REPO_RAW_BASE/$name/$f"
     done
     chmod +x "$target_dir/deploy.sh"
@@ -172,8 +176,10 @@ service_menu() {
         done < <(find_instances "$svc_runtime_dir")
 
         echo
-        if (( ${#instances[@]} > 0 )); then
-            echo "'$name' is already deployed (${#instances[@]} instance(s) under $svc_runtime_dir)."
+        if (( ${#instances[@]} > 1 )); then
+            echo "'$name' is already deployed (${#instances[@]} instances under $svc_runtime_dir)."
+        elif (( ${#instances[@]} == 1 )); then
+            echo "'$name' is already deployed under $svc_runtime_dir."
         else
             echo "'$name' is not deployed yet."
         fi
