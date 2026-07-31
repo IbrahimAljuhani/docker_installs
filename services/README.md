@@ -17,7 +17,7 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 | **Home-Automation** | 🚧 [Home Assistant](Home-Automation/home-assistant/) · 🚧 [Zigbee2MQTT](Home-Automation/zigbee2mqtt/) · 🚧 [Eclipse Mosquitto](Home-Automation/mosquitto/) |
 | **Media** | 🚧 [Jellyfin](Media/jellyfin/) · 🚧 [Plex](Media/plex/) |
 | **Photos** | 🚧 [Immich](Photos/immich/) · 🚧 [PhotoPrism](Photos/photoprism/) |
-| **Projects** | ✅ [OpenProject](Projects/openproject/) · 🚧 [Plane](Projects/plane/) · ✅ [Vikunja](Projects/vikunja/) · ✅ [Redmine](Projects/redmine/) · ✅ [Taiga](Projects/taiga/) |
+| **Projects** | ✅ [OpenProject](Projects/openproject/) · ✅ [Plane](Projects/plane/) · ✅ [Vikunja](Projects/vikunja/) · ✅ [Redmine](Projects/redmine/) · ✅ [Taiga](Projects/taiga/) |
 | **Security** | 🚧 [Vaultwarden](Security/vaultwarden/) · 🚧 [Authentik](Security/authentik/) · 🚧 [Keycloak](Security/keycloak/) |
 | **Storage** | ✅ [Nextcloud](Storage/nextcloud/) · 🚧 [Seafile](Storage/seafile/) · 🚧 [ownCloud](Storage/owncloud/) |
 | **VPN** | 🚧 [WireGuard](VPN/wireguard/) · 🚧 [Headscale](VPN/headscale/) · 🚧 [NetBird](VPN/netbird/) · 🚧 [OpenVPN](VPN/openvpn/) |

@@ -30,6 +30,7 @@ declare -A SERVICE_FILES=(
     [odoo]="docker-compose.yml"
     [openproject]="docker-compose.yml"
     [redmine]="docker-compose.yml"
+    [plane]="docker-compose.yml"
     [vikunja]="docker-compose.yml"
     [nextcloud]="docker-compose.yml"
     [n8n]="docker-compose.yml init-data.sh"
