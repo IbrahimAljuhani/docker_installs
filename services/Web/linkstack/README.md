@@ -90,6 +90,23 @@ LinkStack also has its own **in-app one-click updater** — after logging in as 
 
 ---
 
+## 🏷️ Removing the "Powered by LinkStack" Badge
+
+Profile pages show a "Powered by LinkStack" footer by default. This is controlled by `DISPLAY_CREDIT` and `DISPLAY_CREDIT_FOOTER` in **LinkStack's own app-level `.env`** — confirmed directly in the [official `.env` template](https://github.com/LinkStackOrg/LinkStack/blob/main/.env), both default to `true`. It's not a license requirement (LinkStack is GPL-3.0) — the project itself ships the off-switch.
+
+> ⚠️ This is a **different `.env`** than the one `deploy.sh` manages. LinkStack's app config lives inside the container at `/htdocs/.env` (part of the `linkstack_data` volume); `~/docker/linkstack/.env` only holds Apache/PHP-level settings (`TZ`, `SERVER_NAME`, etc.) — `deploy.sh` never touches the app-level one.
+
+Check the Admin Panel settings first in case it's exposed there. If not, edit it directly:
+
+```bash
+docker exec linkstack-app sed -i -e "s/^DISPLAY_CREDIT_FOOTER=.*/DISPLAY_CREDIT_FOOTER=false/" -e "s/^DISPLAY_CREDIT=.*/DISPLAY_CREDIT=false/" /htdocs/.env
+docker restart linkstack-app
+```
+
+This survives updates and restarts since `/htdocs` is the persistent volume.
+
+---
+
 ## 📌 Known Simplifications vs. Upstream
 
 - Upstream's own example publishes a host port unconditionally (e.g. `8190:443`); here that's optional (default: no), matching this repo's "NPM-only unless you opt in" convention.
