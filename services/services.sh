@@ -47,6 +47,8 @@ CATALOG=(
     "AI|ollama|Ollama"
     "AI|open-webui|Open WebUI"
     "AI|dify|Dify"
+    "AI|llama-cpp|llama.cpp"
+    "AI|localai|LocalAI"
     "Automation|n8n|n8n"
     "Automation|openclaw|OpenClaw"
     "Automation|hermes|Hermes"
@@ -80,6 +82,7 @@ CATALOG=(
     "Web|wordpress|WordPress"
     "Web|ghost|Ghost"
     "Web|strapi|Strapi"
+    "Web|linkstack|LinkStack"
 )
 
 # A catalog entry is deployable now if either its local <category>/<slug>/

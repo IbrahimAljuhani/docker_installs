@@ -10,7 +10,7 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 
 | Category | Services |
 |---|---|
-| **AI** | 🚧 [Ollama](AI/ollama/) · 🚧 [Open WebUI](AI/open-webui/) · 🚧 [Dify](AI/dify/) |
+| **AI** | 🚧 [Ollama](AI/ollama/) · 🚧 [Open WebUI](AI/open-webui/) · 🚧 [Dify](AI/dify/) · 🚧 [llama.cpp](AI/llama-cpp/) · 🚧 [LocalAI](AI/localai/) |
 | **Automation** | ✅ [n8n](Automation/n8n/) · 🚧 [OpenClaw](Automation/openclaw/) · 🚧 [Hermes](Automation/hermes/) |
 | **DNS** | 🚧 [Pi-hole](DNS/pi-hole/) · 🚧 [AdGuard](DNS/adguard/) |
 | **ERP** | 🚧 [ERPNext](ERP/erpnext/) · 🚧 [Dolibarr](ERP/dolibarr/) · ✅ [Odoo](ERP/odoo/) (multi-instance) |
@@ -21,7 +21,7 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 | **Security** | 🚧 [Vaultwarden](Security/vaultwarden/) · 🚧 [Authentik](Security/authentik/) · 🚧 [Keycloak](Security/keycloak/) |
 | **Storage** | ✅ [Nextcloud](Storage/nextcloud/) · 🚧 [Seafile](Storage/seafile/) · 🚧 [ownCloud](Storage/owncloud/) |
 | **VPN** | 🚧 [WireGuard](VPN/wireguard/) · 🚧 [Headscale](VPN/headscale/) · 🚧 [NetBird](VPN/netbird/) · 🚧 [OpenVPN](VPN/openvpn/) |
-| **Web** | 🚧 [WordPress](Web/wordpress/) · 🚧 [Ghost](Web/ghost/) · 🚧 [Strapi](Web/strapi/) |
+| **Web** | 🚧 [WordPress](Web/wordpress/) · 🚧 [Ghost](Web/ghost/) · 🚧 [Strapi](Web/strapi/) · 🚧 [LinkStack](Web/linkstack/) |
 
 This is the project roadmap, not a promise of order — services get built one at a time. The category/service list itself lives in [`services.sh`](services.sh)'s `CATALOG` array; a service becomes ✅ automatically the moment its `services/<Category>/<slug>/deploy.sh` exists, no separate flag to flip.
 
