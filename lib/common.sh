@@ -53,6 +53,15 @@ generate_secret_hex() {
     openssl rand -hex "${1:-16}"
 }
 
+# Validates an instance name / db user / db name for multi-instance services
+# (odoo, linkstack, ...). $1 = value, $2 = label for the error message.
+validate_identifier() {
+    local value="$1" label="$2"
+    if [[ ! "$value" =~ ^[a-z][a-z0-9_-]*$ ]]; then
+        print_error "Invalid $label. Must start with a lowercase letter and contain only letters, digits, hyphens, or underscores."
+    fi
+}
+
 # Idempotent main-net creation — identical block used to be copy-pasted in
 # every deploy.sh. Safe to call even if install_dockhub.sh already created it
 # (this script can also be run standalone, out of order).
