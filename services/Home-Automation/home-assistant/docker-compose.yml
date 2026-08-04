@@ -1,0 +1,41 @@
+# Home Assistant Container — official image:
+# https://www.home-assistant.io/installation/linux/#install-home-assistant-container
+#
+# Deliberate deviation from every other service in this repo: Home
+# Assistant's own docs require `network_mode: host` + `privileged: true` for
+# local-network device auto-discovery (mDNS/SSDP/Zeroconf — Sonos,
+# Chromecast, printers, etc.), HomeKit Bridge, and Bluetooth. This is the
+# official recommendation, not a shortcut — running it on the isolated
+# `main-net` bridge network instead (like every other service here) would
+# silently break most of that. See README.md's "Why host networking" and
+# "Reverse Proxy" sections for what this actually means in practice:
+#   - No 'main-net' — host networking is exclusive of Compose's own network
+#     stack, so this container isn't reachable by container name at all.
+#   - Port 8123 is unconditionally bound to the host (no "optional host
+#     port" prompt like other services — there's nothing to make optional).
+#   - NGINX Proxy Manager must forward to this SERVER's own LAN IP:8123,
+#     not a container name.
+#   - `privileged: true` grants far broader host access than any other
+#     service in this repo — see README.md before deploying if that's a
+#     concern for your setup.
+#
+# This is a single-instance service: one Home Assistant deployment per
+# host, under ~/docker/home-assistant/.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it
+# (and the generated .env) to ~/docker/home-assistant/ and runs it from
+# there.
+
+services:
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:${HA_VERSION:-stable}
+    container_name: homeassistant
+    restart: unless-stopped
+    privileged: true
+    network_mode: host
+    environment:
+      TZ: "${TZ:-UTC}"
+    volumes:
+      - ./config:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
