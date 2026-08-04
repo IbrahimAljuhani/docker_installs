@@ -4,7 +4,7 @@ Deploys [LinkStack](https://linkstack.org/) (a self-hosted Linktree/many.link al
 
 Adapted from the official [`linkstack-docker`](https://github.com/LinkStackOrg/linkstack-docker) image and its documented `docker-compose.yml` example. See the top of [`docker-compose.yml`](docker-compose.yml) for the exact, deliberate deviations from upstream.
 
-LinkStack is the simplest service in this repo so far: **one container**, SQLite embedded (no separate database container at all).
+LinkStack is otherwise the simplest service in this repo: **one container**, SQLite embedded (no separate database container at all) — but it's **multi-instance** (like this repo's Odoo), so you can run more than one LinkStack site (e.g. a personal one and a client's) on the same host.
 
 ---
 
@@ -31,18 +31,32 @@ bash deploy.sh
 
 > ⚠️ **Do not run as root.** Your user must be in the `docker` group.
 
-This is a **single-instance** service: one LinkStack deployment per host, under `~/docker/linkstack/`. Unlike this repo's other services, there's no password or secret to generate — LinkStack has no database credentials (SQLite, embedded in its own Docker volume) and creates its own app secret internally during its first-run setup wizard.
+Every run of `deploy.sh` creates a **new** instance under `~/docker/linkstack/<instance-name>/` — same convention as this repo's Odoo. Unlike this repo's other (single-instance) services, there's no "rerun to manage an existing deployment" flow; rerunning `deploy.sh` just lets you add another instance. There's also no password or secret to generate — LinkStack has no database credentials (SQLite, embedded in its own Docker volume) and creates its own app secret internally during its first-run setup wizard.
 
-You'll also be asked whether to cap memory on the `linkstack` container (default suggestion: `512m`). Say no and it runs uncapped.
+### You'll be guided through:
 
-> 💡 **To change the memory limit later**: edit `MEM_LIMIT=` in `~/docker/linkstack/.env`, then rerun `deploy.sh` — it regenerates `docker-compose.override.yml` from whatever `.env` currently has and reapplies it with `docker compose up -d`.
+| # | Prompt | Notes |
+|---|---|---|
+| 1 | **Instance name** (e.g. `linkstack-prod`) | Validated: lowercase letters, digits, `-`, `_` only. Must not already exist. |
+| 2 | **Memory limit for the `linkstack-<instance>` container?** (default: **no** → unbounded) | Suggested default `512m` if you say yes |
+| 3 | **Publish a host port for direct access without NPM?** (default: **no**) | e.g. `http://<server-ip>:8095` — useful for a quick first check before wiring up NPM. Maps to the container's plain-HTTP port 80 (not 443) specifically so a quick test doesn't hit LinkStack's self-signed HTTPS certificate. |
+| 4 | **Public domain** (only asked if you said no to a host port) | e.g. `links.example.com` — sets `SERVER_NAME` (Apache's `ServerName` for both the HTTP and HTTPS vhosts) |
 
-You'll also be asked whether to publish a host port for direct access without NPM (e.g. `http://<server-ip>:8095`) — useful for a quick first check before wiring up NPM. Default is no. This maps to the container's plain-HTTP port 80 (not 443) specifically so a quick test doesn't hit LinkStack's self-signed HTTPS certificate.
+If you published a host port, the domain question is skipped — `SERVER_NAME` is set to your server's bare IP automatically. Unlike Vikunja/Plane, LinkStack has no CORS or host-header check, so a mismatched `SERVER_NAME` won't break access — it's just used for Apache's own canonical-URL generation.
 
-- **If you said no** to a host port, you're then prompted for the public domain you plan to point NPM at (e.g. `links.example.com`) — this sets `SERVER_NAME` (Apache's `ServerName` for both the HTTP and HTTPS vhosts).
-- **If you said yes** to a host port, the domain question is skipped — `SERVER_NAME` is set to your server's bare IP automatically. Unlike Vikunja/Plane, LinkStack has no CORS or host-header check, so a mismatched `SERVER_NAME` won't break access — it's just used for Apache's own canonical-URL generation.
+> 💡 **To change the host port or memory limit later**: like Odoo, `deploy.sh` only ever runs once per instance and never regenerates `docker-compose.override.yml` on its own. Hand-edit `~/docker/linkstack/<instance>/docker-compose.override.yml` directly, then `cd ~/docker/linkstack/<instance> && docker compose up -d`.
 
-Either way, this choice (like memory) is only asked once — rerunning `deploy.sh` reuses `.env` and **never overwrites an existing `docker-compose.yml`** at `~/docker/linkstack/` (so any manual edits you make there survive reruns; delete it yourself first if you want the latest version from this repo).
+### 📁 Directory structure (multiple instances)
+
+```
+~/docker/linkstack/
+├── linkstack-personal/
+│   ├── .env
+│   └── docker-compose.yml
+└── linkstack-client/
+    ├── .env
+    └── docker-compose.yml
+```
 
 ---
 
@@ -64,19 +78,19 @@ LinkStack has **no default admin account**. Visiting the site for the first time
 1. Open `http://<server-ip>:81`
 2. Create a **Proxy Host**:
    - **Domain**: the same domain you entered during `deploy.sh` (should match `SERVER_NAME` in `.env`)
-   - **Forward Hostname/IP**: `linkstack-app`
+   - **Forward Hostname/IP**: `linkstack-<instance>` (e.g. `linkstack-prod`)
    - **Forward Port**: `443`
    - **Forward Scheme**: **HTTPS** — not the default HTTP. NPM does not validate the container's self-signed certificate, so this works without extra configuration; you just need to actually pick HTTPS in the dropdown.
 3. Enable **SSL** with Let's Encrypt from the UI (this is the outward-facing cert visitors see; it's separate from the container's internal self-signed one).
 
-✅ No host port is published for `linkstack-app` by default — NPM reaches it by container name over `main-net`.
+✅ No host port is published for `linkstack-<instance>` by default — NPM reaches it by container name over `main-net`.
 
 ---
 
 ## 🛠️ Management Commands
 
 ```bash
-cd ~/docker/linkstack
+cd ~/docker/linkstack/<instance-name>
 ```
 
 | Command | Purpose |
@@ -94,13 +108,13 @@ LinkStack also has its own **in-app one-click updater** — after logging in as 
 
 Profile pages show a "Powered by LinkStack" footer by default. This is controlled by `DISPLAY_CREDIT` and `DISPLAY_CREDIT_FOOTER` in **LinkStack's own app-level `.env`** — confirmed directly in the [official `.env` template](https://github.com/LinkStackOrg/LinkStack/blob/main/.env), both default to `true`. It's not a license requirement (LinkStack is GPL-3.0) — the project itself ships the off-switch.
 
-> ⚠️ This is a **different `.env`** than the one `deploy.sh` manages. LinkStack's app config lives inside the container at `/htdocs/.env` (part of the `linkstack_data` volume); `~/docker/linkstack/.env` only holds Apache/PHP-level settings (`TZ`, `SERVER_NAME`, etc.) — `deploy.sh` never touches the app-level one.
+> ⚠️ This is a **different `.env`** than the one `deploy.sh` manages. LinkStack's app config lives inside the container at `/htdocs/.env` (part of that instance's `linkstack_data` volume); `~/docker/linkstack/<instance>/.env` only holds Apache/PHP-level settings (`TZ`, `SERVER_NAME`, etc.) — `deploy.sh` never touches the app-level one.
 
-Check the Admin Panel settings first in case it's exposed there. If not, edit it directly:
+Check the Admin Panel settings first in case it's exposed there. If not, edit it directly (replace `linkstack-<instance>` with the actual container name, e.g. `linkstack-prod`):
 
 ```bash
-docker exec linkstack-app sed -i -e "s/^DISPLAY_CREDIT_FOOTER=.*/DISPLAY_CREDIT_FOOTER=false/" -e "s/^DISPLAY_CREDIT=.*/DISPLAY_CREDIT=false/" /htdocs/.env
-docker restart linkstack-app
+docker exec linkstack-<instance> sed -i -e "s/^DISPLAY_CREDIT_FOOTER=.*/DISPLAY_CREDIT_FOOTER=false/" -e "s/^DISPLAY_CREDIT=.*/DISPLAY_CREDIT=false/" /htdocs/.env
+docker restart linkstack-<instance>
 ```
 
 This survives updates and restarts since `/htdocs` is the persistent volume.
@@ -110,8 +124,9 @@ This survives updates and restarts since `/htdocs` is the persistent volume.
 ## 📌 Known Simplifications vs. Upstream
 
 - Upstream's own example publishes a host port unconditionally (e.g. `8190:443`); here that's optional (default: no), matching this repo's "NPM-only unless you opt in" convention.
-- No private `<service>-net` — every other service here isolates its database on a private network and only joins the app container to `main-net`. LinkStack has nothing to isolate (one container, no database container), so `linkstack-app` joins `main-net` directly.
+- No private `<service>-net` — every other service here isolates its database on a private network and only joins the app container to `main-net`. LinkStack has nothing to isolate (one container, no database container), so the app container joins `main-net` directly.
 - `PHP_MEMORY_LIMIT` (LinkStack's own PHP-level memory setting) and `UPLOAD_MAX_FILESIZE` are left at upstream's defaults (`256M` / `8M`) rather than exposed as prompts — this repo's own `MEM_LIMIT` prompt controls the container's overall memory instead, which is a different thing.
+- `linkstack_data` has no instance suffix in the compose file's YAML key — Docker Compose automatically prefixes it with the per-instance directory's project name, which is what actually keeps multiple instances' data from colliding (same mechanism this repo's Odoo uses). `container_name`/`hostname` are explicitly suffixed with `${INSTANCE_NAME}` instead, since Compose does not auto-suffix those the way it does un-named volumes.
 
 ---
 

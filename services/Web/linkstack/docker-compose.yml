@@ -6,10 +6,10 @@
 #     container name over the shared 'main-net' instead (see README.md).
 #     Upstream's own example publishes a host port (e.g. 8190:443)
 #     unconditionally.
-#   - No private '<service>-net' — unlike this repo's other services,
-#     LinkStack genuinely has nothing else to isolate it from (one
-#     container, SQLite embedded in its own volume, no db to keep off
-#     main-net), so 'linkstack-app' joins 'main-net' directly.
+#   - No private '<service>-net' — unlike most of this repo's other
+#     services, LinkStack genuinely has nothing else to isolate it from
+#     (one container, SQLite embedded in its own volume, no db to keep off
+#     main-net), so the app container joins 'main-net' directly.
 #
 # Unlike every other service here, LinkStack's container serves HTTPS
 # internally on 443 with a self-signed cert, and upstream's own reverse-proxy
@@ -17,14 +17,23 @@
 # port 80) to avoid mixed-content errors — see README.md's Reverse Proxy
 # section for the exact NPM forward-scheme setting this requires.
 #
-# This file is the SOURCE template (tracked in git). deploy.sh copies it (and
-# the generated .env) to ~/docker/linkstack/ and runs it from there.
+# LinkStack is multi-instance (like this repo's Odoo): each instance gets
+# its own directory, so 'linkstack_data' below doesn't need an instance
+# suffix in its YAML key — Compose already prefixes volume names with the
+# per-directory project name, which is what keeps multiple instances from
+# colliding on the same host. container_name is explicitly suffixed with
+# ${INSTANCE_NAME} instead, since Compose does NOT auto-suffix
+# container_name the way it does for un-named volumes/networks.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it
+# (and the generated .env) into ~/docker/linkstack/<instance>/ once per
+# instance and runs it from there.
 
 services:
   linkstack:
     image: linkstackorg/linkstack:${LINKSTACK_VERSION:-latest}
-    container_name: linkstack-app
-    hostname: linkstack
+    container_name: linkstack-${INSTANCE_NAME}
+    hostname: linkstack-${INSTANCE_NAME}
     restart: unless-stopped
     environment:
       TZ: "${TZ:-UTC}"
