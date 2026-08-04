@@ -24,6 +24,17 @@ fi
 REPO_RAW_BASE="https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Shared helpers (generate_secret, backup/restore, env detection, etc.) —
+# sourced from a git checkout if present, self-fetched otherwise so
+# `curl -O services.sh && bash services.sh` alone still works standalone.
+LIB_COMMON="$SCRIPT_DIR/../lib/common.sh"
+if [[ ! -f "$LIB_COMMON" ]]; then
+    LIB_COMMON="$(mktemp -d)/common.sh"
+    curl -fsSL -o "$LIB_COMMON" "https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/lib/common.sh"
+fi
+# shellcheck source=/dev/null
+source "$LIB_COMMON"
+
 # Extra files (besides deploy.sh) each service needs — keep this in sync with
 # that service's own README.md "Installation" curl commands.
 declare -A SERVICE_FILES=(
@@ -101,9 +112,6 @@ is_available() {
     return 1
 }
 
-print_info() { echo -e "[✓] $1" >&2; }
-print_warn() { echo -e "[!] $1" >&2; }
-
 compose_cmd() {
     if docker compose version &>/dev/null; then
         echo "docker compose"
@@ -172,6 +180,145 @@ remove_instance() {
         (cd "$instance_dir" && $cc down) || true
         rm -f "$instance_dir/docker-compose.yml" "$instance_dir/docker-compose.override.yml"
         print_info "Stopped and removed containers for $instance_dir. Data/.env kept — deploying again will reuse them."
+    fi
+}
+
+# Sources $category/$name/backup.sh if the service ships one (DB-aware
+# services define backup_<name>()/restore_<name>() there instead of
+# relying on the generic volume-tar fallback — see
+# _template/backup.sh.template). This file is deliberately SEPARATE from
+# deploy.sh: deploy.sh is only ever exec'd as its own process (never
+# sourced, since it has top-level side-effecting code), so a function
+# defined inside it would be invisible here. backup.sh has no top-level
+# code at all — just function definitions — so it's safe to source.
+# Silently no-ops if the service doesn't ship one (falls back to generic).
+load_service_backup_hooks() {
+    local category="$1" name="$2" hooks="$SCRIPT_DIR/$category/$name/backup.sh"
+    if [[ -f "$hooks" ]]; then
+        # shellcheck source=/dev/null
+        source "$hooks"
+        return 0
+    fi
+    # Standalone mode: try fetching it, but don't fail the whole operation
+    # if this particular service just doesn't have one (curl 404).
+    local tmp
+    tmp="$(mktemp -d)/backup.sh"
+    if curl -fsSL -o "$tmp" "$REPO_RAW_BASE/$category/$name/backup.sh" 2>/dev/null; then
+        # shellcheck source=/dev/null
+        source "$tmp"
+    fi
+}
+
+# Backs up one instance of $1 (picks which one if multiple exist, e.g.
+# odoo). Uses a per-service backup_<name>() override if that service ships
+# a backup.sh defining one (DB-aware services should — see
+# _template/backup.sh.template) — otherwise falls back to
+# backup_service_generic() from lib/common.sh (compose files + volumes,
+# fine for config-only/SQLite-embedded services).
+backup_menu() {
+    local name="$1" category="$2"
+    load_service_backup_hooks "$category" "$name"
+    local svc_runtime_dir="$HOME/docker/$name"
+    local -a instances=()
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && instances+=("$line")
+    done < <(find_instances "$svc_runtime_dir")
+
+    if (( ${#instances[@]} == 0 )); then
+        print_warn "Nothing to back up — '$name' isn't deployed."
+        return
+    fi
+
+    pick_instance "${instances[@]}" || return
+    [[ -z "$INSTANCE_PATH" ]] && return
+
+    local instance=""
+    [[ "$INSTANCE_PATH" != "$svc_runtime_dir" ]] && instance="$(basename "$INSTANCE_PATH")"
+
+    if declare -F "backup_$name" &>/dev/null; then
+        "backup_$name" "$instance" "$INSTANCE_PATH"
+    else
+        backup_service_generic "$name" "$instance" "$INSTANCE_PATH"
+    fi
+}
+
+# Lists available backups for $1 (browsing per-instance sub-folders first
+# for multi-instance services), confirms before overwriting current data,
+# restores, then brings the service back up. You manage retention/pruning
+# of old backups yourself — nothing here deletes them automatically.
+restore_menu() {
+    local name="$1" category="$2"
+    load_service_backup_hooks "$category" "$name"
+    local backups_root="$HOME/docker/backups/$name"
+
+    if [[ ! -d "$backups_root" ]]; then
+        print_warn "No backups found for '$name'."
+        return
+    fi
+
+    local instance=""
+    # Multi-instance layout: backups/<name>/<instance>/*.tar.gz — detected by
+    # the *absence* of .tar.gz files directly under backups/<name>/ itself.
+    if ! find "$backups_root" -maxdepth 1 -name '*.tar.gz' 2>/dev/null | grep -q .; then
+        local -a scope_dirs=()
+        while IFS= read -r d; do scope_dirs+=("$d"); done < <(find "$backups_root" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort)
+        if (( ${#scope_dirs[@]} == 0 )); then
+            print_warn "No backups found for '$name'."
+            return
+        fi
+        echo "Instances with backups:"
+        local i=1 d
+        for d in "${scope_dirs[@]}"; do
+            echo "  $i) $(basename "$d")"
+            i=$((i + 1))
+        done
+        prompt_choice "${#scope_dirs[@]}" "Back" || return
+        [[ "$CHOSEN_INDEX" == "0" ]] && return
+        instance="$(basename "${scope_dirs[$((CHOSEN_INDEX - 1))]}")"
+    fi
+
+    local -a archives=()
+    while IFS= read -r f; do archives+=("$f"); done < <(list_backups "$name" "$instance")
+    if (( ${#archives[@]} == 0 )); then
+        print_warn "No backups found for '$name'."
+        return
+    fi
+
+    echo "Available backups (newest first):"
+    local i=1 f
+    for f in "${archives[@]}"; do
+        echo "  $i) $(basename "$f" .tar.gz)"
+        i=$((i + 1))
+    done
+    prompt_choice "${#archives[@]}" "Back" || return
+    [[ "$CHOSEN_INDEX" == "0" ]] && return
+    local chosen_archive="${archives[$((CHOSEN_INDEX - 1))]}"
+
+    local install_dir="$HOME/docker/$name"
+    [[ -n "$instance" ]] && install_dir="$install_dir/$instance"
+    mkdir -p "$install_dir"
+
+    local confirm
+    read -rp "This overwrites current data at $install_dir with the chosen backup. Continue? (y/N): " confirm || confirm="n"
+    [[ "${confirm,,}" == "y" ]] || { print_warn "Restore cancelled."; return; }
+
+    local cc
+    cc="$(compose_cmd)"
+    if [[ -n "$cc" && -f "$install_dir/docker-compose.yml" ]]; then
+        (cd "$install_dir" && $cc down) || true
+    fi
+
+    if declare -F "restore_$name" &>/dev/null; then
+        "restore_$name" "$instance" "$install_dir" "$chosen_archive"
+    else
+        restore_service_generic "$name" "$instance" "$install_dir" "$chosen_archive"
+    fi
+
+    if [[ -n "$cc" && -f "$install_dir/docker-compose.yml" ]]; then
+        (cd "$install_dir" && $cc up -d) && print_info "Service restarted after restore." \
+            || print_warn "Restore finished, but failed to start containers — check manually."
+    else
+        print_warn "Restore finished, but no docker-compose.yml found to start — run 'Deploy / manage' next."
     fi
 }
 
@@ -255,8 +402,10 @@ service_menu() {
         echo "1) Deploy / manage (runs deploy.sh — safe for new or existing deployments)"
         echo "2) Remove"
         echo "3) Reinstall (remove, then deploy fresh)"
+        echo "4) Backup"
+        echo "5) Restore from backup"
         local choice
-        if ! prompt_choice 3 "Back"; then
+        if ! prompt_choice 5 "Back"; then
             continue
         fi
         choice="$CHOSEN_INDEX"
@@ -280,6 +429,8 @@ service_menu() {
                 print_info "Deploying $name fresh..."
                 deploy_service "$name" "$category"
                 ;;
+            4) backup_menu "$name" "$category" || true ;;
+            5) restore_menu "$name" "$category" || true ;;
             0) return ;;
         esac
     done

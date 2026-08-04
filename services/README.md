@@ -29,6 +29,25 @@ This is the project roadmap, not a promise of order — services get built one a
 
 ---
 
+## 🔌 Suggested Default Ports
+
+Only relevant if you opt into a service's **direct host port** prompt (default is no host port at all — NPM reaches every service by container name). Listed so you can mentally track what's in use before deploying several services at once; each `deploy.sh` still lets you type any port you want at the prompt.
+
+| Service | Suggested port |
+|---|---|
+| Odoo | `8069` (+ `8072` for WebSocket/longpolling) |
+| OpenProject | `8080` |
+| Nextcloud | `8080` ⚠️ same suggested default as OpenProject — pick a different one if running both |
+| n8n | `5678` |
+| Redmine | `3000` |
+| Taiga | `9000` |
+| Vikunja | `3456` |
+| Plane | `8090` |
+| LinkStack | `8095` |
+| Jellyfin | `8096` |
+
+---
+
 ## 🚀 Quick Start
 
 ### 1. Clone the repo and install the core infrastructure (if you haven't)
@@ -50,12 +69,16 @@ Pick an available (✅) service and you get:
 1) Deploy / manage (runs deploy.sh — safe for new or existing deployments)
 2) Remove
 3) Reinstall (remove, then deploy fresh)
-4) Back
+4) Backup
+5) Restore from backup
+0) Back
 ```
 
 - **Deploy / manage** just runs that service's `deploy.sh` — safe to pick whether it's a fresh install or an existing one (reuses `.env`, won't overwrite `docker-compose.yml`).
 - **Remove** stops its containers and asks separately whether to also permanently delete its data (database, uploaded files, secrets). Say no and only the containers/cached compose file go — `.env` and volumes are kept so a later deploy picks up right where you left off.
 - **Reinstall** does Remove, then immediately deploys fresh. For multi-instance services (odoo), picking Remove or Reinstall with more than one instance deployed asks which instance first.
+- **Backup** saves the entire `~/docker/<service>/` directory (`.env`, compose files, and any bind-mounted data like Vikunja's `files/` or Redmine's `plugins/`/`themes/`) plus every named Docker volume, to `~/docker/backups/<service>/[<instance>/]<timestamp>.tar.gz` — you can create as many as you want, nothing is ever auto-deleted. Services with a separate database container (Postgres/MySQL) additionally use a proper `pg_dump`/`mysqldump` for the database itself instead of copying its live data files, if that service ships a `backup.sh` (see [`services/_template/`](_template/)) — otherwise the database volume just gets tarred as-is (fine for config-only/SQLite-embedded services like Jellyfin/LinkStack, which have no separate database at all).
+- **Restore from backup** lists your saved backups (newest first), confirms before overwriting current data, restores, and restarts the service.
 
 Or run `bash services/services.sh` (or `bash deploy.sh` inside any service's own folder, see that service's own README) yourself at any time.
 
@@ -76,8 +99,9 @@ Or run `bash services/services.sh` (or `bash deploy.sh` inside any service's own
 - **Reruns are safe**: `deploy.sh` never overwrites an existing `docker-compose.yml` at `~/docker/<service>/` (so manual edits survive) and reuses an existing `.env` without re-prompting.
 - **Optional memory cap**: most services ask once (on first deploy) whether to cap the main container's memory, applied via a generated `docker-compose.override.yml`. Say no and it runs uncapped.
 - **Optional direct host port**: most services also ask once whether to publish a host port for quick direct access without NPM (default: no). Choosing one also flips any HTTPS-only-assuming settings (secure cookies, forced redirects) to their plain-HTTP-safe equivalents automatically — otherwise the direct port would be inaccessible. See the relevant "Reverse Proxy" section in each service's README for exactly what changes.
+- **Shared logic lives in [`lib/common.sh`](../lib/common.sh)**, not copy-pasted per service — `prompt_mem_limit`, `prompt_host_port`, `generate_secret`, `ensure_main_net`, backup/restore, and the environment-detection reader all come from there. Every `deploy.sh` sources it (self-fetching a copy via `curl` first if run standalone, so a bare `curl deploy.sh && bash deploy.sh` still works with no extra steps). Never redefine these functions locally in a new service's `deploy.sh`.
 
-> ⚠️ **Using Cloudflare Tunnel instead of a normal DNS A/AAAA record?** This applies to every service here, not just one. `cloudflared` delivers traffic to NPM over plain HTTP (its own ingress `service:` target is `http://<server-ip>:80`) — Cloudflare's edge already terminates HTTPS for the visitor, so that hop is HTTP by design. If you also turn on **Force SSL** on the Proxy Host in NPM, NPM tries to redirect that already-plain-HTTP request to HTTPS, which fights with Cloudflare's own HTTPS enforcement and creates a redirect loop — symptom: `400 Bad Request — Request Header Or Cookie Too Large`, since headers/cookies keep stacking with every loop iteration. **Fix: leave Force SSL off** on any Proxy Host reached through a Cloudflare Tunnel. This isn't a security downgrade — Cloudflare's edge still enforces HTTPS to every visitor regardless.
+> ⚠️ **Using Cloudflare Tunnel instead of a normal DNS A/AAAA record?** This applies to every service here, not just one — full guide: [docs/cloudflare-tunnel.md](../docs/cloudflare-tunnel.md). Short version: `cloudflared` delivers traffic to NPM over plain HTTP by design (Cloudflare's edge already terminates HTTPS for the visitor); leaving **Force SSL off** on the Proxy Host avoids a redirect loop that otherwise surfaces as `400 Bad Request — Request Header Or Cookie Too Large`. Not a security downgrade — Cloudflare's edge still enforces HTTPS to every visitor regardless. Other network/reverse-proxy issues: [docs/troubleshooting.md](../docs/troubleshooting.md).
 
 ---
 
@@ -86,5 +110,6 @@ Or run `bash services/services.sh` (or `bash deploy.sh` inside any service's own
 1. Pick the category it belongs to (see the roadmap table above, or `services.sh`'s `CATALOG` array), then copy [`_template/`](_template/) to `services/<Category>/<slug>/` and adapt `deploy.sh.template` and `docker-compose.template.yml` to the new service, following the conventions above. See [`services/ERP/odoo/deploy.sh`](ERP/odoo/deploy.sh) for a full-featured example (multi-instance, interactive secret generation) or [`services/Storage/nextcloud/deploy.sh`](Storage/nextcloud/deploy.sh) for a simpler single-instance one.
 2. Add `[<slug>]="docker-compose.yml ..."` to `services.sh`'s `SERVICE_FILES` table, listing every file besides `deploy.sh` the service needs (keep in sync with that service's own README "Installation" curl commands).
 3. If `<slug>` isn't already in `services.sh`'s `CATALOG` array as a `🚧` placeholder, add it there too (`Category|slug|Display Name`) — otherwise it's already there and just flips to ✅ automatically. `Category` here must exactly match the folder name from step 1.
+4. If the service has a separate database container (Postgres/MySQL), define `backup_<slug>()`/`restore_<slug>()` in its `deploy.sh` — see the commented-out example at the bottom of `deploy.sh.template`. Otherwise skip this; the generic volume-based backup in `lib/common.sh` is picked up automatically.
 
 Don't guess at a new service's official Docker image, required environment variables, or ports — check that project's own official Docker/Compose documentation first.
