@@ -71,8 +71,21 @@ INSTALL_DIR="$HOME/docker/odoo"
 LOGFILE="$INSTALL_DIR/deploy.log"
 SECRETS_FILE="$INSTALL_DIR/.odoo-docker-secrets.txt"
 
+# Shared helpers — sourced from a git checkout if present, self-fetched
+# otherwise so standalone curl usage still works with no extra steps.
+LIB_COMMON="$SOURCE_DIR/../../../lib/common.sh"
+if [[ ! -f "$LIB_COMMON" ]]; then
+    LIB_COMMON="$(mktemp -d)/common.sh"
+    curl -fsSL -o "$LIB_COMMON" "https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/lib/common.sh"
+fi
+# shellcheck source=/dev/null
+source "$LIB_COMMON"
+
 # -----------------------------
-# 🎨 Terminal Colors
+# 🎨 Terminal Colors — Odoo's deploy.sh keeps its own colored print_*
+# (overriding lib/common.sh's plain versions) since this predates and goes
+# beyond the shared convention; not worth flattening a deliberate,
+# already-working flourish just for uniformity.
 # -----------------------------
 GREEN="\e[32m"
 YELLOW="\e[33m"
@@ -81,9 +94,6 @@ BLUE="\e[36m"
 BOLD="\e[1m"
 RESET="\e[0m"
 
-# -----------------------------
-# 🧾 Utility Functions
-# -----------------------------
 print_info()  { echo -e "${GREEN}[✓]${RESET} $1" >&2; }
 print_warn()  { echo -e "${YELLOW}[!]${RESET} $1" >&2; }
 print_error() { echo -e "${RED}[✗]${RESET} $1" >&2; exit 1; }
@@ -96,38 +106,10 @@ if [[ $EUID -eq 0 ]]; then
   print_error "This script must NOT be run as root. Please run as a regular user in the docker group."
 fi
 
-# -----------------------------
-# 🔧 Check prerequisites
-# -----------------------------
-check_prerequisites() {
-    local missing=()
-
-    if ! command -v docker &>/dev/null; then
-        missing+=("Docker CE")
-    fi
-
-    # detect docker compose command
-    if docker compose version &>/dev/null; then
-        COMPOSE_CMD="docker compose"
-    elif docker-compose version &>/dev/null; then
-        COMPOSE_CMD="docker-compose"
-    else
-        missing+=("Docker Compose")
-    fi
-
-    if ! command -v openssl &>/dev/null; then
-        missing+=("openssl")
-    fi
-    if ! command -v curl &>/dev/null; then
-        missing+=("curl")
-    fi
-
-    if [ ${#missing[@]} -ne 0 ]; then
-        print_error "Missing required components: ${missing[*]}. Please install them first."
-    fi
-
-    print_info "All required components are installed."
-}
+# check_prerequisites (COMPOSE_CMD, docker, openssl) comes from lib/common.sh
+# — Odoo also specifically needs curl (for the custom-image registry check
+# in choose_custom_image), which the shared check doesn't cover.
+command -v curl &>/dev/null || print_error "Missing required component: curl. Please install it first."
 
 # -----------------------------
 # 📦 Validate identifiers (instance name / db user / db name)
@@ -207,31 +189,16 @@ prepare_install_dir() {
     [[ -w "$INSTALL_DIR" ]] || print_error "No write permission for $INSTALL_DIR"
 }
 
-# -----------------------------
-# 🔑 Generate random password
-# -----------------------------
-generate_password() {
-    local _raw
-    _raw=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9')
-    echo "${_raw:0:20}"
-}
+# generate_secret() (used below in place of the old local generate_password())
+# and port_in_use() both come from lib/common.sh.
 
 # -----------------------------
-# ⚓ Check port availability
+# ⚓ Check port availability — wraps lib/common.sh's port_in_use() with
+#    Odoo's own "continue anyway?" confirm flow.
 # -----------------------------
 check_port() {
-    local port="$1"
-    local in_use=false
-    if command -v ss &>/dev/null; then
-        ss -tuln | grep -q ":$port\b" && in_use=true
-    elif command -v netstat &>/dev/null; then
-        netstat -tuln | grep -q ":$port\b" && in_use=true
-    else
-        print_warn "Cannot verify port availability (ss/netstat not found)."
-        return 0
-    fi
-
-    if [[ "$in_use" == true ]]; then
+    local port="$1" confirm
+    if port_in_use "$port"; then
         print_warn "Port $port is already in use."
         read -rp "Continue anyway? (y/N): " confirm
         [[ "$confirm" =~ ^[Yy]$ ]] || print_error "Aborted due to port conflict on $port."
@@ -269,27 +236,9 @@ prompt_odoo_ports() {
     check_port "$LONGPOLLING_PORT"
 }
 
-# -----------------------------
-# 💾 Optional memory cap on the 'odoo' container only ('db' stays unbounded,
-#    same "main container only" convention every other service here follows).
-#    Sets MEM_LIMIT/MEM_RESERVATION (empty if declined — meaning unbounded).
-# -----------------------------
-valid_mem_limit() { [[ "$1" =~ ^[0-9]+[bkmgBKMG]?$ ]]; }
-MEM_LIMIT=""
-prompt_mem_limit() {
-    local default="$1" answer value
-    read -rp "Set a memory limit for the 'odoo' container? (y/N): " answer
-    [[ "${answer,,}" == "y" ]] || return 0
-    while true; do
-        read -rp "Memory limit (default: $default, e.g. 2g, 512m): " value
-        value="${value:-$default}"
-        if valid_mem_limit "$value"; then
-            MEM_LIMIT="$value"
-            return 0
-        fi
-        echo "Invalid format — use a number followed by b/k/m/g (e.g. 2g)." >&2
-    done
-}
+# prompt_mem_limit() (container name + default) comes from lib/common.sh —
+# 'db' stays unbounded, same "main container only" convention every other
+# service here follows.
 
 # -----------------------------
 # 🆔 Detect the real UID/GID of the "odoo" user inside the image
@@ -338,7 +287,7 @@ main() {
     fi
 
     prompt_odoo_ports
-    prompt_mem_limit "2g"
+    prompt_mem_limit "odoo" "2g"
 
     echo
     echo "Database Configuration:"
@@ -349,7 +298,7 @@ main() {
     read -rsp "Enter PostgreSQL password (leave blank to auto-generate): " DB_PASS
     echo
     if [ -z "$DB_PASS" ]; then
-        DB_PASS=$(generate_password)
+        DB_PASS=$(generate_secret)
         print_warn "Auto-generated DB password: $DB_PASS"
     fi
 
@@ -361,19 +310,7 @@ main() {
     # folders are owned correctly. This also pre-pulls the image.
     detect_odoo_ids "$CUSTOM_IMAGE"
 
-    # Shared reverse-proxy network (created by install_dockhub.sh). Created
-    # here too, idempotently, so this script also works standalone/out of order.
-    if ! docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
-        # '|| true': install_dockhub.sh (or another service) may win a
-        # create race between the check above and this line — that's harmless,
-        # but re-verify below so a genuine failure isn't reported as OK.
-        docker network create main-net || true
-        if docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
-            print_info "Created docker network 'main-net'."
-        else
-            print_error "Failed to create docker network 'main-net'."
-        fi
-    fi
+    ensure_main_net
 
     mkdir -p "$INSTANCE_DIR"/{config,addons,db-data}
 
@@ -390,7 +327,7 @@ main() {
         print_warn "  sudo chown -R $ODOO_UID:$ODOO_GID $INSTANCE_DIR/{config,addons}"
     fi
 
-    ADMIN_PASS=$(generate_password)
+    ADMIN_PASS=$(generate_secret)
 
     # Save secrets securely
     if [[ ! -f "$SECRETS_FILE" ]]; then
@@ -409,7 +346,9 @@ main() {
     # DB), NOT $DB_NAME. Odoo creates/initializes the real database itself
     # the first time you visit /web/database/manager. Pre-creating an empty
     # DB_NAME database here would make Odoo think it's already initialized
-    # and fail with "ir_module_module does not exist".
+    # and fail with "ir_module_module does not exist". ODOO_DB_NAME below is
+    # purely informational (read by backup.sh to know what to pg_dump) —
+    # Odoo itself never reads this key.
     cat >"$INSTANCE_DIR/.env" <<EOF
 ODOO_IMAGE=$CUSTOM_IMAGE
 INSTANCE_NAME=$INSTANCE_NAME
@@ -417,6 +356,7 @@ POSTGRES_DB=postgres
 POSTGRES_USER=$DB_USER
 POSTGRES_PASSWORD=$DB_PASS
 ADMIN_PASS=$ADMIN_PASS
+ODOO_DB_NAME=$DB_NAME
 EOF
     [[ -n "$MEM_LIMIT" ]] && echo "MEM_LIMIT=$MEM_LIMIT" >> "$INSTANCE_DIR/.env"
     [[ -n "$ODOO_PORT" ]] && echo "ODOO_PORT=$ODOO_PORT" >> "$INSTANCE_DIR/.env"
@@ -544,6 +484,7 @@ EOF
     echo
     echo "To manage containers:"
     echo "  cd $INSTANCE_DIR && $COMPOSE_CMD [ps|logs|stop|rm]"
+    print_tunnel_reminder_if_relevant
     echo
     echo "💡 Tip: Add your custom addons to $INSTANCE_DIR/addons"
     echo

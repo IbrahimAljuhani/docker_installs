@@ -30,116 +30,31 @@ INSTALL_DIR="$HOME/docker/openproject"
 LOGFILE="$INSTALL_DIR/deploy.log"
 SECRETS_FILE="$INSTALL_DIR/.openproject-docker-secrets.txt"
 
-print_info()  { echo -e "[✓] $1" >&2; }
-print_warn()  { echo -e "[!] $1" >&2; }
-print_error() { echo -e "[✗] $1" >&2; exit 1; }
-
-check_prerequisites() {
-    local missing=()
-    command -v docker &>/dev/null || missing+=("Docker CE")
-    if docker compose version &>/dev/null; then
-        COMPOSE_CMD="docker compose"
-    elif docker-compose version &>/dev/null; then
-        COMPOSE_CMD="docker-compose"
-    else
-        missing+=("Docker Compose")
-    fi
-    command -v openssl &>/dev/null || missing+=("openssl")
-    if (( ${#missing[@]} != 0 )); then
-        print_error "Missing required components: ${missing[*]}. Run install_dockhub.sh first."
-    fi
-}
-
-generate_secret() {
-    # $1 = number of random bytes (hex-encoded, so output is 2x this length)
-    openssl rand -hex "$1"
-}
-
-valid_mem_limit() { [[ "$1" =~ ^[0-9]+[bkmgBKMG]?$ ]]; }
-
-# Prompts once for an optional memory cap on the main container only (db,
-# cache, worker, cron, seeder, hocuspocus stay unbounded). Sets MEM_LIMIT in
-# the caller's shell (no command substitution — keeps the prompts on a real
-# terminal instead of risking them being swallowed into a captured value).
-MEM_LIMIT=""
-prompt_mem_limit() {
-    local default="$1" answer value
-    read -rp "Set a memory limit for the 'web' container? (y/N): " answer
-    [[ "${answer,,}" == "y" ]] || return 0
-    while true; do
-        read -rp "Memory limit (default: $default, e.g. 2g, 512m): " value
-        value="${value:-$default}"
-        if valid_mem_limit "$value"; then
-            MEM_LIMIT="$value"
-            return 0
-        fi
-        echo "Invalid format — use a number followed by b/k/m/g (e.g. 2g)." >&2
-    done
-}
-
-valid_port() { [[ "$1" =~ ^[0-9]+$ ]] && (( 10#$1 >= 1024 && 10#$1 <= 65535 )); }
-
-port_in_use() {
-    local port="$1"
-    if command -v ss &>/dev/null; then
-        ss -tuln 2>/dev/null | grep -q ":$port\b"
-    elif command -v netstat &>/dev/null; then
-        netstat -tuln 2>/dev/null | grep -q ":$port\b"
-    else
-        return 1
-    fi
-}
-
-# Prompts once for an optional host port (direct access without NPM, e.g. for
-# quick testing). Sets HOST_PORT in the caller's shell (no command
-# substitution — same reasoning as prompt_mem_limit above). Note: only the
-# 'web' container is reachable this way — the /hocuspocus real-time editing
-# path needs NPM's routing and won't work over a bare host port.
-HOST_PORT=""
-prompt_host_port() {
-    local default="$1" answer port cont
-    read -rp "Also publish a host port for direct access without NPM (e.g. http://<server-ip>:<port>)? (y/N): " answer
-    [[ "${answer,,}" == "y" ]] || return 0
-    while true; do
-        read -rp "Host port (default: $default): " port
-        port="${port:-$default}"
-        if ! valid_port "$port"; then
-            echo "Invalid port — must be a number between 1024 and 65535." >&2
-            continue
-        fi
-        if port_in_use "$port"; then
-            read -rp "Port $port looks already in use — continue anyway? (y/N): " cont
-            [[ "${cont,,}" == "y" ]] || continue
-        fi
-        HOST_PORT="$port"
-        return 0
-    done
-}
+# Shared helpers — sourced from a git checkout if present, self-fetched
+# otherwise so standalone curl usage still works with no extra steps.
+LIB_COMMON="$SOURCE_DIR/../../../lib/common.sh"
+if [[ ! -f "$LIB_COMMON" ]]; then
+    LIB_COMMON="$(mktemp -d)/common.sh"
+    curl -fsSL -o "$LIB_COMMON" "https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/lib/common.sh"
+fi
+# shellcheck source=/dev/null
+source "$LIB_COMMON"
 
 check_prerequisites
 
 mkdir -p "$INSTALL_DIR"
 
-# Shared reverse-proxy network (created by install_dockhub.sh; created here
-# too, idempotently, so this script also works standalone/out of order).
-if ! docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
-    docker network create main-net || true
-    if docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
-        print_info "Created docker network 'main-net'."
-    else
-        print_error "Failed to create docker network 'main-net'."
-    fi
-fi
+ensure_main_net
 
 if [[ -f "$INSTALL_DIR/.env" ]]; then
     print_info "Existing deployment found at $INSTALL_DIR — reusing its .env (not regenerated)."
 else
     print_warn "OpenProject needs at least 4 GB RAM / 2 CPU cores / 20 GB disk for a small team — more for heavier use."
 
-    POSTGRES_PASSWORD=$(generate_secret 16)
-    SECRET_KEY_BASE=$(generate_secret 64)
-    COLLABORATIVE_SERVER_SECRET=$(generate_secret 32)
-    prompt_mem_limit "2g"
+    POSTGRES_PASSWORD=$(generate_secret_hex 16)
+    SECRET_KEY_BASE=$(generate_secret_hex 64)
+    COLLABORATIVE_SERVER_SECRET=$(generate_secret_hex 32)
+    prompt_mem_limit "web" "2g"
     prompt_host_port "8080"
 
     # OPENPROJECT_HOST__NAME must match the browser's actual Host header
@@ -241,5 +156,6 @@ if [[ -n "$ENV_HOST_PORT" ]]; then
 fi
 echo "Set up NGINX Proxy Manager (see README.md 'Reverse Proxy' section for the"
 echo "exact Advanced/custom-location config /hocuspocus needs)."
+print_tunnel_reminder_if_relevant
 echo
 echo "To manage: cd $INSTALL_DIR && $COMPOSE_CMD [ps|logs -f|stop|restart]"

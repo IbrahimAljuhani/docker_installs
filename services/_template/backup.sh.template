@@ -1,0 +1,69 @@
+# backup.sh template — ONLY for services with a separate database container
+# (Postgres/MySQL). Copy to services/<category>/<name>/backup.sh, replace
+# every SERVICE_SLUG placeholder below with the service's actual slug (e.g.
+# "vikunja") and add "backup.sh" to this service's entry in
+# services/services.sh's SERVICE_FILES table.
+#
+# This file must contain ONLY function definitions — no top-level code that
+# runs on load. services.sh sources it on demand (via load_service_backup_hooks
+# in services.sh) when the user picks Backup/Restore for this service; unlike
+# deploy.sh, it is never exec'd as its own process, so anything outside a
+# function here would run at the wrong time with the wrong working directory.
+#
+# Why this exists at all: services.sh's Backup/Restore menu options fall
+# back to backup_service_generic()/restore_service_generic() (lib/common.sh),
+# which tars up named volumes as-is. That's fine for config-only/
+# SQLite-embedded services, but copying a LIVE Postgres/MySQL data directory
+# can produce a corrupted or inconsistent backup — a proper pg_dump/
+# mysqldump does not have that problem.
+#
+# $1 in both functions is the instance name (empty string for single-instance
+# services — only odoo is multi-instance today). $2 is the install dir
+# (e.g. ~/docker/SERVICE_SLUG or ~/docker/odoo/<instance>).
+
+backup_SERVICE_SLUG() {
+    local instance="$1" install_dir="$2"
+    local dump_file="$install_dir/db.sql"
+
+    # Read DB credentials out of the already-generated .env rather than
+    # hardcoding them here.
+    local pg_user pg_db
+    pg_user=$(grep '^POSTGRES_USER=' "$install_dir/.env" | cut -d= -f2)
+    pg_db=$(grep '^POSTGRES_DB=' "$install_dir/.env" | cut -d= -f2)
+
+    if docker exec "SERVICE_SLUG-db" pg_dump -U "$pg_user" "$pg_db" > "$dump_file" 2>/dev/null; then
+        print_info "Database dumped to $dump_file"
+    else
+        print_warn "pg_dump failed — falling back to a raw (less safe) volume copy for the db."
+        rm -f "$dump_file"
+    fi
+
+    # Still capture compose files/.env and every OTHER named volume (e.g.
+    # uploaded files) the normal way — this only replaces how the db volume
+    # itself gets backed up, not the whole backup.
+    backup_service_generic "SERVICE_SLUG" "$instance" "$install_dir"
+}
+
+restore_SERVICE_SLUG() {
+    local instance="$1" install_dir="$2" archive="$3"
+
+    # restore_service_generic first — brings back compose/.env/non-db
+    # volumes and, if db.sql wasn't produced by backup_SERVICE_SLUG() above
+    # (pg_dump failure fallback case), the raw db volume too.
+    restore_service_generic "SERVICE_SLUG" "$instance" "$install_dir" "$archive"
+
+    if [[ -f "$install_dir/db.sql" ]]; then
+        local pg_user pg_db
+        pg_user=$(grep '^POSTGRES_USER=' "$install_dir/.env" | cut -d= -f2)
+        pg_db=$(grep '^POSTGRES_DB=' "$install_dir/.env" | cut -d= -f2)
+        # db container needs to be up (but the app itself doesn't) for this —
+        # services.sh's restore_menu already ran `compose down` before
+        # calling this, so bring just the db back up first.
+        (cd "$install_dir" && $(compose_cmd) up -d db) || true
+        sleep 3
+        docker exec -i "SERVICE_SLUG-db" psql -U "$pg_user" -d "$pg_db" < "$install_dir/db.sql" \
+            && print_info "Database restored from db.sql" \
+            || print_warn "Failed to restore db.sql — restore the volume backup manually if needed."
+        rm -f "$install_dir/db.sql"
+    fi
+}
