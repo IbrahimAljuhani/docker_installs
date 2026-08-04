@@ -1,0 +1,68 @@
+# WireGuard via wg-easy — official image, verified against
+# https://github.com/wg-easy/wg-easy's own docker-compose.yml. Plain
+# WireGuard has no web UI at all (config-file/CLI only) — wg-easy is the
+# community-standard wrapper that adds one (add/remove peers, QR codes for
+# mobile), which is why this repo builds "WireGuard" as wg-easy specifically
+# rather than a bare WireGuard image.
+#
+# Deliberate deviations from upstream's own docker-compose example:
+#   - The web UI (port 51821) is NOT published to the host by default —
+#     NGINX Proxy Manager reaches it by container name over 'main-net'
+#     instead (see README.md). Upstream's own example publishes it
+#     unconditionally.
+#   - The VPN data port (51820/udp) stays unconditionally published — like
+#     Pi-hole's DNS port, this is a raw UDP protocol NPM can't front, and
+#     WireGuard peers must reach it directly regardless of NPM/SSL setup.
+#   - Kept upstream's own dedicated 'wg-net' bridge network with a fixed
+#     container IP (10.42.42.42) — this isn't decorative, wg-easy's own NAT/
+#     iptables rules are built assuming a known, stable IP. wg-easy-app also
+#     joins 'main-net' for the NPM-proxied web UI.
+#
+# This is a single-instance service: one wg-easy deployment per host, under
+# ~/docker/wireguard/.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it
+# (and the generated .env) to ~/docker/wireguard/ and runs it from there.
+
+services:
+  wg-easy:
+    image: ghcr.io/wg-easy/wg-easy:${WG_EASY_VERSION:-15}
+    container_name: wg-easy-app
+    restart: unless-stopped
+    environment:
+      WG_HOST: "${WG_HOST}"
+      PASSWORD_HASH: "${PASSWORD_HASH}"
+      PORT: "51821"
+      WG_PORT: "51820"
+    volumes:
+      - wg-easy-data:/etc/wireguard
+      - /lib/modules:/lib/modules:ro
+    ports:
+      - "51820:51820/udp"
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+      # - NET_RAW  # uncomment if using Podman instead of Docker
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.src_valid_mark=1
+      - net.ipv6.conf.all.disable_ipv6=0
+      - net.ipv6.conf.all.forwarding=1
+      - net.ipv6.conf.default.forwarding=1
+    networks:
+      wg-net:
+        ipv4_address: 10.42.42.42
+      main-net:
+
+volumes:
+  wg-easy-data:
+
+networks:
+  wg-net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.42.42.0/24
+  main-net:
+    external: true
