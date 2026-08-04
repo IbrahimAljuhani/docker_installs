@@ -1,0 +1,273 @@
+#!/bin/bash
+# lib/common.sh — shared helpers sourced by install_dockhub.sh and every
+# service's deploy.sh. Not meant to be run directly.
+#
+# Two ways scripts pick this up:
+#   1) Git clone: sourced directly via a relative path from SOURCE_DIR.
+#   2) Standalone curl (single deploy.sh, no sibling files): the caller
+#      self-fetches this file first (see _template/deploy.sh.template for
+#      the exact snippet), then sources it the same way.
+#
+# Consolidates functions that used to be copy-pasted with small, silent drift
+# across every deploy.sh (some called it generate_secret(), some
+# generate_password(); openproject's took a byte-length argument, others
+# didn't) — see services/README.md's "Convention Every Service Follows" for
+# the story.
+
+print_info()  { echo -e "[✓] $1" >&2; }
+print_warn()  { echo -e "[!] $1" >&2; }
+print_error() { echo -e "[✗] $1" >&2; exit 1; }
+
+# Sets COMPOSE_CMD in the caller's shell. Exits via print_error if anything
+# required is missing.
+check_prerequisites() {
+    local missing=()
+    command -v docker &>/dev/null || missing+=("Docker CE")
+    if docker compose version &>/dev/null; then
+        COMPOSE_CMD="docker compose"
+    elif docker-compose version &>/dev/null; then
+        COMPOSE_CMD="docker-compose"
+    else
+        missing+=("Docker Compose")
+    fi
+    command -v openssl &>/dev/null || missing+=("openssl")
+    if (( ${#missing[@]} != 0 )); then
+        print_error "Missing required components: ${missing[*]}. Run install_dockhub.sh first."
+    fi
+}
+
+# Random alphanumeric string, $1 = length (default 20). This is the canonical
+# replacement for every service's old generate_secret()/generate_password().
+generate_secret() {
+    local raw
+    raw=$(openssl rand -base64 32 | tr -dc 'a-zA-Z0-9')
+    echo "${raw:0:${1:-20}}"
+}
+
+# Random hex string, $1 = byte count (default 16, so 32 hex chars). Kept
+# separate from generate_secret() rather than unifying the format — some
+# services (e.g. Rails-based ones expecting SECRET_KEY_BASE) were set up
+# against a hex value and there's no reason to churn already-working .env
+# generation logic during the lib/common.sh migration.
+generate_secret_hex() {
+    openssl rand -hex "${1:-16}"
+}
+
+# Idempotent main-net creation — identical block used to be copy-pasted in
+# every deploy.sh. Safe to call even if install_dockhub.sh already created it
+# (this script can also be run standalone, out of order).
+ensure_main_net() {
+    if ! docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
+        docker network create main-net || true
+        if docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
+            print_info "Created docker network 'main-net'."
+        else
+            print_error "Failed to create docker network 'main-net'."
+        fi
+    fi
+}
+
+valid_mem_limit() { [[ "$1" =~ ^[0-9]+[bkmgBKMG]?$ ]]; }
+
+# Prompts once for an optional memory cap. $1 = container name (for the
+# prompt text), $2 = suggested default. Sets MEM_LIMIT in the caller's shell
+# (no command substitution — keeps the prompt on a real terminal instead of
+# risking it being swallowed into a captured value).
+MEM_LIMIT=""
+prompt_mem_limit() {
+    local container="$1" default="$2" answer value
+    MEM_LIMIT=""
+    read -rp "Set a memory limit for the '$container' container? (y/N): " answer
+    [[ "${answer,,}" == "y" ]] || return 0
+    while true; do
+        read -rp "Memory limit (default: $default, e.g. 512m, 2g): " value
+        value="${value:-$default}"
+        if valid_mem_limit "$value"; then
+            MEM_LIMIT="$value"
+            return 0
+        fi
+        echo "Invalid format — use a number followed by b/k/m/g (e.g. 2g)." >&2
+    done
+}
+
+valid_port() { [[ "$1" =~ ^[0-9]+$ ]] && (( 10#$1 >= 1024 && 10#$1 <= 65535 )); }
+
+port_in_use() {
+    local port="$1"
+    if command -v ss &>/dev/null; then
+        ss -tuln 2>/dev/null | grep -q ":$port\b"
+    elif command -v netstat &>/dev/null; then
+        netstat -tuln 2>/dev/null | grep -q ":$port\b"
+    else
+        return 1
+    fi
+}
+
+# Prompts once for an optional host port (direct access without NPM). $1 =
+# suggested default port. Sets HOST_PORT in the caller's shell (same
+# no-command-substitution reasoning as prompt_mem_limit above).
+HOST_PORT=""
+prompt_host_port() {
+    local default="$1" answer port cont
+    HOST_PORT=""
+    read -rp "Also publish a host port for direct access without NPM (e.g. http://<server-ip>:<port>)? (y/N): " answer
+    [[ "${answer,,}" == "y" ]] || return 0
+    while true; do
+        read -rp "Host port (default: $default): " port
+        port="${port:-$default}"
+        if ! valid_port "$port"; then
+            echo "Invalid port — must be a number between 1024 and 65535." >&2
+            continue
+        fi
+        if port_in_use "$port"; then
+            read -rp "Port $port looks already in use — continue anyway? (y/N): " cont
+            [[ "${cont,,}" == "y" ]] || continue
+        fi
+        HOST_PORT="$port"
+        return 0
+    done
+}
+
+# ── Environment detection (home vs VPS) ─────────────────────────────────
+# Reads ~/docker/.dockhub-env, written once by install_dockhub.sh on first
+# core-infra install. Sets DOCKHUB_ENVIRONMENT ("home"/"vps") and
+# DOCKHUB_ACCESS_METHOD ("tunnel"/"port_forward") in the caller's shell —
+# both empty if the file doesn't exist (standalone curl users who never ran
+# install_dockhub.sh). Callers must treat "empty" as "unknown", never assume
+# "vps" as a default — this only ever adds an extra reminder, it must never
+# gate whether a deploy works.
+DOCKHUB_ENVIRONMENT=""
+DOCKHUB_ACCESS_METHOD=""
+read_dockhub_env() {
+    local env_file="$HOME/docker/.dockhub-env"
+    DOCKHUB_ENVIRONMENT=""
+    DOCKHUB_ACCESS_METHOD=""
+    [[ -f "$env_file" ]] || return 0
+    DOCKHUB_ENVIRONMENT=$(grep '^ENVIRONMENT=' "$env_file" 2>/dev/null | cut -d= -f2)
+    DOCKHUB_ACCESS_METHOD=$(grep '^ACCESS_METHOD=' "$env_file" 2>/dev/null | cut -d= -f2)
+}
+
+# Call at the end of a service's post-deploy summary, after printing the
+# normal "Set up NGINX Proxy Manager..." line. No-op unless the saved
+# environment is specifically Cloudflare Tunnel.
+print_tunnel_reminder_if_relevant() {
+    read_dockhub_env
+    if [[ "$DOCKHUB_ACCESS_METHOD" == "tunnel" ]]; then
+        echo
+        echo "💻 Cloudflare Tunnel detected (from your core-infra setup): route this"
+        echo "   domain to NPM itself — not directly to this service — and leave Force"
+        echo "   SSL OFF on its Proxy Host. See docs/cloudflare-tunnel.md."
+    fi
+}
+
+# ── Generic backup / restore ────────────────────────────────────────────
+# Tars the ENTIRE install_dir tree (.env, compose files, and any
+# bind-mounted directories a service keeps user data in — Vikunja's files/,
+# Redmine's plugins/themes/, Taiga's i18n-overrides/, Odoo's config/addons/,
+# etc.) PLUS every named volume belonging to this service's compose project
+# (data that lives in Docker's own volume storage, not under install_dir at
+# all), into ~/docker/backups/<service>/[<instance>/]<timestamp>.tar.gz.
+#
+# Deliberately backs up the whole directory rather than cherry-picking known
+# filenames — a service can bind-mount arbitrary extra folders (this
+# repo already has several), and enumerating each one per-service here
+# would silently miss the next one added later. Only true Docker volumes
+# need separate handling, since those aren't visible as plain files.
+#
+# Does NOT stop containers first — fine for config-only/SQLite-embedded
+# services (jellyfin, linkstack, etc). Services with a separate database
+# container (postgres/mysql) should NOT rely on this for the db volume —
+# define a backup_<service>() override using pg_dump/mysqldump instead
+# (raw-copying a live database's data files can produce a corrupted/
+# inconsistent backup). See _template/backup.sh.template.
+#
+# $1 = service slug, $2 = instance name (empty for single-instance services),
+# $3 = install dir (e.g. ~/docker/jellyfin or ~/docker/odoo/<instance>).
+backup_service_generic() {
+    local service="$1" instance="${2:-}" install_dir="$3"
+    local backup_root="$HOME/docker/backups/$service"
+    [[ -n "$instance" ]] && backup_root="$backup_root/$instance"
+    mkdir -p "$backup_root"
+
+    local ts staging
+    ts="$(date '+%Y-%m-%d_%H%M')"
+    staging="$(mktemp -d)"
+
+    # Copied via a throwaway root-context container, not a plain host-user
+    # `cp` — several services bind-mount directories owned by a container's
+    # own internal uid (Vikunja's 1000, Odoo's dynamically-detected uid),
+    # which the invoking host user often can't read directly. Running as
+    # root here (same trick used for volumes below) avoids silently
+    # skipping files a `2>/dev/null`-guarded host copy would swallow with
+    # no indication anything was missed.
+    mkdir -p "$staging/install_dir"
+    docker run --rm -v "$install_dir":/data:ro -v "$staging/install_dir":/backup alpine \
+        sh -c "cp -a /data/. /backup/" \
+        || print_warn "Some files under $install_dir may not have been backed up — check permissions."
+
+    local project_name volumes vol
+    project_name="$(basename "$install_dir")"
+    volumes=$(docker volume ls --format '{{.Name}}' | grep -E "^${project_name}_" || true)
+    if [[ -n "$volumes" ]]; then
+        mkdir -p "$staging/volumes"
+        local vol_ok=1
+        for vol in $volumes; do
+            if ! docker run --rm -v "$vol":/data -v "$staging/volumes":/backup alpine \
+                tar czf "/backup/${vol}.tar.gz" -C /data . 2>/dev/null; then
+                print_warn "Failed to back up volume '$vol'."
+                vol_ok=0
+            fi
+        done
+        (( vol_ok )) || print_warn "Backup completed with at least one volume failure — check above."
+    fi
+
+    tar czf "$backup_root/${ts}.tar.gz" -C "$staging" .
+    rm -rf "$staging"
+    print_info "Backup saved: $backup_root/${ts}.tar.gz"
+}
+
+# $1 = service slug, $2 = instance name (empty for single-instance), $3 =
+# install dir, $4 = path to the .tar.gz to restore. Overwrites everything
+# currently under install_dir plus named volumes — callers must confirm
+# with the user before calling this (see services.sh).
+restore_service_generic() {
+    local service="$1" instance="${2:-}" install_dir="$3" archive="$4"
+    local staging
+    staging="$(mktemp -d)"
+    tar xzf "$archive" -C "$staging"
+
+    if [[ -d "$staging/install_dir" ]]; then
+        mkdir -p "$install_dir"
+        # Root-context container copy, same reasoning as backup_service_generic
+        # above — preserves the original container-uid ownership captured at
+        # backup time instead of everything landing owned by the host user.
+        docker run --rm -v "$staging/install_dir":/backup:ro -v "$install_dir":/data alpine \
+            sh -c "cp -a /backup/. /data/" \
+            || print_warn "Some files may not have restored correctly — check $install_dir."
+    fi
+
+    if [[ -d "$staging/volumes" ]]; then
+        local vol_archive vol_name
+        for vol_archive in "$staging/volumes"/*.tar.gz; do
+            [[ -f "$vol_archive" ]] || continue
+            vol_name="$(basename "$vol_archive" .tar.gz)"
+            docker volume create "$vol_name" >/dev/null
+            docker run --rm -v "$vol_name":/data -v "$staging/volumes":/backup alpine \
+                sh -c "find /data -mindepth 1 -delete; tar xzf /backup/$(basename "$vol_archive") -C /data" \
+                || print_warn "Failed to restore volume '$vol_name'."
+        done
+    fi
+    rm -rf "$staging"
+    print_info "Restored from: $archive"
+}
+
+# Lists available backups for a service (newest first) as plain paths, one
+# per line — empty output if none exist. $1 = service slug, $2 = instance
+# name (empty for single-instance).
+list_backups() {
+    local service="$1" instance="${2:-}"
+    local backup_root="$HOME/docker/backups/$service"
+    [[ -n "$instance" ]] && backup_root="$backup_root/$instance"
+    [[ -d "$backup_root" ]] || return 0
+    find "$backup_root" -maxdepth 1 -name '*.tar.gz' | sort -r
+}

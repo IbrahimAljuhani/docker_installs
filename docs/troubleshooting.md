@@ -1,0 +1,78 @@
+# 🩺 Troubleshooting: Network & Reverse Proxy
+
+This covers the category of issues that come up **after** a service deploys successfully (containers healthy, `docker ps` looks fine) but the site still doesn't open — reverse proxy misconfiguration, network reachability, and related gotchas. For core-infrastructure install issues (Docker/Portainer/NPM install itself), see the [root README's Troubleshooting section](../README.md#-troubleshooting) instead.
+
+Every example below was a real issue hit while building/testing this repo, not a hypothetical.
+
+---
+
+## "The site just doesn't open" — where to start
+
+Work through these in order; each one rules out an entire layer.
+
+1. **Is the container actually healthy?**
+   ```bash
+   docker ps --filter name=<service>-app
+   docker logs <service>-app --tail 50
+   ```
+   If the container is restarting or unhealthy, the problem is in the app itself, not networking — check that service's own README first.
+
+2. **Does it work from the server itself?**
+   ```bash
+   curl -I http://localhost:<port>
+   ```
+   If this fails too, the container/port mapping is the problem (see [Direct host port doesn't work](#direct-host-port-doesnt-work-from-another-device) below). If this **succeeds**, everything past this point is a network/reverse-proxy problem, not the service.
+
+3. **Is NPM's Proxy Host actually configured correctly for this service?**
+   See [NPM Proxy Host misconfigured](#npm-proxy-host-misconfigured) below — this is the single most common cause once step 2 passes.
+
+4. **Are you reaching NPM through Cloudflare Tunnel?**
+   See [Cloudflare Tunnel checklist](#cloudflare-tunnel-checklist) below — a whole separate category of gotchas lives here. Also see the dedicated [cloudflare-tunnel.md](cloudflare-tunnel.md) guide.
+
+---
+
+## NPM Proxy Host misconfigured
+
+Open the Proxy Host in NPM (**Hosts → Proxy Hosts → edit**) and check the **Details** tab against that service's own README "Reverse Proxy" section. The three fields that actually matter:
+
+| Field | Common mistake |
+|---|---|
+| **Forward Hostname / IP** | Typing the server's own IP (e.g. `10.0.0.27`) instead of the container name (e.g. `jellyfin-app`). NPM and the container are on the same Docker network (`main-net`) — always use the container name, never an IP, and never the server's own address (that would loop back through NPM itself). |
+| **Forward Port** | Watch for **non-Latin digits** if your OS input language isn't English (e.g. Arabic-indic `٤٤٣` instead of `443`) — some fields don't validate this and silently store the wrong value. Retype using a Latin-digit keyboard layout if a port field looks visually odd. |
+| **Scheme** | Most services here are plain `http`. LinkStack is the one exception — it terminates its own self-signed HTTPS internally, so its Proxy Host must use `https` scheme to port `443` (see its own README). Using the wrong scheme either fails outright or causes mixed-content errors. |
+
+If Forward Hostname/IP is accidentally set to the server's own address (or to NPM's own port), NPM ends up proxying a request back to itself, which typically surfaces as `400 Bad Request — Request Header Or Cookie Too Large` (headers stack with every loop iteration) rather than an obvious "wrong config" error — check this first if you see that specific error.
+
+---
+
+## Cloudflare Tunnel checklist
+
+If you're using Cloudflare Tunnel instead of a normal DNS A/AAAA record (common for home servers with no public IP), see the full [cloudflare-tunnel.md](cloudflare-tunnel.md) guide. Quick checklist if something's already set up and broken:
+
+- [ ] The Tunnel's Public Hostname route points at **NPM** (`http://<server-ip>:80`), not directly at the service's own port.
+- [ ] **Force SSL is OFF** on the NPM Proxy Host for this domain. `cloudflared` delivers traffic to NPM over plain HTTP by design (Cloudflare's edge already handles HTTPS to the visitor); if NPM also tries to force a redirect to HTTPS, it fights with Cloudflare's own enforcement and creates a redirect loop — symptom: `400 Bad Request — Request Header Or Cookie Too Large`, headers/cookies stacking with every loop iteration.
+- [ ] The DNS record for this hostname is **Proxied** (🟠 orange cloud) in Cloudflare's dashboard, not "DNS only" (⚪ grey) — a `cfargotunnel.com` CNAME target only resolves through Cloudflare's own proxy layer.
+- [ ] Check `cloudflared`'s own logs for the real error instead of guessing: `docker logs <cloudflared-container-name> --tail 50` (look for `dial tcp ... connect: connection refused` — that tells you exactly which address/port the tunnel tried and failed to reach).
+
+---
+
+## Direct host port doesn't work from another device
+
+You deployed with an optional host port (e.g. `http://10.0.0.27:6464`), it works via `curl` from the server itself, but not from your phone/laptop on the same network.
+
+1. **Check `ufw`/firewall on the server**: `sudo ufw status verbose`. If active, make sure the port is allowed.
+2. **Try a different port number.** Some routers and ISPs silently block or deprioritize specific ports by default as a security measure — port `6666` in particular has a bad reputation from historical IRC-botnet malware and gets blocked by some consumer routers/ISPs even on a private LAN. If a port mysteriously doesn't work despite everything else being correct, retry with an unrelated port (e.g. `6464` instead of `6666`) before assuming a deeper networking problem.
+3. **Router client/AP isolation.** Some routers (especially with a guest network, or some mesh systems) block devices on the same Wi-Fi from reaching each other by default. Test with `ping <server-ip>` from the other device — if even ping fails, this is almost certainly the cause; check your router's admin settings for "AP isolation" / "client isolation".
+4. If none of the above explains it and you have a stable domain set up already, it's simpler to just use NPM + your domain instead of chasing direct-port LAN issues — the direct host port is only meant for quick testing, not as the primary access method.
+
+---
+
+## "Known Proxies" / X-Forwarded-For issues (Jellyfin and similar)
+
+Some services (Jellyfin is the current example) discard `X-Forwarded-For` unless the proxy's address is explicitly trusted, so every visitor shows up in logs as NPM's own container IP. Find `main-net`'s subnet and add it in that service's own admin settings:
+
+```bash
+docker network inspect main-net --format '{{ (index .IPAM.Config 0).Subnet }}'
+```
+
+See the specific service's own README for exactly where this setting lives.

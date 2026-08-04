@@ -304,8 +304,62 @@ install_compose() {
     print_ok "Docker Compose is ready."
 }
 
+# --- One-time environment detection (home server vs VPS) -------------------
+# Asked once, ever — the answer just decides which reminder text services/
+# deploy.sh scripts print after deploying (e.g. the Cloudflare Tunnel +
+# Force-SSL gotcha). It never gates or changes how anything actually
+# deploys: main-net + NPM work identically either way. Skips silently if
+# already answered (including after a Reset NPM & Portainer, which has
+# nothing to do with network topology).
+detect_environment() {
+    local env_file="$REAL_HOME/docker/.dockhub-env"
+    [[ -f "$env_file" ]] && return 0
+
+    echo
+    print_info "One-time setup question: what kind of server is this?"
+    echo "1) Home server (behind a home router — no public IP guaranteed)"
+    echo "2) VPS / cloud server (has a public IP)"
+    local choice environment access_method=""
+    read -rp "Choice (1-2): " choice || choice=""
+    if [[ "$choice" == "1" ]]; then
+        environment="home"
+        echo
+        echo "How do you plan to reach your services from the internet?"
+        echo "1) Port forwarding (forward 80/443 on your router to this server)"
+        echo "2) Cloudflare Tunnel (no port forwarding needed)"
+        local sub
+        read -rp "Choice (1-2): " sub || sub=""
+        if [[ "$sub" == "2" ]]; then
+            access_method="tunnel"
+        else
+            access_method="port_forward"
+        fi
+    else
+        environment="vps"
+    fi
+
+    cat > "$env_file" <<EOF
+ENVIRONMENT=$environment
+ACCESS_METHOD=$access_method
+EOF
+    chown "$REAL_USER":"$REAL_GROUP" "$env_file" 2>/dev/null || true
+    print_ok "Saved to $env_file — used by services/ deploy.sh scripts for post-deploy reminders only."
+
+    if [[ "$environment" == "home" && "$access_method" == "port_forward" ]]; then
+        echo
+        print_warn "Remember to forward ports 80 and 443 on your router to this server's LAN IP."
+        print_warn "No static public IP from your ISP? You'll also need Dynamic DNS."
+    elif [[ "$environment" == "home" && "$access_method" == "tunnel" ]]; then
+        echo
+        print_info "You'll need to install and configure 'cloudflared' yourself (not automated here)."
+        print_info "When routing a service's domain in Cloudflare Tunnel, point it at THIS server, port 80 (NGINX Proxy Manager) — not directly at the service — and leave Force SSL OFF on that Proxy Host in NPM. See docs/cloudflare-tunnel.md."
+    fi
+}
+
 # --- Core install/reset flow (called from the menu below) ---
 run_core_install() {
+    detect_environment
+
     # --- Check existing installations (we run as root, so no sudo needed) ---
     DOCKER_ACTIVE=false
     COMPOSE_INSTALLED=false

@@ -101,29 +101,34 @@ Both services are plain `docker-compose.yml` stacks under `~/docker/<service>/`,
 
 ## 🧱 Services
 
-This repo installs the **core infrastructure** (`install_dockhub.sh` → Docker CE, Compose, NPM, Portainer, and the shared `main-net` network). Everything else lives under [`services/`](services/README.md) as its own self-contained, independently-deployed folder — run only the ones you actually need. See [`services/README.md`](services/README.md) for the full list, quick-start, and conventions:
-
-Organized by category (see [`services/README.md`](services/README.md) for the full roadmap — most categories are still `🚧 coming soon` placeholders in the menu, not real folders yet):
+This repo installs the **core infrastructure** (`install_dockhub.sh` → Docker CE, Compose, NPM, Portainer, and the shared `main-net` network). Everything else lives under [`services/`](services/README.md) as its own self-contained, independently-deployed folder — run only the ones you actually need. See [`services/README.md`](services/README.md) for the full up-to-date roadmap (36 catalog entries across 12 categories, ✅ = built), quick-start, and conventions — the table there is the source of truth; this section just shows the shape of the repo.
 
 ```
-services/
-├── ERP/
-│   └── odoo/               # services/ERP/odoo/deploy.sh (multi-instance)
-├── Projects/
-│   ├── openproject/        # services/Projects/openproject/deploy.sh
-│   ├── redmine/            # services/Projects/redmine/deploy.sh
-│   └── taiga/               # services/Projects/taiga/deploy.sh
-├── Storage/
-│   └── nextcloud/          # services/Storage/nextcloud/deploy.sh
-├── Automation/
-│   └── n8n/                 # services/Automation/n8n/deploy.sh
-└── _template/               # copy this to start a new service (not a category)
-    ├── deploy.sh.template
-    ├── docker-compose.template.yml
-    └── .env.example
+dockhub/
+├── install_dockhub.sh
+├── lib/
+│   └── common.sh                 # shared helpers every service's deploy.sh sources
+├── docs/
+│   ├── troubleshooting.md        # reverse-proxy / network issues
+│   ├── cloudflare-tunnel.md      # home-server-behind-NAT setup guide
+│   └── updating.md
+└── services/
+    ├── services.sh                # category → service → deploy/remove/reinstall/backup/restore menu
+    ├── ERP/odoo/                  # multi-instance; also has backup.sh (DB-aware)
+    ├── Projects/{openproject,plane,vikunja,redmine,taiga}/
+    ├── Storage/nextcloud/
+    ├── Automation/n8n/
+    ├── Media/jellyfin/
+    ├── Web/linkstack/
+    ├── _template/                 # copy this to scaffold a new service
+    │   ├── deploy.sh.template
+    │   ├── backup.sh.template      # only needed for services with their own db container
+    │   ├── docker-compose.template.yml
+    │   └── .env.example
+    └── <other categories>/        # still 🚧 roadmap placeholders — see services/README.md
 ```
 
-Convention for every service: its own `.env` (never committed, `chmod 600`), a private `<service>-net` for its own containers (e.g. app ↔ db), and only its app/entrypoint container also joined to `main-net` so NPM can reach it by container name — no databases and no extra host ports exposed. Containers are named `<service>-app` / `<service>-db`. Most services also offer an **optional memory cap** on their main container, asked once on first deploy and applied via a generated `docker-compose.override.yml` (see any service's README, "memory limit" section). See [`services/_template/`](services/_template/) to scaffold a new one.
+Convention for every service: its own `.env` (never committed, `chmod 600`), a private `<service>-net` for its own containers (e.g. app ↔ db) when it has more than one, and only its app/entrypoint container also joined to `main-net` so NPM can reach it by container name. Containers are named `<service>-app` / `<service>-db`. Every service also offers an **optional memory cap** and **optional direct host port**, and a **Backup/Restore** menu option in `services.sh` (generic volume-based by default, `pg_dump`/`mysqldump`-based for services with their own database container). See [`services/_template/`](services/_template/) to scaffold a new one, or [`services/README.md`](services/README.md) for the full convention list.
 
 ---
 
@@ -226,12 +231,15 @@ This script only creates `npm/` and `portainer/`, plus its own log file — but 
 ```
 ~/docker/
 ├── install_dockhub.log      # this script's own log (rotated to .old on rerun)
+├── .dockhub-env              # one-time home/VPS + access-method choice (see install_dockhub.sh)
 ├── npm/
 │   ├── docker-compose.yml
 │   ├── data/            # NPM SQLite DB + config      (owned by you)
 │   └── letsencrypt/      # TLS certs                   (owned by you)
 ├── portainer/
 │   └── docker-compose.yml
+├── backups/                  # created on demand by services.sh's Backup option
+│   └── <service>/[<instance>/]<timestamp>.tar.gz
 └── odoo/                 # example: added by services/ERP/odoo/deploy.sh — runtime state stays flat under ~/docker/ regardless of the repo's category folders
     ├── deploy.log
     ├── .odoo-docker-secrets.txt
@@ -279,6 +287,8 @@ docker inspect --format='{{.State.Health.Status}}' portainer
 
 ## 🩺 Troubleshooting
 
+This table is for **core-infrastructure install issues** (Docker/Compose/NPM/Portainer). For "a service deployed fine but the site won't open" — reverse proxy misconfiguration, Cloudflare Tunnel, direct-port reachability — see [docs/troubleshooting.md](docs/troubleshooting.md) instead.
+
 | Symptom | Cause | Fix |
 |---|---|---|
 | Portainer shows `unhealthy` in `docker ps` / Portainer's own UI, even though it works fine | *(Historical — fixed)* Older revisions used `docker run --health-cmd`, which always requires a shell inside the image; the default portainer-ce image has none | Already fixed — Portainer now runs via `docker-compose.yml` with a shell-free healthcheck. If you're still seeing this, you're on an old copy of the script; re-download it |
@@ -288,6 +298,8 @@ docker inspect --format='{{.State.Health.Status}}' portainer
 | Port already in use | Another service is bound to it | The script pre-checks with `ss`/`netstat` and offers to continue or abort. Re-run with the relevant `_PORT` env var to pick a different one |
 | Containers not running after install | Varies | `cd ~/docker/npm && docker compose logs` / `cd ~/docker/portainer && docker compose logs` |
 | Installation failed mid-way | Varies — check the log | `~/docker/install_dockhub.log` (previous run preserved as `.old`) |
+| Site deployed fine but domain won't open (Cloudflare Tunnel) | Wrong routing target, or Force SSL fighting Cloudflare's own HTTPS enforcement | See [docs/cloudflare-tunnel.md](docs/cloudflare-tunnel.md) |
+| Not sure how to update DockHub itself, or a single service's image | — | See [docs/updating.md](docs/updating.md) |
 
 ---
 
