@@ -29,7 +29,6 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="$HOME/docker/wireguard"
 LOGFILE="$INSTALL_DIR/deploy.log"
 SECRETS_FILE="$INSTALL_DIR/.wireguard-docker-secrets.txt"
-WG_EASY_VERSION="15"
 
 # Shared helpers — sourced from a git checkout if present, self-fetched
 # otherwise so standalone curl usage still works with no extra steps.
@@ -50,31 +49,22 @@ ensure_main_net
 if [[ -f "$INSTALL_DIR/.env" ]]; then
     print_info "Existing deployment found at $INSTALL_DIR — reusing its .env (not regenerated)."
 else
-    # WG_HOST is the actual VPN endpoint peers dial over UDP — unlike every
-    # other service's domain question, this is never optional/conditional
-    # on the host-port choice, since WireGuard traffic can never go through
-    # NPM (raw UDP, not HTTP). Always ask for it.
-    read -rp "Enter the public IP or domain your WireGuard clients will connect to (e.g. vpn.example.com or your server's public IP): " WG_HOST_VALUE
-    [[ -n "$WG_HOST_VALUE" ]] || print_error "A public IP or domain is required — this is the actual VPN endpoint clients connect to."
+    # INIT_HOST is the actual VPN endpoint peers dial over UDP — unlike
+    # every other service's domain question, this is never optional/
+    # conditional on the host-port choice, since WireGuard traffic can
+    # never go through NPM (raw UDP, not HTTP). Always ask for it.
+    read -rp "Enter the public IP or domain your WireGuard clients will connect to (e.g. vpn.example.com or your server's public IP): " INIT_HOST_VALUE
+    [[ -n "$INIT_HOST_VALUE" ]] || print_error "A public IP or domain is required — this is the actual VPN endpoint clients connect to."
 
     ADMIN_PASSWORD=$(generate_secret)
     prompt_mem_limit "wg-easy-app" "256m"
     prompt_host_port "51821"
 
-    print_info "Generating bcrypt password hash (pulls the wg-easy image if needed)..."
-    RAW_HASH=$(docker run --rm "ghcr.io/wg-easy/wg-easy:$WG_EASY_VERSION" wgpw "$ADMIN_PASSWORD" \
-        | sed -n "s/^PASSWORD_HASH='\(.*\)'$/\1/p")
-    [[ -n "$RAW_HASH" ]] || print_error "Failed to generate the admin password hash — check that the wg-easy image pulled successfully."
-    # Every literal $ must be doubled for Compose's own ${VAR} substitution
-    # to pass it through to the container literally instead of trying to
-    # interpret parts of the bcrypt hash as a variable reference — see
-    # wg-easy's own "How_to_generate_an_bcrypt_hash.md".
-    ESCAPED_HASH="${RAW_HASH//\$/\$\$}"
-
     cat > "$INSTALL_DIR/.env" <<EOF
-WG_EASY_VERSION=$WG_EASY_VERSION
-WG_HOST=$WG_HOST_VALUE
-PASSWORD_HASH=$ESCAPED_HASH
+WG_EASY_VERSION=15
+INIT_USERNAME=admin
+INIT_PASSWORD=$ADMIN_PASSWORD
+INIT_HOST=$INIT_HOST_VALUE
 EOF
     [[ -n "$MEM_LIMIT" ]] && echo "MEM_LIMIT=$MEM_LIMIT" >> "$INSTALL_DIR/.env"
     [[ -n "$HOST_PORT" ]] && echo "HOST_PORT=$HOST_PORT" >> "$INSTALL_DIR/.env"
@@ -82,8 +72,9 @@ EOF
 
     {
         echo "# Auto-generated WireGuard/wg-easy secrets - DO NOT SHARE"
-        echo "$(date '+%F %T'): host=$WG_HOST_VALUE"
-        echo "  Web UI admin password: $ADMIN_PASSWORD"
+        echo "$(date '+%F %T'): host=$INIT_HOST_VALUE"
+        echo "  Web UI username: admin"
+        echo "  Web UI password: $ADMIN_PASSWORD"
     } > "$SECRETS_FILE"
     chmod 600 "$SECRETS_FILE"
     print_info "Generated .env and saved a copy of the secrets to $SECRETS_FILE."
@@ -124,19 +115,19 @@ print_info "Starting WireGuard (wg-easy)..."
 (cd "$INSTALL_DIR" && $COMPOSE_CMD up -d 2>&1 | tee -a "$LOGFILE") \
     || print_error "Failed to start WireGuard. Check log: $LOGFILE"
 
-WG_HOST_SHOWN=$(grep '^WG_HOST=' "$INSTALL_DIR/.env" | cut -d= -f2)
+INIT_HOST_SHOWN=$(grep '^INIT_HOST=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 print_info "WireGuard (wg-easy) is starting."
 echo
 echo "──────────────────────────────────────────────"
-echo "🔌 VPN endpoint: $WG_HOST_SHOWN:51820 (UDP — always on)"
+echo "🔌 VPN endpoint: $INIT_HOST_SHOWN:51820 (UDP — always on)"
 if [[ -n "$ENV_HOST_PORT" ]]; then
     SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
     [[ -z "${SERVER_IP:-}" ]] && SERVER_IP="<your-server-ip>"
     echo "🌐 Web UI:       http://$SERVER_IP:$ENV_HOST_PORT"
 fi
 echo "🔗 Proxy target: wg-easy-app:51821 on 'main-net'"
-echo "👤 Web login:    password only (no username) — see secrets file below"
+echo "👤 Web login:    username 'admin' + the generated password — see secrets file below"
 echo "📜 Log:          $LOGFILE"
 [[ -f "$SECRETS_FILE" ]] && echo "🔒 Secrets:      $SECRETS_FILE"
 echo "──────────────────────────────────────────────"

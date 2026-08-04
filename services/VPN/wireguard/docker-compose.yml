@@ -1,9 +1,22 @@
 # WireGuard via wg-easy — official image, verified against
-# https://github.com/wg-easy/wg-easy's own docker-compose.yml. Plain
-# WireGuard has no web UI at all (config-file/CLI only) — wg-easy is the
-# community-standard wrapper that adds one (add/remove peers, QR codes for
-# mobile), which is why this repo builds "WireGuard" as wg-easy specifically
-# rather than a bare WireGuard image.
+# https://github.com/wg-easy/wg-easy's own docker-compose.yml and its
+# "Unattended Setup" docs (https://wg-easy.github.io/wg-easy/latest/advanced/config/unattended-setup/).
+# Plain WireGuard has no web UI at all (config-file/CLI only) — wg-easy is
+# the community-standard wrapper that adds one (add/remove peers, QR codes
+# for mobile), which is why this repo builds "WireGuard" as wg-easy
+# specifically rather than a bare WireGuard image.
+#
+# v15 replaced the old PASSWORD_HASH/wgpw mechanism entirely with an
+# interactive first-visit browser setup wizard by default. This repo uses
+# wg-easy's own "Unattended Setup" INIT_* variables instead, to skip that
+# wizard and match every other service here's "credentials generated
+# automatically by deploy.sh" convention. Only the required minimal group
+# (INIT_USERNAME/INIT_PASSWORD/INIT_HOST/INIT_PORT) is set — INIT_DNS/
+# INIT_IPV4_CIDR/INIT_IPV6_CIDR/INIT_ALLOWED_IPS are left unset on purpose:
+# wg-easy's own docs say these are mutually-dependent groups (setting one
+# member requires setting every other member of that group), and the
+# built-in defaults those would otherwise override are already sensible —
+# change them later via the web UI's settings page if needed.
 #
 # Deliberate deviations from upstream's own docker-compose example:
 #   - The web UI (port 51821) is NOT published to the host by default —
@@ -17,6 +30,9 @@
 #     container IP (10.42.42.42) — this isn't decorative, wg-easy's own NAT/
 #     iptables rules are built assuming a known, stable IP. wg-easy-app also
 #     joins 'main-net' for the NPM-proxied web UI.
+#   - IPv6 is disabled (DISABLE_IPV6=true) — matches this file dropping
+#     IPv6 addressing on 'wg-net' below; avoids needing INIT_IPV6_CIDR too
+#     (see above).
 #
 # This is a single-instance service: one wg-easy deployment per host, under
 # ~/docker/wireguard/.
@@ -30,10 +46,12 @@ services:
     container_name: wg-easy-app
     restart: unless-stopped
     environment:
-      WG_HOST: "${WG_HOST}"
-      PASSWORD_HASH: "${PASSWORD_HASH}"
-      PORT: "51821"
-      WG_PORT: "51820"
+      DISABLE_IPV6: "true"
+      INIT_ENABLED: "true"
+      INIT_USERNAME: "${INIT_USERNAME}"
+      INIT_PASSWORD: "${INIT_PASSWORD}"
+      INIT_HOST: "${INIT_HOST}"
+      INIT_PORT: "51820"
     volumes:
       - wg-easy-data:/etc/wireguard
       - /lib/modules:/lib/modules:ro
@@ -46,9 +64,6 @@ services:
     sysctls:
       - net.ipv4.ip_forward=1
       - net.ipv4.conf.all.src_valid_mark=1
-      - net.ipv6.conf.all.disable_ipv6=0
-      - net.ipv6.conf.all.forwarding=1
-      - net.ipv6.conf.default.forwarding=1
     networks:
       wg-net:
         ipv4_address: 10.42.42.42
