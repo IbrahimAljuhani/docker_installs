@@ -33,7 +33,11 @@ bash deploy.sh
 
 This is a **single-instance** service: one Jellyfin deployment per host, under `~/docker/jellyfin/`.
 
-You'll be asked for the **path to your media library** on the host (e.g. `/mnt/media`) — this is required, unlike every other prompt below. It's mounted read-only into the container at `/media`. If the path doesn't exist yet, `deploy.sh` offers to create it empty so you can populate it later.
+You'll be asked for your **media library path** on the host — this is required, unlike every other prompt below, and it's two separate questions:
+1. Whether you already have a media folder, or want one created fresh.
+2. The path itself — if creating fresh, `deploy.sh` runs `mkdir -p` on it right there (and tells you exactly why if that fails, e.g. no write permission — try a path under `$HOME`, or create it yourself first with `sudo mkdir -p <path> && sudo chown $USER <path>`); if pointing at an existing folder, it's validated to actually exist.
+
+Either way it's mounted read-only into the container at `/media`.
 
 You'll also be asked whether to cap memory on the `jellyfin` container (default suggestion: `2g` — transcoding is memory-hungry). Say no and it runs uncapped.
 

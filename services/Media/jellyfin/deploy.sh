@@ -121,29 +121,43 @@ prompt_hw_accel() {
 }
 
 # Prompts for the media library path — required (Jellyfin has nothing to
-# serve without it). Creates the directory if missing (warns it'll be
-# empty) rather than hard-refusing, since some people deploy first and
-# populate media afterward. Sets MEDIA_PATH_VALUE in the caller's shell.
+# serve without it). Two clearly separate questions instead of one nested
+# prompt: first whether to create a fresh empty folder or point at an
+# existing one, then the path itself — so "yes, create it" always means the
+# very next path you type gets created, no ambiguity about which question
+# you're answering. Sets MEDIA_PATH_VALUE in the caller's shell.
 MEDIA_PATH_VALUE=""
 prompt_media_path() {
-    local path
-    while true; do
-        read -rp "Path to your media library on this host (e.g. /mnt/media): " path
-        if [[ -z "$path" ]]; then
-            echo "A media path is required." >&2
-            continue
-        fi
-        if [[ ! -d "$path" ]]; then
-            read -rp "'$path' doesn't exist — create it now (empty, add media later)? (y/N): " create
-            if [[ "${create,,}" == "y" ]]; then
-                mkdir -p "$path" || { echo "Failed to create '$path'." >&2; continue; }
-            else
+    local answer path err
+    read -rp "Do you already have a media folder on this host? (Y/n): " answer
+    if [[ "${answer,,}" == "n" ]]; then
+        while true; do
+            read -rp "Path to create for your media library (e.g. /mnt/media, or ~/media): " path
+            if [[ -z "$path" ]]; then
+                echo "A path is required." >&2
                 continue
             fi
-        fi
-        MEDIA_PATH_VALUE="$(cd "$path" && pwd)"
-        return 0
-    done
+            if err=$(mkdir -p "$path" 2>&1); then
+                MEDIA_PATH_VALUE="$(cd "$path" && pwd)"
+                return 0
+            fi
+            echo "Failed to create '$path': $err" >&2
+            echo "Try a path your user can write to (e.g. under \$HOME), or create it yourself first with sudo mkdir -p and sudo chown \$USER on it." >&2
+        done
+    else
+        while true; do
+            read -rp "Path to your existing media library (e.g. /mnt/media): " path
+            if [[ -z "$path" ]]; then
+                echo "A path is required." >&2
+                continue
+            fi
+            if [[ -d "$path" ]]; then
+                MEDIA_PATH_VALUE="$(cd "$path" && pwd)"
+                return 0
+            fi
+            echo "'$path' doesn't exist." >&2
+        done
+    fi
 }
 
 check_prerequisites
