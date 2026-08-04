@@ -1,0 +1,260 @@
+#!/bin/bash
+# deploy.sh (services/Media/jellyfin)
+# Purpose: Deploy Jellyfin (single container, config/cache in Docker
+# volumes, your media bind-mounted read-only from the host) — see
+# docker-compose.yml for the deliberate deviations from upstream's own
+# guidance.
+#
+# This is a single-instance service: one Jellyfin deployment per host,
+# under ~/docker/jellyfin/.
+
+set -euo pipefail
+
+if [[ $# -gt 0 ]]; then
+    case "$1" in
+        --help|-h)
+            echo "Usage: $0 [OPTIONS]"
+            echo "Deploy Jellyfin behind the shared 'main-net' network."
+            exit 0
+            ;;
+    esac
+fi
+
+if [[ $EUID -eq 0 ]]; then
+    echo "This script must NOT be run as root. Please run as a regular user in the docker group." >&2
+    exit 1
+fi
+
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+INSTALL_DIR="$HOME/docker/jellyfin"
+LOGFILE="$INSTALL_DIR/deploy.log"
+
+print_info()  { echo -e "[✓] $1" >&2; }
+print_warn()  { echo -e "[!] $1" >&2; }
+print_error() { echo -e "[✗] $1" >&2; exit 1; }
+
+check_prerequisites() {
+    local missing=()
+    command -v docker &>/dev/null || missing+=("Docker CE")
+    if docker compose version &>/dev/null; then
+        COMPOSE_CMD="docker compose"
+    elif docker-compose version &>/dev/null; then
+        COMPOSE_CMD="docker-compose"
+    else
+        missing+=("Docker Compose")
+    fi
+    if (( ${#missing[@]} != 0 )); then
+        print_error "Missing required components: ${missing[*]}. Run install_dockhub.sh first."
+    fi
+}
+
+valid_mem_limit() { [[ "$1" =~ ^[0-9]+[bkmgBKMG]?$ ]]; }
+
+# Prompts once for an optional memory cap on the container. Sets MEM_LIMIT
+# in the caller's shell (no command substitution — keeps the prompt on a
+# real terminal instead of risking it being swallowed into a captured value).
+MEM_LIMIT=""
+prompt_mem_limit() {
+    local default="$1" answer value
+    read -rp "Set a memory limit for the 'jellyfin' container? (y/N): " answer
+    [[ "${answer,,}" == "y" ]] || return 0
+    while true; do
+        read -rp "Memory limit (default: $default, e.g. 1g, 2g): " value
+        value="${value:-$default}"
+        if valid_mem_limit "$value"; then
+            MEM_LIMIT="$value"
+            return 0
+        fi
+        echo "Invalid format — use a number followed by b/k/m/g (e.g. 2g)." >&2
+    done
+}
+
+valid_port() { [[ "$1" =~ ^[0-9]+$ ]] && (( 10#$1 >= 1024 && 10#$1 <= 65535 )); }
+
+port_in_use() {
+    local port="$1"
+    if command -v ss &>/dev/null; then
+        ss -tuln 2>/dev/null | grep -q ":$port\b"
+    elif command -v netstat &>/dev/null; then
+        netstat -tuln 2>/dev/null | grep -q ":$port\b"
+    else
+        return 1
+    fi
+}
+
+# Prompts once for an optional host port (direct access without NPM, e.g. for
+# quick testing, or LAN clients that auto-discover Jellyfin directly). Sets
+# HOST_PORT in the caller's shell (no command substitution — same reasoning
+# as prompt_mem_limit above).
+HOST_PORT=""
+prompt_host_port() {
+    local default="$1" answer port cont
+    read -rp "Also publish a host port for direct access without NPM (e.g. http://<server-ip>:<port>)? (y/N): " answer
+    [[ "${answer,,}" == "y" ]] || return 0
+    while true; do
+        read -rp "Host port (default: $default): " port
+        port="${port:-$default}"
+        if ! valid_port "$port"; then
+            echo "Invalid port — must be a number between 1024 and 65535." >&2
+            continue
+        fi
+        if port_in_use "$port"; then
+            read -rp "Port $port looks already in use — continue anyway? (y/N): " cont
+            [[ "${cont,,}" == "y" ]] || continue
+        fi
+        HOST_PORT="$port"
+        return 0
+    done
+}
+
+# Prompts once for hardware transcoding (passes /dev/dri through to the
+# container) — optional, off by default, since most servers don't have a
+# compatible GPU. Sets HW_ACCEL ("1" or "") in the caller's shell.
+HW_ACCEL=""
+prompt_hw_accel() {
+    local answer
+    if [[ ! -e /dev/dri ]]; then
+        return 0
+    fi
+    read -rp "Detected /dev/dri — enable hardware transcoding passthrough? (y/N): " answer
+    [[ "${answer,,}" == "y" ]] && HW_ACCEL="1"
+}
+
+# Prompts for the media library path — required (Jellyfin has nothing to
+# serve without it). Creates the directory if missing (warns it'll be
+# empty) rather than hard-refusing, since some people deploy first and
+# populate media afterward. Sets MEDIA_PATH_VALUE in the caller's shell.
+MEDIA_PATH_VALUE=""
+prompt_media_path() {
+    local path
+    while true; do
+        read -rp "Path to your media library on this host (e.g. /mnt/media): " path
+        if [[ -z "$path" ]]; then
+            echo "A media path is required." >&2
+            continue
+        fi
+        if [[ ! -d "$path" ]]; then
+            read -rp "'$path' doesn't exist — create it now (empty, add media later)? (y/N): " create
+            if [[ "${create,,}" == "y" ]]; then
+                mkdir -p "$path" || { echo "Failed to create '$path'." >&2; continue; }
+            else
+                continue
+            fi
+        fi
+        MEDIA_PATH_VALUE="$(cd "$path" && pwd)"
+        return 0
+    done
+}
+
+check_prerequisites
+
+mkdir -p "$INSTALL_DIR"
+
+# Shared reverse-proxy network (created by install_dockhub.sh; created here
+# too, idempotently, so this script also works standalone/out of order).
+if ! docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
+    docker network create main-net || true
+    if docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
+        print_info "Created docker network 'main-net'."
+    else
+        print_error "Failed to create docker network 'main-net'."
+    fi
+fi
+
+if [[ -f "$INSTALL_DIR/.env" ]]; then
+    print_info "Existing deployment found at $INSTALL_DIR — reusing its .env (not regenerated)."
+else
+    prompt_media_path
+    prompt_mem_limit "2g"
+    prompt_host_port "8096"
+    prompt_hw_accel
+
+    # PUBLISHED_URL is only used for Jellyfin's LAN autodiscovery feature —
+    # unlike Vikunja/Plane, Jellyfin has no CORS/host-header check, so this
+    # is optional, not required for NPM access to work.
+    if [[ -n "$HOST_PORT" ]]; then
+        SERVER_IP_FOR_URL=$(hostname -I 2>/dev/null | awk '{print $1}')
+        [[ -z "${SERVER_IP_FOR_URL:-}" ]] && SERVER_IP_FOR_URL="localhost"
+        PUBLISHED_URL_VALUE="http://$SERVER_IP_FOR_URL:$HOST_PORT"
+    else
+        read -rp "Public domain you'll point NGINX Proxy Manager at, for autodiscovery (optional, e.g. jellyfin.example.com): " JELLYFIN_DOMAIN
+        [[ -n "$JELLYFIN_DOMAIN" ]] && PUBLISHED_URL_VALUE="https://$JELLYFIN_DOMAIN" || PUBLISHED_URL_VALUE=""
+    fi
+
+    cat > "$INSTALL_DIR/.env" <<EOF
+JELLYFIN_VERSION=latest
+TZ=UTC
+MEDIA_PATH=$MEDIA_PATH_VALUE
+PUBLISHED_URL=$PUBLISHED_URL_VALUE
+EOF
+    [[ -n "$MEM_LIMIT" ]] && echo "MEM_LIMIT=$MEM_LIMIT" >> "$INSTALL_DIR/.env"
+    [[ -n "$HOST_PORT" ]] && echo "HOST_PORT=$HOST_PORT" >> "$INSTALL_DIR/.env"
+    [[ -n "$HW_ACCEL" ]] && echo "HW_ACCEL=$HW_ACCEL" >> "$INSTALL_DIR/.env"
+    chmod 600 "$INSTALL_DIR/.env"
+    print_info "Generated .env at $INSTALL_DIR/.env (media path: $MEDIA_PATH_VALUE)."
+fi
+
+if [[ -f "$INSTALL_DIR/docker-compose.yml" ]]; then
+    print_info "Existing docker-compose.yml found at $INSTALL_DIR — keeping it (not overwritten). Delete it yourself first if you want the latest version from this repo."
+else
+    cp "$SOURCE_DIR/docker-compose.yml" "$INSTALL_DIR/docker-compose.yml"
+fi
+
+# docker-compose.override.yml is fully owned by this script (never hand-edit
+# it), so it's always safe to regenerate from whatever .env currently has.
+ENV_MEM_LIMIT=""
+ENV_HOST_PORT=""
+ENV_HW_ACCEL=""
+grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -q '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -q '^HW_ACCEL=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HW_ACCEL=$(grep '^HW_ACCEL=' "$INSTALL_DIR/.env" | cut -d= -f2)
+
+if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" || -n "$ENV_HW_ACCEL" ]]; then
+    {
+        echo "services:"
+        echo "  jellyfin:"
+        [[ -n "$ENV_MEM_LIMIT" ]] && echo "    mem_limit: $ENV_MEM_LIMIT"
+        if [[ -n "$ENV_HOST_PORT" ]]; then
+            echo "    ports:"
+            echo "      - \"$ENV_HOST_PORT:8096\""
+        fi
+        if [[ -n "$ENV_HW_ACCEL" ]]; then
+            echo "    devices:"
+            echo "      - /dev/dri:/dev/dri"
+        fi
+    } > "$INSTALL_DIR/docker-compose.override.yml"
+    [[ -n "$ENV_MEM_LIMIT" ]] && print_info "Memory limit $ENV_MEM_LIMIT applied to the 'jellyfin' container."
+    [[ -n "$ENV_HOST_PORT" ]] && print_info "Host port $ENV_HOST_PORT published for direct access."
+    [[ -n "$ENV_HW_ACCEL" ]] && print_info "Hardware transcoding passthrough (/dev/dri) enabled."
+else
+    rm -f "$INSTALL_DIR/docker-compose.override.yml"
+fi
+
+print_info "Starting Jellyfin..."
+(cd "$INSTALL_DIR" && $COMPOSE_CMD up -d 2>&1 | tee -a "$LOGFILE") \
+    || print_error "Failed to start Jellyfin. Check log: $LOGFILE"
+
+print_info "Jellyfin is starting."
+echo
+echo "──────────────────────────────────────────────"
+if [[ -n "$ENV_HOST_PORT" ]]; then
+    SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+    [[ -z "${SERVER_IP:-}" ]] && SERVER_IP="<your-server-ip>"
+    echo "🌐 URL:          http://$SERVER_IP:$ENV_HOST_PORT"
+fi
+echo "🔗 Proxy target: jellyfin-app:8096 on 'main-net'"
+echo "📁 Media path:   $(grep '^MEDIA_PATH=' "$INSTALL_DIR/.env" | cut -d= -f2-)"
+echo "👤 First visit:  follow the setup wizard — create your own admin account"
+echo "📜 Log:          $LOGFILE"
+echo "──────────────────────────────────────────────"
+echo
+echo "⚠️  IMPORTANT — after setup, go to Admin Dashboard → Networking →"
+echo "   'Known proxies' and add NPM's subnet, or Jellyfin will discard"
+echo "   X-Forwarded-For and log every visitor as the proxy's own IP."
+echo "   Find the subnet with:"
+echo "     docker network inspect main-net --format '{{ (index .IPAM.Config 0).Subnet }}'"
+echo
+echo "Set up NGINX Proxy Manager: forward to jellyfin-app, port 8096,"
+echo "enable Websockets Support (Jellyfin uses them for sync/notifications)."
+echo
+echo "To manage: cd $INSTALL_DIR && $COMPOSE_CMD [ps|logs -f|stop|restart]"
