@@ -1,0 +1,53 @@
+# Pi-hole — official image, verified against the compose example in
+# https://github.com/pi-hole/docker-pi-hole's own README (v6, FTLCONF_*
+# environment variables).
+#
+# Deliberate deviations from upstream's own compose example:
+#   - DNS ports (53/tcp+udp) stay unconditionally published — DNS is a raw
+#     protocol NGINX Proxy Manager can't front, so unlike every other
+#     service here there's no way to make this "NPM-only, opt into a host
+#     port" — the whole point of Pi-hole is being reachable as your LAN's
+#     DNS resolver. Only the WEB UI (port 80) follows this repo's normal
+#     optional-host-port convention.
+#   - Port 443 (Pi-hole's own self-signed HTTPS) is dropped entirely — NPM
+#     handles real TLS termination instead, same reasoning as every other
+#     service here; proxying to Pi-hole's self-signed cert would just add
+#     a redundant, browser-warning-triggering hop.
+#   - NET_ADMIN is dropped (only needed for Pi-hole's optional built-in DHCP
+#     server, which this deploy doesn't set up — most home networks already
+#     have DHCP from their router). SYS_TIME/SYS_NICE are kept, matching
+#     upstream's own defaults.
+#   - FTLCONF_dns_listeningMode is hardcoded to 'ALL' — required per
+#     upstream's own docs whenever running on Docker's bridge network
+#     (which 'main-net' is), otherwise Pi-hole only answers queries from
+#     inside its own container and nothing on your LAN can use it.
+#
+# This is a single-instance service: one Pi-hole deployment per host, under
+# ~/docker/pi-hole/.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it
+# (and the generated .env) to ~/docker/pi-hole/ and runs it from there.
+
+services:
+  pihole:
+    image: pihole/pihole:${PIHOLE_VERSION:-latest}
+    container_name: pihole-app
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    environment:
+      TZ: "${TZ:-UTC}"
+      FTLCONF_webserver_api_password: "${WEBPASSWORD}"
+      FTLCONF_dns_listeningMode: "ALL"
+    volumes:
+      - ./etc-pihole:/etc/pihole
+    cap_add:
+      - SYS_TIME
+      - SYS_NICE
+    networks:
+      - main-net
+
+networks:
+  main-net:
+    external: true
