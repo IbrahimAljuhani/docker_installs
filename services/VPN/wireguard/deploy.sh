@@ -67,7 +67,15 @@ INIT_PASSWORD=$ADMIN_PASSWORD
 INIT_HOST=$INIT_HOST_VALUE
 EOF
     [[ -n "$MEM_LIMIT" ]] && echo "MEM_LIMIT=$MEM_LIMIT" >> "$INSTALL_DIR/.env"
-    [[ -n "$HOST_PORT" ]] && echo "HOST_PORT=$HOST_PORT" >> "$INSTALL_DIR/.env"
+    if [[ -n "$HOST_PORT" ]]; then
+        echo "HOST_PORT=$HOST_PORT" >> "$INSTALL_DIR/.env"
+        # wg-easy refuses login over a connection it can't confirm was
+        # HTTPS (checks X-Forwarded-Proto, absent on a direct connection).
+        # Only flip this for the direct host-port path — NPM+SSL doesn't
+        # need it (see docker-compose.yml's header comment and this
+        # service's README Reverse Proxy section).
+        echo "INSECURE=true" >> "$INSTALL_DIR/.env"
+    fi
     chmod 600 "$INSTALL_DIR/.env"
 
     {
@@ -133,8 +141,11 @@ echo "📜 Log:          $LOGFILE"
 echo "──────────────────────────────────────────────"
 echo
 echo "Set up NGINX Proxy Manager for the web UI: forward to wg-easy-app,"
-echo "port 51821, enable SSL. Then log in and add your first peer/device —"
-echo "each one gets a downloadable config file and a QR code for mobile."
+echo "port 51821, enable SSL. NPM sends X-Forwarded-Proto correctly by"
+echo "default, so login should work through it without extra steps — if"
+echo "wg-easy still says 'insecure connection', see the README's Reverse"
+echo "Proxy section for what to check. Then log in and add your first"
+echo "peer/device — each one gets a config file and a QR code for mobile."
 print_tunnel_reminder_if_relevant
 echo
 echo "To manage: cd $INSTALL_DIR && $COMPOSE_CMD [ps|logs -f|stop|restart]"

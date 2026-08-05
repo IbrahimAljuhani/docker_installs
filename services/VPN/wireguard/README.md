@@ -37,7 +37,7 @@ This is a **single-instance** service: one wg-easy deployment per host, under `~
 |---|---|---|
 | 1 | **Public IP or domain** (always asked) | The actual VPN endpoint your devices dial over UDP — e.g. `vpn.example.com` or your server's public IP. Unlike every other service's domain question, this is **never optional or NPM-related** — WireGuard traffic is raw UDP and can never go through NPM. |
 | 2 | **Memory limit for the `wg-easy-app` container?** (default: **no** → unbounded) | Suggested default `256m` if you say yes |
-| 3 | **Publish a host port for direct web-UI access without NPM?** (default: **no**) | Suggested default `51821` |
+| 3 | **Publish a host port for direct web-UI access without NPM?** (default: **no**) | Suggested default `51821`. Saying yes also sets `INSECURE=true` automatically — see [below](#️-you-cant-log-in-with-an-insecure-connection-use-https) for why direct access needs this. |
 
 `deploy.sh` generates a random admin password and sets it via wg-easy's own `INIT_*` "Unattended Setup" environment variables (see [wg-easy's own docs](https://wg-easy.github.io/wg-easy/latest/advanced/config/unattended-setup/)) — this skips wg-easy's interactive first-visit browser wizard entirely, matching every other service in this repo's "credentials generated automatically" convention. The generated password is saved to `.env`, `600`, and a one-time readable copy at `~/docker/wireguard/.wireguard-docker-secrets.txt`, `600`.
 
@@ -60,9 +60,16 @@ Log in to the web UI with username `admin` and the password from the secrets fil
    - **Domain**: your chosen domain, e.g. `wg.example.com` (can be different from `INIT_HOST` — this one's just for the web UI, `INIT_HOST` is the VPN endpoint peers dial directly)
    - **Forward Hostname/IP**: `wg-easy-app`
    - **Forward Port**: `51821`
-3. Enable **SSL** with Let's Encrypt from the UI — wg-easy's own docs note that running its web UI over plain HTTP is insecure, since it's what issues new VPN peer credentials.
+3. Enable **SSL** with Let's Encrypt from the UI.
 
 ✅ No host port is published for the web UI by default — NPM reaches it by container name over `main-net`. This is unrelated to the VPN data port (51820/udp), which is always directly reachable regardless of NPM/SSL setup, same as Pi-hole's DNS port.
+
+### ⚠️ "You can't log in with an insecure connection. Use HTTPS."
+
+wg-easy **refuses login entirely** unless it can confirm the connection was HTTPS — it checks the `X-Forwarded-Proto` header, which is absent on a direct, un-proxied connection. This isn't just a warning; it's a hard block, and it applies in two different situations:
+
+- **Direct host-port access** (no NPM): always blocked otherwise — this is why `deploy.sh` automatically sets `INSECURE=true` in `.env` only when you opt into the direct host-port during setup (see [docker-compose.yml](docker-compose.yml)'s header comment). If you enabled the host port after the fact by hand-editing `.env`, add `INSECURE=true` yourself and `docker compose up -d`.
+- **Through NPM**: NPM sends `X-Forwarded-Proto: https` correctly by default once SSL is enabled on the Proxy Host, so this should just work without `INSECURE=true`. If you still hit the error through a correctly-configured NPM+SSL setup, double check the Proxy Host's SSL is actually enabled and Let's Encrypt issued successfully — an unencrypted Proxy Host (SSL off) will trigger this exact error too, since NPM itself isn't sending HTTPS in that case.
 
 ---
 

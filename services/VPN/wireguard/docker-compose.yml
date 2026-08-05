@@ -34,6 +34,15 @@
 #     IPv6 addressing on 'wg-net' below; avoids needing INIT_IPV6_CIDR too
 #     (see above).
 #
+# wg-easy refuses web UI login entirely over a connection it considers
+# insecure — it checks the X-Forwarded-Proto header to tell whether a
+# request was forwarded over HTTPS by a reverse proxy; with no such header
+# (a direct, un-proxied connection) it always refuses. INSECURE=true (set
+# by deploy.sh only when you opt into the direct host-port, never for the
+# NPM path) is what lets that direct-access path work at all. NPM sends
+# X-Forwarded-Proto correctly by default, so the NPM+SSL path should need
+# no extra config — see README.md's Reverse Proxy section if it doesn't.
+#
 # This is a single-instance service: one wg-easy deployment per host, under
 # ~/docker/wireguard/.
 #
@@ -52,6 +61,7 @@ services:
       INIT_PASSWORD: "${INIT_PASSWORD}"
       INIT_HOST: "${INIT_HOST}"
       INIT_PORT: "51820"
+      INSECURE: "${INSECURE:-false}"
     volumes:
       - wg-easy-data:/etc/wireguard
       - /lib/modules:/lib/modules:ro
