@@ -1,0 +1,75 @@
+# WordPress — official Docker Hub images, verified against
+# https://hub.docker.com/_/wordpress's own docker-compose.yml example.
+#
+# Deliberate deviations from upstream's own docker-compose example:
+#   - No host port published by default — NGINX Proxy Manager reaches
+#     wordpress-app by container name over the shared 'main-net' instead
+#     (see README.md). Upstream's own example publishes 8080:80
+#     unconditionally.
+#   - 'db' stays on the private 'wordpress-net' only; only 'wordpress-app'
+#     joins 'main-net'.
+#   - Added a healthcheck on 'db' and made wordpress-app wait on it via
+#     'condition: service_healthy' instead of upstream's bare depends_on.
+#   - MYSQL_RANDOM_ROOT_PASSWORD (kept from upstream) means the root MySQL
+#     password is randomized and never surfaced anywhere — this repo never
+#     needs it, only the WORDPRESS_DB_* app-level credentials, which are
+#     generated and saved normally.
+#
+# Unlike OpenProject/Nextcloud, WordPress's official image already handles
+# reverse-proxy HTTPS detection out of the box (its own wp-config-docker.php
+# checks X-Forwarded-Proto and sets $_SERVER['HTTPS'] accordingly whenever
+# any WORDPRESS_DB_* var is set) — no manual "flip HTTPS settings for direct
+# host-port access" step is needed here, unlike those two services.
+#
+# This is a single-instance service: one WordPress deployment per host,
+# under ~/docker/wordpress/.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it
+# (and the generated .env) to ~/docker/wordpress/ and runs it from there.
+
+services:
+  wordpress:
+    image: wordpress:${WORDPRESS_VERSION:-latest}
+    container_name: wordpress-app
+    restart: unless-stopped
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: "${WORDPRESS_DB_USER}"
+      WORDPRESS_DB_PASSWORD: "${WORDPRESS_DB_PASSWORD}"
+      WORDPRESS_DB_NAME: "${WORDPRESS_DB_NAME}"
+    volumes:
+      - wordpress-data:/var/www/html
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - wordpress-net
+      - main-net
+
+  db:
+    image: mysql:8.0
+    container_name: wordpress-db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: "${WORDPRESS_DB_NAME}"
+      MYSQL_USER: "${WORDPRESS_DB_USER}"
+      MYSQL_PASSWORD: "${WORDPRESS_DB_PASSWORD}"
+      MYSQL_RANDOM_ROOT_PASSWORD: "1"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${WORDPRESS_DB_USER}", "-p${WORDPRESS_DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - wordpress-net
+
+volumes:
+  wordpress-data:
+  db-data:
+
+networks:
+  wordpress-net:
+  main-net:
+    external: true
