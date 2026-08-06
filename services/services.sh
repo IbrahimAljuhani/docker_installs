@@ -49,6 +49,7 @@ declare -A SERVICE_FILES=(
     [immich]="docker-compose.yml backup.sh"
     [pi-hole]="docker-compose.yml"
     [adguard]="docker-compose.yml"
+    [plex]="docker-compose.yml"
     [wireguard]="docker-compose.yml"
     [wordpress]="docker-compose.yml backup.sh"
     [nextcloud]="docker-compose.yml"
