@@ -1,0 +1,67 @@
+# Plex Media Server — official image from Plex Inc. (plexinc/pms-docker,
+# 900M+ pulls), verified against its own Docker Hub documentation.
+#
+# ⚠️ Unlike every other service in this repo, Plex is PROPRIETARY freemium
+# software, not open source, and requires a free Plex account to use at all
+# (the server links to plex.tv). See README.md — if you want a fully
+# open-source media server instead, this repo also ships Jellyfin.
+#
+# Deliberate deviations from upstream's own examples:
+#   - Bridge networking on the shared 'main-net' (not host/macvlan).
+#     Upstream calls bridge "more complicated" and prefers host networking
+#     for LAN autodiscovery/DLNA — but host networking would break this
+#     repo's whole NPM-by-container-name convention (see Home Assistant's
+#     README for where that tradeoff went the other way). Bridge mode needs
+#     ADVERTISE_IP set, which deploy.sh derives for you; the cost is that
+#     Plex's LAN autodiscovery/DLNA won't work, so clients need the server
+#     added by URL (they find it through your plex.tv account regardless,
+#     which is the normal path anyway).
+#   - Only port 32400 (the primary API/streaming port) is wired up; the
+#     secondary DLNA/GDM/Roku discovery ports (1900, 3005, 8324, 32410-32414,
+#     32469) are left out, since they only matter for the LAN autodiscovery
+#     that bridge networking already precludes.
+#   - No host port published by default — NGINX Proxy Manager reaches it by
+#     container name over 'main-net' instead (see README.md).
+#   - No private '<service>-net' — like Jellyfin/LinkStack, Plex has nothing
+#     else to isolate it from (one container, no database), so 'plex-app'
+#     joins 'main-net' directly.
+#   - Media is mounted read-only (:ro) — Plex only needs to read/stream your
+#     library; it stores metadata in /config, not alongside your files.
+#   - /transcode is a Docker volume (upstream suggests a host path) — this
+#     can grow to tens of GB during transcoding, so Docker manages it
+#     rather than silently filling a directory you picked.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it (and
+# the generated .env) to ~/docker/plex/ and runs it from there.
+
+services:
+  plex:
+    image: plexinc/pms-docker:${PLEX_VERSION:-latest}
+    container_name: plex-app
+    restart: unless-stopped
+    hostname: "${PLEX_HOSTNAME:-PlexServer}"
+    environment:
+      TZ: "${TZ:-UTC}"
+      # First-run only: links this server to your Plex account. Expires ~4
+      # minutes after you generate it at https://www.plex.tv/claim, and is
+      # ignored entirely once the server is already claimed.
+      PLEX_CLAIM: "${PLEX_CLAIM:-}"
+      # Required in bridge networking so the server advertises an address
+      # clients can actually reach — see this file's header comment.
+      ADVERTISE_IP: "${ADVERTISE_IP:-}"
+      PLEX_UID: "${PLEX_UID:-1000}"
+      PLEX_GID: "${PLEX_GID:-1000}"
+    volumes:
+      - config:/config
+      - transcode:/transcode
+      - "${MEDIA_PATH}:/data:ro"
+    networks:
+      - main-net
+
+volumes:
+  config:
+  transcode:
+
+networks:
+  main-net:
+    external: true
