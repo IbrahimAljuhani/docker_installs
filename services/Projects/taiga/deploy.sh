@@ -59,6 +59,12 @@ prompt_ar_overlay() {
     local answer
     read -rp "Apply the community Arabic translation overlay (backend + frontend)? (y/N): " answer
     [[ "${answer,,}" == "y" ]] && AR_I18N_OVERLAY="true"
+    # Explicit `return 0`: without it, answering anything but "y" makes the
+    # `[[ ]] && ...` above the function's last command AND a failing one, so
+    # the function returns 1 — which under `set -e` silently kills the whole
+    # script at the call site. (A bare `A && B` at top level is exempt from
+    # set -e; the same line as a function's final statement is not.)
+    return 0
 }
 
 # Compiles services/Projects/taiga/i18n-overrides/django-ar.po into django.mo using a
