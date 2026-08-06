@@ -67,24 +67,47 @@ prompt_adguard_ports() {
     read -rp "Also publish host ports for direct access to the setup wizard and admin UI without NPM? (y/N): " answer
     [[ "${answer,,}" == "y" ]] || return 0
 
-    read -rp "Setup wizard port (default 3000, only used for first-run setup): " SETUP_PORT
-    SETUP_PORT="${SETUP_PORT:-3000}"
-    valid_port "$SETUP_PORT" || print_error "Port must be between 1024 and 65535."
-    port_in_use "$SETUP_PORT" && print_warn "Port $SETUP_PORT looks already in use — continuing anyway."
+    local cont
+    while true; do
+        read -rp "Setup wizard port (default 3000): " SETUP_PORT
+        SETUP_PORT="${SETUP_PORT:-3000}"
+        if ! valid_port "$SETUP_PORT"; then
+            echo "Invalid port — must be a number between 1024 and 65535." >&2
+            continue
+        fi
+        if port_in_use "$SETUP_PORT"; then
+            read -rp "Port $SETUP_PORT looks already in use — continue anyway? (y/N): " cont
+            [[ "${cont,,}" == "y" ]] || continue
+        fi
+        break
+    done
 
-    # This is the HOST port for direct access — NOT the same thing as the
-    # container's own internal Admin Web Interface port, which you still
-    # pick as 80 inside the wizard itself (see the final instructions
-    # below). Host ports below 1024 need root, and 80 is already taken by
-    # NPM on this server anyway, so this defaults to 8080 instead — the
-    # override maps it to the container's port 80 either way.
-    read -rp "Admin UI port on the HOST for direct access (default 8080; inside the wizard itself, still pick 80 for the container's own Admin Web Interface port): " ADMIN_PORT
-    ADMIN_PORT="${ADMIN_PORT:-8080}"
-    valid_port "$ADMIN_PORT" || print_error "Port must be between 1024 and 65535."
-    if [[ "$ADMIN_PORT" == "$SETUP_PORT" ]]; then
-        print_error "Admin UI port must be different from the setup wizard port."
-    fi
-    port_in_use "$ADMIN_PORT" && print_warn "Port $ADMIN_PORT looks already in use — continuing anyway."
+    # This next prompt is for the HOST (your server) — a completely
+    # separate thing from the container's own internal Admin Web Interface
+    # port, which you'll pick as 80 inside the wizard itself later (see the
+    # final instructions after deploy). Printed as its own line, not
+    # crammed into the prompt text, specifically to avoid the two numbers
+    # being misread as one question.
+    echo "The next port is on the HOST (your server) — separate from the port" >&2
+    echo "you'll choose inside AdGuard Home's own setup wizard later (see the" >&2
+    echo "instructions printed after this finishes deploying)." >&2
+    while true; do
+        read -rp "Admin UI port on the host (default 8080): " ADMIN_PORT
+        ADMIN_PORT="${ADMIN_PORT:-8080}"
+        if ! valid_port "$ADMIN_PORT"; then
+            echo "Invalid port — must be a number between 1024 and 65535." >&2
+            continue
+        fi
+        if [[ "$ADMIN_PORT" == "$SETUP_PORT" ]]; then
+            echo "Must be different from the setup wizard port ($SETUP_PORT)." >&2
+            continue
+        fi
+        if port_in_use "$ADMIN_PORT"; then
+            read -rp "Port $ADMIN_PORT looks already in use — continue anyway? (y/N): " cont
+            [[ "${cont,,}" == "y" ]] || continue
+        fi
+        break
+    done
 }
 
 mkdir -p "$INSTALL_DIR"
