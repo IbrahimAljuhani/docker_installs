@@ -50,6 +50,12 @@ prompt_hw_accel() {
     fi
     read -rp "Detected /dev/dri — enable hardware transcoding passthrough? (y/N): " answer
     [[ "${answer,,}" == "y" ]] && HW_ACCEL="1"
+    # Explicit `return 0`: without it, answering anything but "y" makes the
+    # `[[ ]] && ...` above the function's last command AND a failing one, so
+    # the function returns 1 — which under `set -e` silently kills the whole
+    # script at the call site. (A bare `A && B` at top level is exempt from
+    # set -e; the same line as a function's final statement is not.)
+    return 0
 }
 
 # Prompts for the media library path — required (Jellyfin has nothing to
