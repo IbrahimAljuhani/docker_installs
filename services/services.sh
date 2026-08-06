@@ -48,6 +48,7 @@ declare -A SERVICE_FILES=(
     [home-assistant]="docker-compose.yml"
     [immich]="docker-compose.yml backup.sh"
     [pi-hole]="docker-compose.yml"
+    [adguard]="docker-compose.yml"
     [wireguard]="docker-compose.yml"
     [wordpress]="docker-compose.yml backup.sh"
     [nextcloud]="docker-compose.yml"
@@ -67,6 +68,7 @@ CATALOG=(
     "AI|dify|Dify"
     "AI|llama-cpp|llama.cpp"
     "AI|localai|LocalAI"
+    "AI|paperclip|Paperclip"
     "Automation|n8n|n8n"
     "Automation|openclaw|OpenClaw"
     "Automation|hermes|Hermes"
@@ -99,7 +101,6 @@ CATALOG=(
     "VPN|openvpn|OpenVPN"
     "Web|wordpress|WordPress"
     "Web|ghost|Ghost"
-    "Web|strapi|Strapi"
     "Web|linkstack|LinkStack"
 )
 

@@ -1,0 +1,52 @@
+# AdGuard Home — official image, verified against
+# https://github.com/AdguardTeam/AdGuardHome's own docker documentation and
+# Docker Hub listing (adguard/adguardhome, 180M+ pulls).
+#
+# Deliberate deviations from upstream's typical example:
+#   - DNS ports (53/tcp+udp) stay unconditionally published — same reasoning
+#     as this repo's Pi-hole: DNS is a raw protocol NGINX Proxy Manager
+#     can't front, and the whole point of AdGuard Home is being reachable
+#     as your LAN's DNS resolver.
+#   - The setup-wizard port (3000) and the admin UI port you pick during
+#     that wizard (this repo recommends 80, to match every other service's
+#     "NPM forwards to container port 80" convention) are BOTH optional,
+#     published together as a pair only if you opt in — see deploy.sh's
+#     prompt_adguard_ports(). Unlike DNS, both of these ARE HTTP, so NPM
+#     can front either one; direct host ports are just for convenience/
+#     bootstrapping the first-run wizard.
+#   - No private '<service>-net' — like Pi-hole/LinkStack, AdGuard Home has
+#     nothing else to isolate it from (one container, no database), so it
+#     joins 'main-net' directly.
+#
+# AdGuard Home has no unattended/env-var-based setup (unlike this repo's
+# WireGuard/wg-easy) — first visit always runs an interactive browser setup
+# wizard (choose the admin UI port, create your own username/password). See
+# README.md for the full first-run flow.
+#
+# This is a single-instance service: one AdGuard Home deployment per host,
+# under ~/docker/adguard/.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it
+# (and the generated .env) to ~/docker/adguard/ and runs it from there.
+
+services:
+  adguardhome:
+    image: adguard/adguardhome:${ADGUARD_VERSION:-latest}
+    container_name: adguard-app
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    volumes:
+      - adguard-work:/opt/adguardhome/work
+      - adguard-conf:/opt/adguardhome/conf
+    networks:
+      - main-net
+
+volumes:
+  adguard-work:
+  adguard-conf:
+
+networks:
+  main-net:
+    external: true
