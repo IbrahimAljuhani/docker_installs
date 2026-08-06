@@ -72,8 +72,14 @@ prompt_adguard_ports() {
     valid_port "$SETUP_PORT" || print_error "Port must be between 1024 and 65535."
     port_in_use "$SETUP_PORT" && print_warn "Port $SETUP_PORT looks already in use — continuing anyway."
 
-    read -rp "Admin UI port after setup (default 80 — pick this same value in the wizard itself): " ADMIN_PORT
-    ADMIN_PORT="${ADMIN_PORT:-80}"
+    # This is the HOST port for direct access — NOT the same thing as the
+    # container's own internal Admin Web Interface port, which you still
+    # pick as 80 inside the wizard itself (see the final instructions
+    # below). Host ports below 1024 need root, and 80 is already taken by
+    # NPM on this server anyway, so this defaults to 8080 instead — the
+    # override maps it to the container's port 80 either way.
+    read -rp "Admin UI port on the HOST for direct access (default 8080; inside the wizard itself, still pick 80 for the container's own Admin Web Interface port): " ADMIN_PORT
+    ADMIN_PORT="${ADMIN_PORT:-8080}"
     valid_port "$ADMIN_PORT" || print_error "Port must be between 1024 and 65535."
     if [[ "$ADMIN_PORT" == "$SETUP_PORT" ]]; then
         print_error "Admin UI port must be different from the setup wizard port."

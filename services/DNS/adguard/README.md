@@ -48,7 +48,7 @@ You'll also be asked whether to cap memory on the `adguard-app` container (defau
 
 > 💡 **To change the memory limit or host ports later**: edit `~/docker/adguard/.env`, then rerun `deploy.sh` — it regenerates `docker-compose.override.yml` from whatever `.env` currently has and reapplies it with `docker compose up -d`.
 
-You'll also be asked whether to publish host ports for direct access to both the setup wizard **and** the admin UI without NPM (default suggestions: `3000` for setup, `80` for the admin UI afterward). Default is no — see [First Run & Setup Wizard](#-first-run--setup-wizard) below for what that means for bootstrapping through NPM instead.
+You'll also be asked whether to publish host ports for direct access to both the setup wizard **and** the admin UI without NPM (default suggestions: `3000` for setup, `8080` on the host for the admin UI afterward — not `80`, since that's already taken by NPM on this server; it still maps to the container's own port `80`, which you pick inside the wizard itself, see below). Default is no — see [First Run & Setup Wizard](#-first-run--setup-wizard) below for what that means for bootstrapping through NPM instead.
 
 ---
 
