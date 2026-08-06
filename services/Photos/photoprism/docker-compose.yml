@@ -1,0 +1,116 @@
+# PhotoPrism — official images, verified against upstream's own example at
+# https://dl.photoprism.app/docker/compose.yaml and its nginx reverse-proxy
+# guide at https://docs.photoprism.app/getting-started/proxies/nginx/
+#
+# Deliberate deviations from upstream's own example:
+#   - PHOTOPRISM_DISABLE_TLS is "true". Upstream defaults to serving HTTPS
+#     with a self-signed cert; its own nginx guide says to disable that when
+#     a reverse proxy manages certificates ("Keep PhotoPrism's internal TLS
+#     disabled so NGINX can manage certificates"). So NPM terminates TLS and
+#     talks plain HTTP to the container — same as every other service here,
+#     and it avoids the forward-scheme-HTTPS awkwardness this repo's
+#     LinkStack needs.
+#   - PHOTOPRISM_INIT drops upstream's "https" (that installs cert tooling we
+#     don't use now that TLS is off) and keeps only "tensorflow", which is
+#     what powers face detection / image classification.
+#   - No host port published by default — NGINX Proxy Manager reaches it by
+#     container name over the shared 'main-net' instead (see README.md).
+#     Upstream's own example publishes 2342:2342 unconditionally.
+#   - 'mariadb' stays on the private 'photoprism-net' only; only
+#     'photoprism-app' also joins 'main-net'.
+#   - restart: unless-stopped is enabled on both services. Upstream ships it
+#     commented out on the app with a caution about restart loops masking
+#     config problems — this repo enables it like every other service, and
+#     documents the "check the logs if it loops" advice in README.md instead.
+#   - Upstream's optional Ollama / Open WebUI / Watchtower services are
+#     dropped entirely. They're gated behind Compose profiles (so they never
+#     start by default anyway), and this repo tracks Ollama and Open WebUI as
+#     their own services under the AI category rather than nesting them
+#     inside another service's stack.
+#   - 'storage' and the database live in Docker volumes rather than upstream's
+#     ./storage and ./database bind mounts — nothing on the host needs to
+#     read them directly, so Docker manages permissions instead.
+#
+# Your photo library ('originals') is mounted READ-WRITE, unlike this repo's
+# Jellyfin/Plex which mount media read-only: PhotoPrism actively organizes,
+# renames, and writes sidecar files into originals unless you set
+# PHOTOPRISM_READONLY. See README.md.
+#
+# This is a single-instance service: one PhotoPrism deployment per host,
+# under ~/docker/photoprism/.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it (and
+# the generated .env) to ~/docker/photoprism/ and runs it from there.
+
+services:
+  photoprism:
+    image: photoprism/photoprism:${PHOTOPRISM_VERSION:-latest}
+    container_name: photoprism-app
+    restart: unless-stopped
+    stop_grace_period: 15s
+    depends_on:
+      - mariadb
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    working_dir: "/photoprism"
+    environment:
+      PHOTOPRISM_ADMIN_USER: "admin"
+      PHOTOPRISM_ADMIN_PASSWORD: "${PHOTOPRISM_ADMIN_PASSWORD}"
+      PHOTOPRISM_AUTH_MODE: "password"
+      PHOTOPRISM_SITE_URL: "${PHOTOPRISM_SITE_URL}"
+      # TLS off on purpose — NPM terminates it. See header comment.
+      PHOTOPRISM_DISABLE_TLS: "true"
+      PHOTOPRISM_DEFAULT_TLS: "false"
+      PHOTOPRISM_ORIGINALS_LIMIT: 5000
+      PHOTOPRISM_HTTP_COMPRESSION: "zstd,gzip"
+      PHOTOPRISM_LOG_LEVEL: "info"
+      PHOTOPRISM_READONLY: "false"
+      PHOTOPRISM_SIDECAR_YAML: "true"
+      PHOTOPRISM_BACKUP_ALBUMS: "true"
+      PHOTOPRISM_BACKUP_DATABASE: "true"
+      PHOTOPRISM_BACKUP_SCHEDULE: "daily"
+      PHOTOPRISM_DATABASE_DRIVER: "mysql"
+      PHOTOPRISM_DATABASE_SERVER: "mariadb:3306"
+      PHOTOPRISM_DATABASE_NAME: "photoprism"
+      PHOTOPRISM_DATABASE_USER: "photoprism"
+      PHOTOPRISM_DATABASE_PASSWORD: "${PHOTOPRISM_DATABASE_PASSWORD}"
+      PHOTOPRISM_INIT: "tensorflow"
+      PHOTOPRISM_UID: "${PHOTOPRISM_UID:-1000}"
+      PHOTOPRISM_GID: "${PHOTOPRISM_GID:-1000}"
+    volumes:
+      - "${ORIGINALS_PATH}:/photoprism/originals"
+      - storage:/photoprism/storage
+    networks:
+      - photoprism-net
+      - main-net
+
+  mariadb:
+    image: mariadb:12.3
+    container_name: photoprism-db
+    restart: unless-stopped
+    stop_grace_period: 15s
+    security_opt:
+      - seccomp:unconfined
+      - apparmor:unconfined
+    command: --innodb-buffer-pool-size=512M --transaction-isolation=READ-COMMITTED --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --max-connections=512 --innodb-rollback-on-timeout=OFF --innodb-lock-wait-timeout=120
+    environment:
+      MARIADB_AUTO_UPGRADE: "1"
+      MARIADB_INITDB_SKIP_TZINFO: "1"
+      MARIADB_DATABASE: "photoprism"
+      MARIADB_USER: "photoprism"
+      MARIADB_PASSWORD: "${PHOTOPRISM_DATABASE_PASSWORD}"
+      MARIADB_ROOT_PASSWORD: "${MARIADB_ROOT_PASSWORD}"
+    volumes:
+      - database:/var/lib/mysql
+    networks:
+      - photoprism-net
+
+volumes:
+  storage:
+  database:
+
+networks:
+  photoprism-net:
+  main-net:
+    external: true
