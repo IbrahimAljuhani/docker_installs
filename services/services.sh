@@ -50,6 +50,7 @@ declare -A SERVICE_FILES=(
     [pi-hole]="docker-compose.yml"
     [adguard]="docker-compose.yml"
     [plex]="docker-compose.yml"
+    [vaultwarden]="docker-compose.yml"
     [photoprism]="docker-compose.yml backup.sh"
     [wireguard]="docker-compose.yml"
     [wordpress]="docker-compose.yml backup.sh"
