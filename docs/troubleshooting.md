@@ -39,9 +39,47 @@ Open the Proxy Host in NPM (**Hosts → Proxy Hosts → edit**) and check the **
 |---|---|
 | **Forward Hostname / IP** | Typing the server's own IP (e.g. `10.0.0.27`) instead of the container name (e.g. `jellyfin-app`). NPM and the container are on the same Docker network (`main-net`) — always use the container name, never an IP, and never the server's own address (that would loop back through NPM itself). |
 | **Forward Port** | Watch for **non-Latin digits** if your OS input language isn't English (e.g. Arabic-indic `٤٤٣` instead of `443`) — some fields don't validate this and silently store the wrong value. Retype using a Latin-digit keyboard layout if a port field looks visually odd. |
-| **Scheme** | Most services here are plain `http`. LinkStack is the one exception — it terminates its own self-signed HTTPS internally, so its Proxy Host must use `https` scheme to port `443` (see its own README). Using the wrong scheme either fails outright or causes mixed-content errors. |
+| **Scheme** | Most services here are plain `http`, and NPM defaults to `http` — so the exceptions are the ones that bite. **LinkStack** terminates its own self-signed HTTPS internally and needs `https` to port `443`; **OpenVPN Access Server** does the same on port `943`. Leaving either on `http` produces a `502 Bad Gateway` (see the next section). |
 
 If Forward Hostname/IP is accidentally set to the server's own address (or to NPM's own port), NPM ends up proxying a request back to itself, which typically surfaces as `400 Bad Request — Request Header Or Cookie Too Large` (headers stack with every loop iteration) rather than an obvious "wrong config" error — check this first if you see that specific error.
+
+---
+
+## `502 Bad Gateway` from openresty
+
+`openresty` is NPM's own nginx, so this error is NPM talking, not the service. It means NPM *reached* something but couldn't make sense of the reply. The overwhelmingly common cause is a **scheme mismatch**: the upstream speaks HTTPS, NPM was told `http`, and nginx gets a TLS handshake where it expected a plain HTTP response.
+
+Work outwards — each step rules out one layer:
+
+```bash
+# 1. Is the service itself healthy, from inside its own container?
+docker exec <container> curl -sk -o /dev/null -w '%{http_code}\n' https://127.0.0.1:<port>/
+```
+
+```bash
+# 2. Can NPM reach it by container name over main-net?
+docker exec npm-app-1 curl -sk -o /dev/null -w '%{http_code}\n' https://<container>:<port>/
+```
+
+Both returning `200` means the deployment is fine and the problem is entirely in what NPM saved. Read that back:
+
+```bash
+conf=$(docker exec npm-app-1 sh -c 'grep -l "your-domain" /data/nginx/proxy_host/*.conf'); docker exec npm-app-1 grep -E '^\s*set ' "$conf"
+```
+
+You'll get exactly the three fields that matter:
+
+```
+set $forward_scheme http;      ← the culprit, if the upstream is HTTPS
+set $server         "openvpn-as";
+set $port           943;
+```
+
+Fix it in **Details → Scheme**, save, and re-run the `grep` to confirm it now reads `https`.
+
+> ⚠️ **Don't grep for `proxy_pass` in that file — it isn't there.** NPM's proxy-host template writes `set $forward_scheme` / `$server` / `$port` and then pulls in `include conf.d/include/proxy.conf;`, and the actual `proxy_pass $forward_scheme://$server:$port;` lives inside that shared include. Grepping for `proxy_pass` returns nothing and looks like a broken or empty config when the config is perfectly fine. Always grep for `set `.
+
+Other causes worth checking if the scheme is already right: the container is not on `main-net` (`docker inspect <container> --format '{{json .NetworkSettings.Networks}}'`), or the app is still starting up.
 
 ---
 
