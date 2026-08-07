@@ -1,0 +1,50 @@
+# Vaultwarden — unofficial-but-canonical Bitwarden-compatible server, using
+# the project's own official image (vaultwarden/server), verified against
+# https://github.com/dani-garcia/vaultwarden/wiki/Using-Docker-Compose and
+# its own .env.template.
+#
+# Single container, SQLite embedded in /data — no separate database, so no
+# backup.sh is needed (the generic volume backup in lib/common.sh covers it).
+#
+# Deliberate deviations / notes:
+#   - No host port published by default — NGINX Proxy Manager reaches it by
+#     container name over the shared 'main-net' instead (see README.md).
+#     Upstream's own example publishes a host port unconditionally.
+#   - No private '<service>-net' — like LinkStack/Jellyfin, there's a single
+#     container and no database to isolate, so it joins 'main-net' directly.
+#   - Container port is 80, NOT the 8000 shown in upstream's .env.template:
+#     that 8000 is the bare binary's default, and the official Docker image
+#     overrides it (`ROCKET_PORT=80` + `EXPOSE 80` in its own Dockerfile).
+#   - env_file is used instead of ${VAR} substitution for the app settings.
+#     This is deliberate and load-bearing: ADMIN_TOKEN is an Argon2 PHC hash
+#     full of '$' characters, and Compose would try to interpret those as
+#     variable references if they passed through ${...} substitution. With
+#     env_file the file is handed to the container verbatim, so the hash
+#     survives intact. Only VAULTWARDEN_VERSION (no '$' in it) is substituted,
+#     since image tags are resolved by Compose itself and can't come from
+#     env_file.
+#   - ENABLE_WEBSOCKET is left unset: it defaults to true in current
+#     versions and shares the main port. (Older guides mention a separate
+#     port 3012 and a WEBSOCKET_ENABLED variable — both obsolete.)
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it (and
+# the generated .env) to ~/docker/vaultwarden/ and runs it from there.
+
+services:
+  vaultwarden:
+    image: vaultwarden/server:${VAULTWARDEN_VERSION:-latest}
+    container_name: vaultwarden-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - data:/data
+    networks:
+      - main-net
+
+volumes:
+  data:
+
+networks:
+  main-net:
+    external: true
