@@ -1,7 +1,163 @@
-# 🚧 NetBird
+# 🕸️ NetBird
 
-**Status:** Not built yet — coming soon.
+Deploys [NetBird](https://netbird.io/) (a WireGuard-based overlay network — peers connect to each other directly, with NAT traversal handled for you) behind the shared `main-net` network so [NGINX Proxy Manager](../../../README.md) can front it.
 
-Part of the **VPN** category in [DockHub](../../../README.md)'s services roadmap. It's already listed in [`services.sh`](../../services.sh)'s menu (shows "coming soon" if picked) and in [`services/README.md`](../../README.md)'s roadmap table — this folder is just a placeholder until it's actually built.
+Two containers: `netbird-dashboard` (web UI) and `netbird-server` (management + signal + relay + STUN, combined upstream since v0.65).
 
-Want to help build this one, or need it sooner? Open an issue on the [DockHub repo](https://github.com/IbrahimAljuhani/dockhub).
+---
+
+## ⚠️ Read This Before Deploying
+
+NetBird has two hard requirements that most services here don't. Neither is optional, and both will look like "it deployed fine" until peers fail to connect.
+
+**1. NPM needs a custom routing block — a default Proxy Host is not enough.**
+NetBird speaks gRPC and WebSocket alongside plain HTTP. Point a normal Proxy Host at it and the dashboard loads, you can even sign in — and then peers silently fail to register. See [Reverse Proxy](#-reverse-proxy-nginx-proxy-manager) for the exact config.
+
+**2. UDP port 3478 must be reachable from the internet.**
+That's STUN, and NAT traversal is the entire point of the product. It's raw UDP: **no HTTP reverse proxy can carry it, and neither can Cloudflare Tunnel.** If your server is behind a home router, you need a port-forward for `3478/udp` — exactly like this repo's [WireGuard](../wireguard/) service needs one for `51820/udp`.
+
+> 💡 **Running everything through Cloudflare Tunnel?** The dashboard and API will work through the tunnel, but STUN will not. Peers on the same LAN may still connect; peers across different networks generally won't. A direct port-forward for `3478/udp` is the fix.
+
+---
+
+## 📥 Installation
+
+### 1. Install prerequisites (if not already done)
+
+```bash
+curl -fsSL -o install_dockhub.sh \
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/install_dockhub.sh
+sudo bash install_dockhub.sh
+```
+Pick **`1) Install / manage core infrastructure`** from the menu it shows.
+
+### 2. Deploy NetBird
+
+```bash
+curl -fsSL -o deploy.sh \
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/VPN/netbird/deploy.sh
+curl -fsSL -o docker-compose.yml \
+  https://raw.githubusercontent.com/IbrahimAljuhani/dockhub/main/services/VPN/netbird/docker-compose.yml
+bash deploy.sh
+```
+
+> ⚠️ **Do not run as root.** Your user must be in the `docker` group.
+
+This is a **single-instance** service, under `~/docker/netbird/`. You'll be asked for your public domain (required) and whether to cap memory on `netbird-server` (default: no).
+
+**There's no host-port option**, same as this repo's [Vaultwarden](../../Security/vaultwarden/) and for a similar reason: NetBird builds its OAuth redirect URIs, its gRPC endpoint, and the dashboard's API endpoint from the domain. Reaching it at `http://<ip>:<port>` would break the login flow outright, so the domain is always required.
+
+### Three generated files, not one
+
+Unlike every other service here, `deploy.sh` writes **three** files into `~/docker/netbird/`:
+
+| File | What it configures |
+|---|---|
+| `.env` | Compose-level values (image tags, domain, secrets) |
+| `config.yaml` | The server: STUN, auth issuer, trusted proxies, SQLite encryption |
+| `dashboard.env` | The web UI: API endpoints and OAuth settings |
+
+`config.yaml` and `dashboard.env` are **derived from `.env` and rewritten on every run**. So to change the domain: edit `NETBIRD_DOMAIN` in `.env`, then rerun `deploy.sh` — editing those two directly gets overwritten.
+
+---
+
+## 👤 First Login
+
+NetBird has **no default account and no admin password**. It ships an embedded [Dex](https://dexidp.io/) identity provider, so you just open the dashboard and sign up — **the first account created becomes the admin**.
+
+The secrets file holds server-side keys (relay auth, datastore encryption, session cookie), not login credentials.
+
+> 🔐 Sign up promptly after deploying. Until you do, the first person who reaches the dashboard becomes your admin.
+
+---
+
+## 🌐 Reverse Proxy (NGINX Proxy Manager)
+
+1. Open `http://<server-ip>:81`
+2. Create a **Proxy Host**:
+   - **Domain**: the domain you gave `deploy.sh`
+   - **Forward Hostname/IP**: `netbird-dashboard`
+   - **Forward Port**: `80`
+3. **SSL tab** → enable Let's Encrypt **and turn on "HTTP/2 Support"**. This one isn't cosmetic: gRPC runs over HTTP/2, and without it peer registration fails.
+4. **Advanced tab** → paste this block. It routes the non-dashboard paths to `netbird-server` — API, OAuth, WebSocket relay, and native gRPC:
+
+```nginx
+# Required for long-lived connections (gRPC and WebSocket)
+client_header_timeout 1d;
+client_body_timeout 1d;
+
+# WebSocket connections (relay, signal, management)
+location ~ ^/(relay|ws-proxy/) {
+    proxy_pass http://netbird-server:80;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 1d;
+}
+
+# Native gRPC (signal + management)
+location ~ ^/(signalexchange\.SignalExchange|management\.ManagementService)/ {
+    grpc_pass grpc://netbird-server:80;
+    grpc_read_timeout 1d;
+    grpc_send_timeout 1d;
+    grpc_socket_keepalive on;
+}
+
+# HTTP routes (API + OAuth2)
+location ~ ^/(api|oauth2)/ {
+    proxy_pass http://netbird-server:80;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+```
+
+This block is upstream's own — it's what their setup script emits when you choose "Nginx Proxy Manager" as the reverse proxy.
+
+✅ No HTTP host port is published — NPM reaches both containers by name over `main-net`. `3478/udp` is separate and always published; it does not go through NPM.
+
+---
+
+## 🛠️ Management Commands
+
+```bash
+cd ~/docker/netbird
+```
+
+| Command | Purpose |
+|---|---|
+| `docker compose ps` | Check container status |
+| `docker compose logs -f netbird-server` | Follow the server's logs |
+| `docker compose logs -f dashboard` | Follow the web UI's logs |
+| `docker compose pull && docker compose up -d` | Update to the latest images |
+
+> 🩺 **Dashboard loads but peers won't connect?** That's almost always the NPM Advanced block missing, HTTP/2 not enabled, or `3478/udp` unreachable — in that order.
+
+---
+
+## 💾 Backups
+
+This repo's **Backup** option covers NetBird fully: the SQLite store lives in the `netbird_data` volume, and `.env` / `config.yaml` / `dashboard.env` sit in the install directory. Both are captured by the generic backup, so no special `backup.sh` is needed.
+
+⚠️ `DATASTORE_ENCRYPTION_KEY` encrypts that store. A backup restored **without** the matching key in `.env` is unreadable — keep the secrets file with your backups.
+
+---
+
+## 📌 Notes & Deviations
+
+- **No bundled Traefik.** Upstream's default setup runs Traefik on host ports 80/443 with its own Let's Encrypt, which would collide with NGINX Proxy Manager. Upstream supports this directly — their script's option `[3] Nginx Proxy Manager` drops Traefik and routes by container name over an external network, which is what `main-net` is here.
+- **Reproduced statically from a generator.** Upstream ships no static compose file; a ~55 KB interactive script generates one. This service is the "NPM + external network" branch of that script's output, written out as normal files so it fits this repo's curl-and-run model. If NetBird changes that layout upstream, this is the first place to check.
+- **`trustedHTTPProxies` is discovered, not hardcoded.** `deploy.sh` reads `main-net`'s actual subnet so NetBird accepts `X-Forwarded-*` from NPM. Upstream's script hardcodes its Traefik IP there, which would be wrong for this setup. Same class of setting as Jellyfin's "Known proxies" and AdGuard's `trusted_proxies`.
+- **No host-port option** — the second service here without one, after Vaultwarden. The domain is load-bearing for OAuth and gRPC, so an IP:port path can't work.
+- **Embedded Dex, no external IdP.** NetBird can integrate with Google/Microsoft/Okta/Keycloak; this deploy uses its built-in identity provider so it works standalone. Configuring an external IdP is upstream territory.
+
+---
+
+## 📜 License
+
+NetBird itself is licensed separately (BSD-3-Clause, with some enterprise features under a commercial license — see the [official repository](https://github.com/netbirdio/netbird)). This deployment wrapper follows the same [MIT license](../../../LICENSE) as the rest of this repo.
