@@ -26,8 +26,9 @@
 #     caching_sha2_password (8.4's default) natively. Deliberately NO
 #     `--default-authentication-plugin` flag: that option was REMOVED in 8.4,
 #     and passing it is what breaks the setups people report as "Ghost
-#     doesn't work with 8.4". If you ever need to fall back, changing this
-#     one tag to `8.0` is the whole change.
+#     doesn't work with 8.4". Ghost 6 connects to a stock mysql:8.4 with no
+#     flags at all. If you ever do need to fall back, changing this one tag
+#     to `8.0` is the whole change.
 #   - A dedicated database user. The official example connects Ghost as
 #     MySQL `root`.
 #   - No host port by default — the example publishes 8080 unconditionally.

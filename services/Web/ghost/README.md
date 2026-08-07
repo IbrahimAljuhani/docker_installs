@@ -18,7 +18,7 @@ It matters beyond "will it boot": MariaDB and MySQL have drifted far enough apar
 
 > 📌 **On the MySQL version:** the official example pins `mysql:8.0`, which reached **end of life in April 2026**. This deployment uses **`mysql:8.4`**, the current LTS. Ghost's own docs say "MySQL 8" without pinning a minor, and Ghost's `mysql2` driver speaks `caching_sha2_password` (8.4's default) natively.
 >
-> The setups people report as "Ghost doesn't work with 8.4" are all passing `--default-authentication-plugin=mysql_native_password` — an option **removed** in 8.4. This compose file deliberately sets **no** MySQL command flags. If you ever need to fall back, changing that one tag to `8.0` is the entire change.
+> The setups people report as "Ghost doesn't work with 8.4" are all passing `--default-authentication-plugin=mysql_native_password` — an option **removed** in 8.4. This compose file deliberately sets **no** MySQL command flags, and Ghost 6 connects to a stock `mysql:8.4` without them. If you ever do need to fall back, changing that one tag to `8.0` is the entire change.
 
 ---
 
