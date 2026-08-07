@@ -107,8 +107,13 @@ else
     #      edited DOMAIN by hand.
     # So the domain is always asked for, and NPM+SSL is the only supported
     # route. See README.md.
-    read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. vault.example.com): " VAULTWARDEN_DOMAIN
-    [[ -n "$VAULTWARDEN_DOMAIN" ]] || print_error "A domain is required — Vaultwarden builds attachment, 2FA, and email links from it, and the web vault only works over HTTPS."
+    # Format-checked too, not just non-empty: an invisible character tagging
+    # along from a paste silently corrupts every URL built from this.
+    # prompt_domain re-asks instead of aborting the whole deploy — see
+    # lib/common.sh. (It sets PROMPTED_DOMAIN, deliberately not DOMAIN_VALUE,
+    # which this script already uses below for the full https:// URL.)
+    prompt_domain "Enter the public domain you'll point NGINX Proxy Manager at (e.g. vault.example.com): " "domain"
+    VAULTWARDEN_DOMAIN="$PROMPTED_DOMAIN"
     DOMAIN_VALUE="https://$VAULTWARDEN_DOMAIN"
 
     ADMIN_PASSWORD=$(generate_secret)
@@ -151,7 +156,7 @@ fi
 # Only a memory cap can land here — there is no host-port option for this
 # service (see the comment above the domain prompt for why).
 ENV_MEM_LIMIT=""
-grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep -a '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 if [[ -n "$ENV_MEM_LIMIT" ]]; then
     {
@@ -171,7 +176,7 @@ print_info "Starting Vaultwarden..."
 print_info "Vaultwarden is starting."
 echo
 echo "──────────────────────────────────────────────"
-echo "🌐 URL:          $(grep '^DOMAIN=' "$INSTALL_DIR/.env" | cut -d= -f2-)  (once NPM is set up below)"
+echo "🌐 URL:          $(grep -a '^DOMAIN=' "$INSTALL_DIR/.env" | cut -d= -f2-)  (once NPM is set up below)"
 echo "🔗 Proxy target: vaultwarden-app:80 on 'main-net'"
 echo "👤 First visit:  create your own account — Vaultwarden has no default user"
 echo "🔐 Admin page:   /admin  (password in the secrets file below)"

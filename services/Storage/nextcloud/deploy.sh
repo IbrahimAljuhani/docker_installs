@@ -72,8 +72,12 @@ else
         print_info "Using '$TRUSTED_DOMAIN' as NEXTCLOUD_TRUSTED_DOMAINS (must match how you access it). Once you switch to NPM, edit this to your real domain in .env."
     else
         OVERWRITEPROTOCOL_VALUE="https"
-        read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. cloud.example.com): " TRUSTED_DOMAIN
-        [[ -n "$TRUSTED_DOMAIN" ]] || print_error "A domain is required (Nextcloud rejects requests for unlisted domains)."
+        # Format-checked too, not just non-empty: an invisible character
+        # tagging along from a paste silently corrupts every URL built from
+        # this. prompt_domain re-asks instead of aborting the whole deploy —
+        # see lib/common.sh.
+        prompt_domain "Enter the public domain you'll point NGINX Proxy Manager at (e.g. cloud.example.com): " "domain"
+        TRUSTED_DOMAIN="$PROMPTED_DOMAIN"
     fi
 
     cat > "$INSTALL_DIR/.env" <<EOF
@@ -111,8 +115,8 @@ fi
 # it), so it's always safe to regenerate from whatever .env currently has.
 ENV_MEM_LIMIT=""
 ENV_HOST_PORT=""
-grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep -a '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep -a '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" ]]; then
     {

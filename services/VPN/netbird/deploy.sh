@@ -68,11 +68,13 @@ else
     # endpoint peers dial, and the dashboard's API endpoint from the domain,
     # so reaching it at http://<ip>:<port> would break the login flow
     # outright. The domain is always required.
-    read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. netbird.example.com): " NETBIRD_DOMAIN_VALUE
     # Validated, not just checked for emptiness: this value ends up in OAuth
     # redirect URIs and the gRPC endpoint, where a stray character produces a
     # deployment that starts fine and then fails login with "Unauthenticated".
-    validate_domain "$NETBIRD_DOMAIN_VALUE" "domain"
+    # prompt_domain re-asks instead of aborting the whole deploy — see
+    # lib/common.sh.
+    prompt_domain "Enter the public domain you'll point NGINX Proxy Manager at (e.g. netbird.example.com): " "domain"
+    NETBIRD_DOMAIN_VALUE="$PROMPTED_DOMAIN"
 
     prompt_mem_limit "netbird-server" "1g"
 

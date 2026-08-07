@@ -77,8 +77,15 @@ else
     # never optional — VPN traffic can't go through NPM (raw UDP, not
     # HTTP), so there is always a real endpoint to name. It's also baked
     # into every client profile Access Server generates.
-    read -rp "Enter the public IP or domain your VPN clients will connect to (e.g. vpn.example.com or your server's public IP): " VPN_HOST_VALUE
-    [[ -n "$VPN_HOST_VALUE" ]] || print_error "A public IP or domain is required — this is the actual VPN endpoint clients connect to, and it's written into every client profile."
+    # Re-asks rather than aborting the whole deploy on a stray Enter. Note
+    # this deliberately does NOT use prompt_domain: that runs validate_domain,
+    # which rejects colons (it reads them as a port), and a bare IPv6 endpoint
+    # is a legitimate answer here. Emptiness is the only thing checked.
+    while true; do
+        read -rp "Enter the public IP or domain your VPN clients will connect to (e.g. vpn.example.com or your server's public IP): " VPN_HOST_VALUE
+        [[ -n "$VPN_HOST_VALUE" ]] && break
+        print_warn "A public IP or domain is required — this is the actual VPN endpoint clients connect to, and it's written into every client profile."
+    done
 
     ADMIN_PASSWORD=$(generate_secret)
     prompt_mem_limit "openvpn-as" "1g"

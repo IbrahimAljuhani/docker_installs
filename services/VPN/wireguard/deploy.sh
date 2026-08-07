@@ -53,8 +53,15 @@ else
     # every other service's domain question, this is never optional/
     # conditional on the host-port choice, since WireGuard traffic can
     # never go through NPM (raw UDP, not HTTP). Always ask for it.
-    read -rp "Enter the public IP or domain your WireGuard clients will connect to (e.g. vpn.example.com or your server's public IP): " INIT_HOST_VALUE
-    [[ -n "$INIT_HOST_VALUE" ]] || print_error "A public IP or domain is required — this is the actual VPN endpoint clients connect to."
+    # Re-asks rather than aborting the whole deploy on a stray Enter. Note
+    # this deliberately does NOT use prompt_domain: that runs validate_domain,
+    # which rejects colons (it reads them as a port), and a bare IPv6 endpoint
+    # is a legitimate answer here. Emptiness is the only thing checked.
+    while true; do
+        read -rp "Enter the public IP or domain your WireGuard clients will connect to (e.g. vpn.example.com or your server's public IP): " INIT_HOST_VALUE
+        [[ -n "$INIT_HOST_VALUE" ]] && break
+        print_warn "A public IP or domain is required — this is the actual VPN endpoint clients connect to."
+    done
 
     ADMIN_PASSWORD=$(generate_secret)
     prompt_mem_limit "wg-easy-app" "256m"
@@ -100,8 +107,8 @@ fi
 # (51820/udp) is unconditional and already in the base compose file.
 ENV_MEM_LIMIT=""
 ENV_HOST_PORT=""
-grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep -a '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep -a '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" ]]; then
     {
@@ -123,7 +130,7 @@ print_info "Starting WireGuard (wg-easy)..."
 (cd "$INSTALL_DIR" && $COMPOSE_CMD up -d 2>&1 | tee -a "$LOGFILE") \
     || print_error "Failed to start WireGuard. Check log: $LOGFILE"
 
-INIT_HOST_SHOWN=$(grep '^INIT_HOST=' "$INSTALL_DIR/.env" | cut -d= -f2)
+INIT_HOST_SHOWN=$(grep -a '^INIT_HOST=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 print_info "WireGuard (wg-easy) is starting."
 echo

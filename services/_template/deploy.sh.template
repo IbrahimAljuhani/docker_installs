@@ -28,8 +28,19 @@ RUNTIME_DIR="$HOME/docker/$SERVICE_NAME"
 LOGFILE="$RUNTIME_DIR/deploy.log"
 
 # Shared helpers (print_info/print_warn/print_error, prompt_mem_limit,
-# prompt_host_port, generate_secret, ensure_main_net, backup/restore
-# generics, environment-detection reader) — sourced from a git checkout if
+# prompt_host_port, prompt_domain, read_env_value, generate_secret,
+# ensure_main_net, backup/restore generics, environment-detection reader).
+#
+# If your service needs a public domain, ask for it with:
+#     prompt_domain "Enter the public domain ... (e.g. app.example.com): " "domain"
+#     YOUR_DOMAIN_VAR="$PROMPTED_DOMAIN"
+# Do NOT hand-roll `read -rp` + `validate_domain`: validate_domain exits on a
+# bad value (correct when checking something already in a .env, wrong at a
+# prompt), so a single stray pasted character would abort the whole deploy
+# instead of re-asking. And read the value back later with read_env_value,
+# never `grep KEY= .env | cut`.
+#
+# Sourced from a git checkout if
 # present, self-fetched otherwise so a standalone `curl -O deploy.sh &&
 # curl -O docker-compose.yml && bash deploy.sh` still works with no extra
 # steps for the user. Don't duplicate these functions in your own deploy.sh
