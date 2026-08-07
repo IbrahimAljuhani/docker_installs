@@ -109,6 +109,21 @@ Users then get their own profile from the **client portal** (the same address *w
 
 No custom nginx block is required for this service — unlike [NetBird](../netbird/) or [OpenProject](../../Projects/openproject/), a plain Proxy Host is enough.
 
+### 🚩 The web UI has exactly one address
+
+Once NPM is set up, the web UI lives at **`https://your-domain/`** — no port number. That's it.
+
+The other ports are **not** web addresses, even though a browser will try to open them:
+
+| Address | What it actually is |
+|---|---|
+| `https://your-domain/` | ✅ The web UI, through NPM, with your Let's Encrypt certificate |
+| `your-domain:1194/udp` | The VPN tunnel — for the OpenVPN client app, not a browser |
+| `your-domain:8443/tcp` | The optional TCP fallback — also the client app, not a browser |
+| `https://<server-ip>:9443/` | The optional direct host port. Bypasses NPM, so it serves Access Server's **self-signed** certificate — a browser warning here is expected and correct. |
+
+> 📌 **"Your connection is not secure" on the TCP fallback port?** That used to be real: Access Server's *port sharing* feature makes the OpenVPN TCP port also serve the web UI to anything that isn't the OpenVPN protocol. Upstream enables it because their TCP port *is* 443 with no separate reverse proxy — but here it republished the admin panel on the fallback port, straight to the host, bypassing NPM and its certificate. `deploy.sh` now turns port sharing off unconditionally, so that port carries OpenVPN and nothing else. If you deployed before this change, just rerun `deploy.sh` to apply it.
+
 ✅ No web-UI host port is published by default — NPM reaches the container by name over `main-net`. `1194/udp` is separate, always published, and does not go through NPM.
 
 ---

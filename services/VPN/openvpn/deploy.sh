@@ -235,11 +235,20 @@ if [[ -n "$ENV_TCP_PORT" ]]; then
     as_config "vpn.server.daemon.tcp.port" "$ENV_TCP_PORT"
 else
     # No TCP daemon at all: its default port is 443, which NGINX Proxy
-    # Manager owns. Port sharing (serving the web UI off the same TCP port)
-    # goes with it — there's no TCP listener left to share.
+    # Manager owns.
     as_config "vpn.server.daemon.tcp.n_daemons" "0"
-    as_config "vpn.server.port_share.enable" "false"
 fi
+
+# Off in BOTH cases, deliberately. Port sharing makes the OpenVPN TCP port
+# serve the web UI too, for any connection that isn't the OpenVPN protocol.
+# That's a sensible default upstream, where the TCP port IS 443 and there is
+# no separate reverse proxy — but here it republishes the admin panel on the
+# TCP fallback port, straight to the host, bypassing NPM and its Let's
+# Encrypt certificate. Visiting that port then shows a browser security
+# warning (Access Server's own self-signed cert), which reads as a broken
+# deployment and isn't: it's a second, unintended door to the admin panel.
+# The web UI has exactly one route here — NPM to port 943.
+as_config "vpn.server.port_share.enable" "false"
 
 # Replaces the password Access Server auto-generates and prints to its log on
 # first boot. Setting it here instead keeps this service consistent with
@@ -255,13 +264,13 @@ docker exec openvpn-as "$SACLI" start >/dev/null \
 print_info "Access Server configured."
 echo
 echo "──────────────────────────────────────────────"
-echo "🔌 VPN endpoint:  $ENV_VPN_HOST:1194 (UDP — always on)"
-[[ -n "$ENV_TCP_PORT" ]] && echo "🔌 TCP fallback:  $ENV_VPN_HOST:$ENV_TCP_PORT"
+echo "🔌 VPN endpoint:  $ENV_VPN_HOST:1194/udp  ← for the OpenVPN client app"
+[[ -n "$ENV_TCP_PORT" ]] && echo "🔌 TCP fallback:  $ENV_VPN_HOST:$ENV_TCP_PORT/tcp   ← also the client app, NOT a web address"
+echo "🌐 Web UI:        https://<your-NPM-domain>/       (admin panel: /admin)"
 if [[ -n "$ENV_HOST_PORT" ]]; then
     SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
     [[ -z "${SERVER_IP:-}" ]] && SERVER_IP="<your-server-ip>"
-    echo "🌐 Admin UI:      https://$SERVER_IP:$ENV_HOST_PORT/admin  (self-signed cert — expect a browser warning)"
-    echo "🌐 Client UI:     https://$SERVER_IP:$ENV_HOST_PORT/"
+    echo "🌐 Web UI direct: https://$SERVER_IP:$ENV_HOST_PORT/  (self-signed cert — browser warning is expected here)"
 fi
 echo "🔗 Proxy target:  openvpn-as:943 on 'main-net' — scheme MUST be https"
 echo "👤 Admin login:   username 'openvpn' + the generated password below"
