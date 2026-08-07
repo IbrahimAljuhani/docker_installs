@@ -76,3 +76,33 @@ docker network inspect main-net --format '{{ (index .IPAM.Config 0).Subnet }}'
 ```
 
 See the specific service's own README for exactly where this setting lives.
+
+---
+
+## Deploy "succeeded" but the app rejects logins / builds broken URLs
+
+Symptoms: containers start fine, the site loads, and then authentication fails
+with something like `Unauthenticated`, or generated links point somewhere wrong.
+This usually means a value in `~/docker/<service>/.env` is not what you typed.
+
+Check the domain first:
+
+```bash
+grep -a '^DOMAIN=\|^NETBIRD_DOMAIN=\|^PHOTOPRISM_SITE_URL=\|^WEB_URL=' ~/docker/<service>/.env | cat -A
+```
+
+`cat -A` matters: it makes invisible characters visible. A domain that looks
+right but shows something like `vn.ia.sa M-bM-^@M-^F$` picked up a stray
+character — most often a directional mark that travels along invisibly when a
+Latin domain is pasted from an Arabic (or other RTL) context. NetBird was the
+first service where this surfaced: the corrupted domain went into OAuth
+redirect URIs, producing a deployment that started cleanly and then failed
+every login.
+
+**Fix:** correct the value in `.env` (retype it by hand rather than pasting),
+then rerun that service's `deploy.sh` so any files derived from it get
+rewritten too.
+
+Current `deploy.sh` scripts validate the domain at the prompt and reject
+anything that isn't a plain hostname, so this shouldn't recur — but an `.env`
+written by an older version can still carry a bad value.
