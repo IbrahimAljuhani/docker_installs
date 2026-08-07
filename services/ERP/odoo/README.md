@@ -229,7 +229,7 @@ Since the `odoo` container shares the `main-net` network with NPM, proxy to it *
    - **Forward Hostname/IP**: `odoo-<instance>` (e.g. `odoo-prod`)
    - **Forward Port**: `8069`
    - Enable **Websockets Support**
-3. On the **Advanced** tab, add a custom location so `/websocket` routes to the longpolling port:
+3. In NPM's **Custom Nginx Configuration** box — a tab named **Advanced** in older versions, or the **⚙️ gear icon** in the *Edit Proxy Host* dialog in current ones (not the "Custom Locations" tab) — add a custom location so `/websocket` routes to the longpolling port:
    ```nginx
    location /websocket {
        proxy_pass http://odoo-<instance>:8072;

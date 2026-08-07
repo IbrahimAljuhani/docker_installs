@@ -19,7 +19,7 @@ backup_odoo() {
     local db_container="odoo-${instance}-db"
 
     local pg_user
-    pg_user=$(grep '^POSTGRES_USER=' "$install_dir/.env" | cut -d= -f2)
+    pg_user=$(grep -a '^POSTGRES_USER=' "$install_dir/.env" | cut -d= -f2)
 
     if docker exec "$db_container" pg_dumpall -U "$pg_user" > "$dump_file" 2>/dev/null; then
         print_info "Database cluster dumped to $dump_file"
@@ -39,7 +39,7 @@ restore_odoo() {
 
     if [[ -f "$install_dir/db.sql" ]]; then
         local pg_user
-        pg_user=$(grep '^POSTGRES_USER=' "$install_dir/.env" | cut -d= -f2)
+        pg_user=$(grep -a '^POSTGRES_USER=' "$install_dir/.env" | cut -d= -f2)
         (cd "$install_dir" && $(compose_cmd) up -d db) || true
         sleep 3
         docker exec -i "$db_container" psql -U "$pg_user" -d postgres < "$install_dir/db.sql" \

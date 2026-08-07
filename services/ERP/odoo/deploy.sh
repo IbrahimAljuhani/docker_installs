@@ -111,15 +111,8 @@ fi
 # in choose_custom_image), which the shared check doesn't cover.
 command -v curl &>/dev/null || print_error "Missing required component: curl. Please install it first."
 
-# -----------------------------
-# 📦 Validate identifiers (instance name / db user / db name)
-# -----------------------------
-validate_identifier() {
-    local value="$1" label="$2"
-    if [[ ! "$value" =~ ^[a-z][a-z0-9_-]*$ ]]; then
-        print_error "Invalid $label. Must start with a lowercase letter and contain only letters, digits, hyphens, or underscores."
-    fi
-}
+# validate_identifier() (instance name / db user / db name) comes from
+# lib/common.sh.
 
 # -----------------------------
 # 🏷️ Choose Odoo version
