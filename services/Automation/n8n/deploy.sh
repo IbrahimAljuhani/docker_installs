@@ -73,8 +73,12 @@ else
     else
         N8N_PROTOCOL_VALUE="https"
         N8N_SECURE_COOKIE_VALUE="true"
-        read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. n8n.example.com): " N8N_HOST_NAME
-        [[ -n "$N8N_HOST_NAME" ]] || print_error "A domain is required (used to build the webhook URL)."
+        # Format-checked too, not just non-empty: an invisible character
+        # tagging along from a paste silently corrupts every URL built from
+        # this. prompt_domain re-asks instead of aborting the whole deploy —
+        # see lib/common.sh.
+        prompt_domain "Enter the public domain you'll point NGINX Proxy Manager at (e.g. n8n.example.com): " "domain"
+        N8N_HOST_NAME="$PROMPTED_DOMAIN"
         N8N_WEBHOOK_URL_VALUE="https://$N8N_HOST_NAME/"
     fi
 
@@ -122,8 +126,8 @@ fi
 # it), so it's always safe to regenerate from whatever .env currently has.
 ENV_MEM_LIMIT=""
 ENV_HOST_PORT=""
-grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep -a '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep -a '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" ]]; then
     {

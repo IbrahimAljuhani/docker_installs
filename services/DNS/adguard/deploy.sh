@@ -141,9 +141,9 @@ fi
 ENV_MEM_LIMIT=""
 ENV_SETUP_PORT=""
 ENV_ADMIN_PORT=""
-grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^SETUP_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_SETUP_PORT=$(grep '^SETUP_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^ADMIN_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_ADMIN_PORT=$(grep '^ADMIN_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep -a '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^SETUP_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_SETUP_PORT=$(grep -a '^SETUP_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^ADMIN_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_ADMIN_PORT=$(grep -a '^ADMIN_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_SETUP_PORT" ]]; then
     {

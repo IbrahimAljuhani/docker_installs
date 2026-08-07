@@ -126,7 +126,12 @@ else
         [[ -z "${SERVER_IP_FOR_URL:-}" ]] && SERVER_IP_FOR_URL="localhost"
         ADVERTISE_IP_VALUE="http://$SERVER_IP_FOR_URL:$HOST_PORT/"
     else
-        read -rp "Public domain you'll point NGINX Proxy Manager at (optional, e.g. plex.example.com): " PLEX_DOMAIN
+        # Optional — Enter skips it. But a non-empty answer is format-checked
+        # (prompt_optional_domain, lib/common.sh): a typo here doesn't fail
+        # loudly, it just puts a broken URL in ADVERTISE_IP and clients
+        # quietly fail to reach the server.
+        prompt_optional_domain "Public domain you'll point NGINX Proxy Manager at (optional, e.g. plex.example.com): " "domain"
+        PLEX_DOMAIN="$PROMPTED_DOMAIN"
         [[ -n "$PLEX_DOMAIN" ]] && ADVERTISE_IP_VALUE="https://$PLEX_DOMAIN:443/" || ADVERTISE_IP_VALUE=""
     fi
 
@@ -171,9 +176,9 @@ fi
 ENV_MEM_LIMIT=""
 ENV_HOST_PORT=""
 ENV_HW_ACCEL=""
-grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^HW_ACCEL=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HW_ACCEL=$(grep '^HW_ACCEL=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep -a '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep -a '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^HW_ACCEL=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HW_ACCEL=$(grep -a '^HW_ACCEL=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" || -n "$ENV_HW_ACCEL" ]]; then
     {
@@ -202,7 +207,7 @@ print_info "Starting Plex..."
 
 SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 [[ -z "${SERVER_IP:-}" ]] && SERVER_IP="<your-server-ip>"
-CLAIMED=$(grep '^PLEX_CLAIM=' "$INSTALL_DIR/.env" | cut -d= -f2-)
+CLAIMED=$(grep -a '^PLEX_CLAIM=' "$INSTALL_DIR/.env" | cut -d= -f2-)
 
 print_info "Plex is starting."
 echo
@@ -211,7 +216,7 @@ if [[ -n "$ENV_HOST_PORT" ]]; then
     echo "🌐 URL:          http://$SERVER_IP:$ENV_HOST_PORT/web"
 fi
 echo "🔗 Proxy target: plex-app:32400 on 'main-net'"
-echo "📁 Media path:   $(grep '^MEDIA_PATH=' "$INSTALL_DIR/.env" | cut -d= -f2-)"
+echo "📁 Media path:   $(grep -a '^MEDIA_PATH=' "$INSTALL_DIR/.env" | cut -d= -f2-)"
 if [[ -n "$CLAIMED" ]]; then
     echo "👤 First visit:  server was claim-linked to your Plex account — sign in and it should appear"
 else

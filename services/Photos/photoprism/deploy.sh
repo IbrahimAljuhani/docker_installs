@@ -116,8 +116,12 @@ else
         SITE_URL_VALUE="http://$SERVER_IP_FOR_URL:$HOST_PORT/"
         print_info "Using '$SITE_URL_VALUE' as PHOTOPRISM_SITE_URL. Once you switch to NPM, edit this to your real https:// domain in .env and rerun deploy.sh."
     else
-        read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. photos.example.com): " PHOTOPRISM_DOMAIN
-        [[ -n "$PHOTOPRISM_DOMAIN" ]] || print_error "A domain is required — PhotoPrism builds links and redirects from PHOTOPRISM_SITE_URL."
+        # Format-checked too, not just non-empty: an invisible character
+        # tagging along from a paste silently corrupts every URL built from
+        # this. prompt_domain re-asks instead of aborting the whole deploy —
+        # see lib/common.sh.
+        prompt_domain "Enter the public domain you'll point NGINX Proxy Manager at (e.g. photos.example.com): " "domain"
+        PHOTOPRISM_DOMAIN="$PROMPTED_DOMAIN"
         SITE_URL_VALUE="https://$PHOTOPRISM_DOMAIN/"
     fi
 
@@ -157,8 +161,8 @@ fi
 # it), so it's always safe to regenerate from whatever .env currently has.
 ENV_MEM_LIMIT=""
 ENV_HOST_PORT=""
-grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep -a '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep -a '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" ]]; then
     {
@@ -189,7 +193,7 @@ if [[ -n "$ENV_HOST_PORT" ]]; then
     echo "🌐 URL:           http://$SERVER_IP:$ENV_HOST_PORT"
 fi
 echo "🔗 Proxy target:  photoprism-app:2342 on 'main-net'"
-echo "📁 Photo library: $(grep '^ORIGINALS_PATH=' "$INSTALL_DIR/.env" | cut -d= -f2-)  (read-write)"
+echo "📁 Photo library: $(grep -a '^ORIGINALS_PATH=' "$INSTALL_DIR/.env" | cut -d= -f2-)  (read-write)"
 echo "👤 Web login:     username 'admin' + the generated password — see secrets file below"
 echo "📜 Log:           $LOGFILE"
 [[ -f "$SECRETS_FILE" ]] && echo "🔒 Secrets:       $SECRETS_FILE"

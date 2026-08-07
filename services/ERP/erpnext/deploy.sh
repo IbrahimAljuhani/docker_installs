@@ -65,7 +65,7 @@ else
     echo "the links in password-reset and notification emails are built from."
     echo "A LAN IP is fine too, if you just want to try it without a domain."
     prompt_domain "Domain or IP for this ERPNext site (e.g. erp.example.com or 10.0.0.27): " "site domain"
-    SITE_NAME_VALUE="$DOMAIN_VALUE"
+    SITE_NAME_VALUE="$PROMPTED_DOMAIN"
 
     DB_PASSWORD=$(generate_secret 24)
     ADMIN_PASSWORD=$(generate_secret 20)

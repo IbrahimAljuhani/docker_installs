@@ -73,11 +73,12 @@ else
         print_info "Using '$HOST_NAME' as OPENPROJECT_HOST__NAME (must match how you access it). Once you switch to NPM, edit this to your real domain in .env."
     else
         OPENPROJECT_HTTPS_VALUE="true"
-        read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. openproject.example.com): " HOST_NAME
         # Format-checked too, not just non-empty: an invisible character
         # tagging along from a paste silently corrupts every URL built from
-        # this (see validate_domain in lib/common.sh).
-        validate_domain "$HOST_NAME" "host domain"
+        # this. prompt_domain re-asks instead of aborting the whole deploy —
+        # see lib/common.sh.
+        prompt_domain "Enter the public domain you'll point NGINX Proxy Manager at (e.g. openproject.example.com): " "host domain"
+        HOST_NAME="$PROMPTED_DOMAIN"
     fi
 
     cat > "$INSTALL_DIR/.env" <<EOF

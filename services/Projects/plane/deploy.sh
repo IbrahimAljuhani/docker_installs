@@ -75,8 +75,12 @@ else
         WEB_URL_VALUE="http://$APP_DOMAIN_VALUE"
         print_info "Using '$APP_DOMAIN_VALUE' as APP_DOMAIN (must match how you access it). Once you switch to NPM, edit this to your real domain in .env."
     else
-        read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. plane.example.com): " APP_DOMAIN_VALUE
-        [[ -n "$APP_DOMAIN_VALUE" ]] || print_error "A domain is required (Plane's CORS check rejects requests for a mismatched origin)."
+        # Format-checked too, not just non-empty: an invisible character
+        # tagging along from a paste silently corrupts every URL built from
+        # this. prompt_domain re-asks instead of aborting the whole deploy —
+        # see lib/common.sh.
+        prompt_domain "Enter the public domain you'll point NGINX Proxy Manager at (e.g. plane.example.com): " "domain"
+        APP_DOMAIN_VALUE="$PROMPTED_DOMAIN"
         WEB_URL_VALUE="https://$APP_DOMAIN_VALUE"
     fi
 
@@ -123,8 +127,8 @@ fi
 # it), so it's always safe to regenerate from whatever .env currently has.
 ENV_MEM_LIMIT=""
 ENV_HOST_PORT=""
-grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep -a '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep -a '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" ]]; then
     {

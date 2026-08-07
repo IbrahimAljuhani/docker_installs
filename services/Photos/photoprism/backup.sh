@@ -18,7 +18,7 @@ backup_photoprism() {
     local dump_file="$install_dir/db.sql"
 
     local db_password
-    db_password=$(grep '^PHOTOPRISM_DATABASE_PASSWORD=' "$install_dir/.env" | cut -d= -f2)
+    db_password=$(grep -a '^PHOTOPRISM_DATABASE_PASSWORD=' "$install_dir/.env" | cut -d= -f2)
 
     # User/database names are fixed in docker-compose.yml (both "photoprism")
     # rather than being configurable, so they're not read from .env here.
@@ -42,7 +42,7 @@ restore_photoprism() {
 
     if [[ -f "$install_dir/db.sql" ]]; then
         local db_password
-        db_password=$(grep '^PHOTOPRISM_DATABASE_PASSWORD=' "$install_dir/.env" | cut -d= -f2)
+        db_password=$(grep -a '^PHOTOPRISM_DATABASE_PASSWORD=' "$install_dir/.env" | cut -d= -f2)
         # db container needs to be up (but the app itself doesn't) for this —
         # services.sh's restore_menu already ran `compose down` before
         # calling this, so bring just the mariadb service back up first.

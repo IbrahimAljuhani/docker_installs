@@ -10,8 +10,8 @@ backup_vikunja() {
     local dump_file="$install_dir/db.sql"
 
     local pg_user pg_db
-    pg_user=$(grep '^POSTGRES_USER=' "$install_dir/.env" | cut -d= -f2)
-    pg_db=$(grep '^POSTGRES_DB=' "$install_dir/.env" | cut -d= -f2)
+    pg_user=$(grep -a '^POSTGRES_USER=' "$install_dir/.env" | cut -d= -f2)
+    pg_db=$(grep -a '^POSTGRES_DB=' "$install_dir/.env" | cut -d= -f2)
 
     if docker exec vikunja-db pg_dump -U "$pg_user" "$pg_db" > "$dump_file" 2>/dev/null; then
         print_info "Database dumped to $dump_file"
@@ -30,8 +30,8 @@ restore_vikunja() {
 
     if [[ -f "$install_dir/db.sql" ]]; then
         local pg_user pg_db
-        pg_user=$(grep '^POSTGRES_USER=' "$install_dir/.env" | cut -d= -f2)
-        pg_db=$(grep '^POSTGRES_DB=' "$install_dir/.env" | cut -d= -f2)
+        pg_user=$(grep -a '^POSTGRES_USER=' "$install_dir/.env" | cut -d= -f2)
+        pg_db=$(grep -a '^POSTGRES_DB=' "$install_dir/.env" | cut -d= -f2)
         (cd "$install_dir" && $(compose_cmd) up -d db) || true
         sleep 3
         docker exec -i vikunja-db psql -U "$pg_user" -d "$pg_db" < "$install_dir/db.sql" \

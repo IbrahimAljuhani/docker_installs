@@ -120,8 +120,12 @@ else
     else
         TAIGA_SCHEME_VALUE="https"
         WEBSOCKETS_SCHEME_VALUE="wss"
-        read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. taiga.example.com): " TAIGA_DOMAIN_VALUE
-        [[ -n "$TAIGA_DOMAIN_VALUE" ]] || print_error "A domain is required (Taiga rejects requests for an unrecognized domain)."
+        # Format-checked too, not just non-empty: an invisible character
+        # tagging along from a paste silently corrupts every URL built from
+        # this. prompt_domain re-asks instead of aborting the whole deploy —
+        # see lib/common.sh.
+        prompt_domain "Enter the public domain you'll point NGINX Proxy Manager at (e.g. taiga.example.com): " "domain"
+        TAIGA_DOMAIN_VALUE="$PROMPTED_DOMAIN"
     fi
 
     cat > "$INSTALL_DIR/.env" <<EOF
@@ -195,8 +199,8 @@ fi
 ENV_MEM_LIMIT=""
 ENV_HOST_PORT=""
 ENV_AR_OVERLAY=""
-grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep -a '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep -a '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
 grep -q '^AR_I18N_OVERLAY=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_AR_OVERLAY=$(grep '^AR_I18N_OVERLAY=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 if [[ "$ENV_AR_OVERLAY" == "true" ]]; then

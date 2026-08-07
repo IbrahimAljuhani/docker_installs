@@ -120,7 +120,12 @@ else
         [[ -z "${SERVER_IP_FOR_URL:-}" ]] && SERVER_IP_FOR_URL="localhost"
         PUBLISHED_URL_VALUE="http://$SERVER_IP_FOR_URL:$HOST_PORT"
     else
-        read -rp "Public domain you'll point NGINX Proxy Manager at, for autodiscovery (optional, e.g. jellyfin.example.com): " JELLYFIN_DOMAIN
+        # Optional — Enter skips it. But a non-empty answer is format-checked
+        # (prompt_optional_domain, lib/common.sh): a typo here doesn't fail
+        # loudly, it just bakes a broken URL into Jellyfin's autodiscovery
+        # and clients quietly fail to find the server.
+        prompt_optional_domain "Public domain you'll point NGINX Proxy Manager at, for autodiscovery (optional, e.g. jellyfin.example.com): " "domain"
+        JELLYFIN_DOMAIN="$PROMPTED_DOMAIN"
         [[ -n "$JELLYFIN_DOMAIN" ]] && PUBLISHED_URL_VALUE="https://$JELLYFIN_DOMAIN" || PUBLISHED_URL_VALUE=""
     fi
 
@@ -148,9 +153,9 @@ fi
 ENV_MEM_LIMIT=""
 ENV_HOST_PORT=""
 ENV_HW_ACCEL=""
-grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^HW_ACCEL=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HW_ACCEL=$(grep '^HW_ACCEL=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep -a '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep -a '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^HW_ACCEL=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HW_ACCEL=$(grep -a '^HW_ACCEL=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" || -n "$ENV_HW_ACCEL" ]]; then
     {
@@ -186,7 +191,7 @@ if [[ -n "$ENV_HOST_PORT" ]]; then
     echo "🌐 URL:          http://$SERVER_IP:$ENV_HOST_PORT"
 fi
 echo "🔗 Proxy target: jellyfin-app:8096 on 'main-net'"
-echo "📁 Media path:   $(grep '^MEDIA_PATH=' "$INSTALL_DIR/.env" | cut -d= -f2-)"
+echo "📁 Media path:   $(grep -a '^MEDIA_PATH=' "$INSTALL_DIR/.env" | cut -d= -f2-)"
 echo "👤 First visit:  follow the setup wizard — create your own admin account"
 echo "📜 Log:          $LOGFILE"
 echo "──────────────────────────────────────────────"
