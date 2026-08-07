@@ -70,10 +70,18 @@ validate_identifier() {
 # "Binary file ... matches", generating OAuth URLs that failed with
 # "Unauthenticated" — a broken-but-running install with no error anywhere.
 # $1 = key name, $2 = path to the .env file. Prints nothing if unset.
+# The trailing `|| true` is load-bearing, not defensive clutter. Every
+# deploy.sh runs under `set -euo pipefail`, and grep exits 1 when the key
+# simply isn't there — a normal, expected outcome for any optional key
+# (MEM_LIMIT, HOST_PORT, ...). Under pipefail that 1 becomes the whole
+# pipeline's status, so the function would return 1, so `VAR=$(read_env_value
+# ...)` would fail, so `set -e` would kill the script dead — with no error
+# message at all, right after a successful-looking step. Absent must read as
+# "empty", never as "failure".
 read_env_value() {
     local key="$1" file="$2"
     [[ -f "$file" ]] || return 0
-    grep -a "^${key}=" "$file" 2>/dev/null | head -n1 | cut -d= -f2-
+    grep -a "^${key}=" "$file" 2>/dev/null | head -n1 | cut -d= -f2- || true
 }
 
 # Validates a public domain/hostname. Rejects anything that isn't a plain
