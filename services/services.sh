@@ -51,6 +51,7 @@ declare -A SERVICE_FILES=(
     [adguard]="docker-compose.yml"
     [plex]="docker-compose.yml"
     [vaultwarden]="docker-compose.yml"
+    [netbird]="docker-compose.yml"
     [photoprism]="docker-compose.yml backup.sh"
     [wireguard]="docker-compose.yml"
     [wordpress]="docker-compose.yml backup.sh"
