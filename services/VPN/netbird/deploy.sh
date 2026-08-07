@@ -192,6 +192,81 @@ EOF
 chmod 600 "$INSTALL_DIR/dashboard.env"
 print_info "Wrote config.yaml and dashboard.env for domain '$ENV_DOMAIN'."
 
+# The NPM routing block, written to a file rather than printed. It's ~30
+# lines that have to be copied verbatim into NPM's UI, and dumping that into
+# the terminal buried the handful of things the user actually has to DO.
+# From a file they can `cat` it, or scp it, and it's still there tomorrow.
+# Quoted heredoc: every $ below is nginx's own variable, not ours.
+cat > "$INSTALL_DIR/npm-custom-nginx.conf" <<'NGINXEOF'
+# Paste this whole file into NGINX Proxy Manager:
+#   Edit Proxy Host → ⚙️ gear icon → "Custom Nginx Configuration" → Save
+# (not the "Custom Locations" tab — that's a different feature)
+#
+# Also required, on the SSL tab: enable "HTTP/2 Support" (gRPC needs it).
+
+client_header_timeout 1d;
+client_body_timeout 1d;
+
+# WebSocket (relay, signal, management)
+location ~ ^/(relay|ws-proxy/) {
+    proxy_pass http://netbird-server:80;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 1d;
+}
+
+# Native gRPC (signal + management)
+location ~ ^/(signalexchange\.SignalExchange|management\.ManagementService)/ {
+    grpc_pass grpc://netbird-server:80;
+    grpc_read_timeout 1d;
+    grpc_send_timeout 1d;
+    grpc_socket_keepalive on;
+}
+
+# REST API + OAuth2
+location ~ ^/(api|oauth2)/ {
+    proxy_pass http://netbird-server:80;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}
+NGINXEOF
+
+# A one-command check, so verifying doesn't mean retyping a long curl.
+cat > "$INSTALL_DIR/verify-npm.sh" <<VERIFYEOF
+#!/bin/bash
+# Checks whether NPM is routing NetBird's paths correctly.
+d="$ENV_DOMAIN"
+code=\$(curl -sk -o /dev/null -w '%{http_code} %{content_type}' "https://\$d/oauth2/.well-known/openid-configuration")
+echo "GET https://\$d/oauth2/.well-known/openid-configuration"
+echo "  -> \$code"
+echo
+case "\$code" in
+  200*json*)
+    echo "✅ Routing is correct."
+    echo "   If the page still shows 'Unauthenticated', that's stale browser"
+    echo "   state — open the site in a PRIVATE window to confirm."
+    ;;
+  404*)
+    echo "❌ /oauth2 is still hitting the dashboard container."
+    echo "   The routing block isn't saved in NPM. Paste this file:"
+    echo "     $INSTALL_DIR/npm-custom-nginx.conf"
+    echo "   into Edit Proxy Host → ⚙️ gear icon → Custom Nginx Configuration."
+    ;;
+  *)
+    echo "⚠️  Unexpected response — check DNS, the tunnel/port-forward, and TLS."
+    echo "   See docs/troubleshooting.md."
+    ;;
+esac
+VERIFYEOF
+chmod +x "$INSTALL_DIR/verify-npm.sh"
+
 if [[ -f "$INSTALL_DIR/docker-compose.yml" ]]; then
     print_info "Existing docker-compose.yml found at $INSTALL_DIR — keeping it (not overwritten). Delete it yourself first if you want the latest version from this repo."
 else
@@ -230,35 +305,18 @@ echo "📜 Log:          $LOGFILE"
 [[ -f "$SECRETS_FILE" ]] && echo "🔒 Secrets:      $SECRETS_FILE"
 echo "──────────────────────────────────────────────"
 echo
-echo "🚨 NPM NEEDS MORE THAN THE USUAL SETUP HERE. NetBird speaks gRPC and"
-echo "   WebSocket alongside plain HTTP, so a default Proxy Host is not"
-echo "   enough — the dashboard will load and then logins fail with"
-echo "   'Unauthenticated', because /oauth2 lands on the dashboard"
-echo "   container instead of the server. You must:"
-echo "     • forward to netbird-dashboard, port 80"
-echo "     • enable HTTP/2 Support in the SSL tab  (required for gRPC)"
-echo "     • paste the routing block from this service's README into NPM's"
-echo "       'Custom Nginx Configuration' box — in current NPM versions that"
-echo "       is behind the ⚙️ gear icon in the Edit Proxy Host dialog, NOT a"
-echo "       tab called Advanced, and NOT the Custom Locations tab. It routes"
-echo "       /api, /oauth2, /relay and the gRPC paths to netbird-server:80"
+echo "⚠️  A plain Proxy Host is NOT enough for NetBird. Three steps in NPM:"
+echo "   1. Forward to  netbird-dashboard : 80"
+echo "   2. SSL tab   → enable 'HTTP/2 Support'   (gRPC needs it)"
+echo "   3. ⚙️ gear icon → 'Custom Nginx Configuration' → paste this file:"
+echo "        cat $INSTALL_DIR/npm-custom-nginx.conf"
 echo
-echo "   ✅ VERIFY IT AFTERWARDS — one command, unambiguous answer:"
-echo "        curl -sk -o /dev/null -w '%{http_code} %{content_type}\\n' \\"
-echo "          https://$ENV_DOMAIN/oauth2/.well-known/openid-configuration"
-echo "      200 + application/json  → routing is correct, you're done."
-echo "      404 + text/html         → the routing block is missing or wrong;"
-echo "                                /oauth2 is still hitting the dashboard."
+echo "   Then check it worked:   bash $INSTALL_DIR/verify-npm.sh"
 echo
-echo "   🧹 Once that returns 200, open the site in a PRIVATE window. The"
-echo "      dashboard caches auth state, so any failed attempts from before"
-echo "      the fix keep showing 'Unauthenticated' on a normal reload — a"
-echo "      successful fix can look like it changed nothing. Trust the curl,"
-echo "      not the page."
+echo "🔌 Port-forward 3478/udp on your router — NAT traversal needs it, and it"
+echo "   can't go through NPM or Cloudflare Tunnel."
 echo
-echo "🔌 Also open 3478/udp to the internet (router port-forward). NAT"
-echo "   traversal needs it, and it cannot go through Cloudflare Tunnel or"
-echo "   any HTTP reverse proxy — see the README."
+echo "📖 Why, and what to do if it misbehaves: services/VPN/netbird/README.md"
 print_tunnel_reminder_if_relevant
 echo
 echo "To manage: cd $INSTALL_DIR && $COMPOSE_CMD [ps|logs -f|stop|restart]"

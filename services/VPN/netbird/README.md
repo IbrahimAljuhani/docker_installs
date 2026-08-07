@@ -47,15 +47,17 @@ This is a **single-instance** service, under `~/docker/netbird/`. You'll be aske
 
 **There's no host-port option**, same as this repo's [Vaultwarden](../../Security/vaultwarden/) and for a similar reason: NetBird builds its OAuth redirect URIs, its gRPC endpoint, and the dashboard's API endpoint from the domain. Reaching it at `http://<ip>:<port>` would break the login flow outright, so the domain is always required.
 
-### Three generated files, not one
+### Generated files, not just `.env`
 
-Unlike every other service here, `deploy.sh` writes **three** files into `~/docker/netbird/`:
+Unlike every other service here, `deploy.sh` writes several files into `~/docker/netbird/`:
 
-| File | What it configures |
+| File | What it's for |
 |---|---|
 | `.env` | Compose-level values (image tags, domain, secrets) |
 | `config.yaml` | The server: STUN, auth issuer, trusted proxies, SQLite encryption |
 | `dashboard.env` | The web UI: API endpoints and OAuth settings |
+| `npm-custom-nginx.conf` | The routing block to paste into NPM — `cat` it and copy |
+| `verify-npm.sh` | One-command check that NPM routing actually works |
 
 `config.yaml` and `dashboard.env` are **derived from `.env` and rewritten on every run**. So to change the domain: edit `NETBIRD_DOMAIN` in `.env`, then rerun `deploy.sh` — editing those two directly gets overwritten.
 
@@ -79,9 +81,18 @@ The secrets file holds server-side keys (relay auth, datastore encryption, sessi
    - **Forward Hostname/IP**: `netbird-dashboard`
    - **Forward Port**: `80`
 3. **SSL tab** → enable Let's Encrypt **and turn on "HTTP/2 Support"**. This one isn't cosmetic: gRPC runs over HTTP/2, and without it peer registration fails.
-4. **Custom Nginx Configuration** → paste this block. It routes the non-dashboard paths to `netbird-server` — API, OAuth, WebSocket relay, and native gRPC.
+4. **Custom Nginx Configuration** → paste the routing block. It sends the non-dashboard paths to `netbird-server` — API, OAuth, WebSocket relay, and native gRPC.
 
-   > ⚠️ **Where to find it:** depending on your NPM version this is either a tab labelled **Advanced**, or — in current versions — the **⚙️ gear icon** at the top-right of the *Edit Proxy Host* dialog, next to the `Details / Custom Locations / SSL` tabs. It opens a box titled **"Custom Nginx Configuration"**. It is *not* the "Custom Locations" tab.
+   `deploy.sh` already wrote it to a file for you, so you don't have to copy it out of this page:
+
+   ```bash
+   cat ~/docker/netbird/npm-custom-nginx.conf
+   ```
+
+   > ⚠️ **Where to paste it:** depending on your NPM version this is either a tab labelled **Advanced**, or — in current versions — the **⚙️ gear icon** at the top-right of the *Edit Proxy Host* dialog, next to the `Details / Custom Locations / SSL` tabs. It opens a box titled **"Custom Nginx Configuration"**. It is *not* the "Custom Locations" tab.
+
+   <details>
+   <summary>The block itself, if you'd rather copy it from here</summary>
 
 ```nginx
 # Required for long-lived connections (gRPC and WebSocket)
@@ -119,11 +130,19 @@ location ~ ^/(api|oauth2)/ {
 }
 ```
 
+   </details>
+
 This block is upstream's own — it's what their setup script emits when you choose "Nginx Proxy Manager" as the reverse proxy.
 
 ### ✅ Verify the routing actually took effect
 
-Don't judge this by whether the dashboard loads — it loads either way. Run this instead:
+Don't judge this by whether the dashboard loads — it loads either way. `deploy.sh` writes a check script for exactly this:
+
+```bash
+bash ~/docker/netbird/verify-npm.sh
+```
+
+It runs the request below and explains the result, so you don't have to interpret it:
 
 ```bash
 curl -sk -o /dev/null -w '%{http_code} %{content_type}\n' \
