@@ -12,33 +12,31 @@ See the top of [`docker-compose.yml`](docker-compose.yml) for the exact, deliber
 
 Everything in this repo is worth securing, but this service *is* the security. Three things are not optional:
 
-1. **HTTPS is genuinely required — not just recommended.** See [the section below](#️-the-web-vault-will-not-load-over-plain-http): the web vault refuses to load at all over plain `http://` on a normal address. This is a browser rule, not a Vaultwarden setting, and nothing in `.env` can turn it off.
+1. **HTTPS is genuinely required — not just recommended.** See [the section below](#️-https-only--there-is-no-direct-port-option): the web vault refuses to load at all over plain `http://` on a normal address. This is a browser rule, not a Vaultwarden setting, and nothing in `.env` can turn it off — which is why this service has no direct-port option at all.
 2. **Close registration immediately after creating your account** — see [below](#-required-close-registration-after-your-first-account). Open signups on a reachable instance means strangers can register on your password manager.
 3. **`DOMAIN` must be correct.** It's not cosmetic: attachments, WebAuthn/2FA, and emailed links are all built from it.
 
 ---
 
-## ⛔️ The Web Vault Will Not Load Over Plain HTTP
+## ⛔️ HTTPS Only — There Is No Direct-Port Option
 
-If you open Vaultwarden on a plain `http://<server-ip>:<port>` address, you get this instead of the login page:
+**This is the one service in this repo with no "publish a host port for quick direct access" prompt.** It was removed on purpose, because that path is a dead end here, twice over:
+
+**1. The browser blocks it.** Open Vaultwarden on a plain `http://<server-ip>:<port>` address and you get this instead of the login page:
 
 > You are not using a secure context which is required for the Subtle Crypto API to work. You need to enable HTTPS!
 
-**This is expected and unavoidable.** The web vault does its encryption in the browser via the Web Crypto API (`crypto.subtle`), and browsers only expose that API in a **secure context**: an HTTPS page, or a `localhost` / `127.0.0.1` address. A LAN IP over plain HTTP is neither.
+The web vault encrypts in the browser via the Web Crypto API (`crypto.subtle`), and browsers expose that API only in a **secure context** — an HTTPS page, or a `localhost`/`127.0.0.1` address. A LAN IP over plain HTTP is neither. No server-side setting can override this; it isn't a Vaultwarden option.
 
-So unlike every other service in this repo, **the optional direct host port does not give you a working "quick look"**. Two ways to actually reach it:
+**2. It would quietly break the NPM path too.** Choosing a host port would set `DOMAIN` to `http://<ip>:<port>`, and `DOMAIN` must match the real access URL. Setting up NPM afterwards would then misbehave until someone noticed and hand-edited `DOMAIN` — a confusing failure with no obvious cause.
 
-**Option A — NPM + SSL (the normal path).** Skip the host port entirely, set up the Proxy Host below, and use your `https://` domain.
+So `deploy.sh` always asks for your public domain and sets `DOMAIN=https://<domain>`. NPM + SSL is the only supported route.
 
-**Option B — SSH tunnel (works with the host port).** Forwarding the port to your own machine makes the address `localhost`, which *is* a secure context:
-
-```bash
-ssh -L 8222:localhost:8222 you@your-server
-```
-
-then open `http://localhost:8222`. Useful for a first look or for admin access without exposing anything.
-
-Either way, once you're on HTTPS, set `DOMAIN` in `~/docker/vaultwarden/.env` to that `https://` URL and rerun `deploy.sh`.
+> 💡 **Need a look before DNS/SSL is ready?** An SSH tunnel makes the address `localhost`, which *is* a secure context. Add a temporary port mapping to `~/docker/vaultwarden/docker-compose.override.yml`, then:
+> ```bash
+> ssh -L 8222:localhost:8222 you@your-server
+> ```
+> and open `http://localhost:8222`. Remove the mapping afterwards — this is a debugging aid, not a deployment mode.
 
 ---
 
@@ -71,7 +69,7 @@ This is a **single-instance** service: one Vaultwarden deployment per host, unde
 
 > 💡 **The token is stored in `.env` as plaintext, not an Argon2 hash — expect this.** `deploy.sh` tries to hash it with Vaultwarden's own `hash --preset owasp` command, but that command reads the password straight from the terminal device (`/dev/tty`) rather than standard input, so it can't be scripted at all. Vaultwarden accepts both forms; hashing just protects the token if someone reads `.env` without otherwise owning the host. Upgrading takes one command — see [Re-hashing the admin token](#-re-hashing-the-admin-token) — and `deploy.sh` tells you which form it used.
 
-You'll also be asked whether to cap memory on the `vaultwarden` container (default suggestion: `512m`) and whether to publish a host port (default suggestion: `8222`, default answer no — and see the [secure-context warning](#️-the-web-vault-will-not-load-over-plain-http) for why that port needs an SSH tunnel to be useful).
+You'll also be asked for the **public domain** you'll point NPM at (required — see [above](#️-https-only--there-is-no-direct-port-option) for why there's no host-port alternative) and whether to cap memory on the `vaultwarden` container (default suggestion: `512m`).
 
 ---
 
@@ -108,7 +106,7 @@ The **admin page** at `/admin` is separate: it manages users, invites, and serve
    - Enable **Websockets Support** (used for live sync between your devices)
 3. Enable **SSL** with Let's Encrypt from the UI — see the warning at the top of this README; this is effectively required, not optional.
 
-✅ No host port is published for `vaultwarden-app` by default — NPM reaches it by container name over `main-net`.
+✅ No host port is published for `vaultwarden-app` at all — NPM reaches it by container name over `main-net`.
 
 > 📌 **Older guides mention a second port `3012` for websockets.** That's obsolete — current Vaultwarden serves websockets on the main port, enabled by default. One Proxy Host to port `80` is all you need.
 
@@ -158,7 +156,7 @@ Keep the **single quotes** and the **single `$`** characters exactly as printed 
 - **Container port is `80`**, despite upstream's `.env.template` showing `ROCKET_PORT=8000` — that value is the bare binary's default, and the official Docker image overrides it (`ROCKET_PORT=80` + `EXPOSE 80` in its own Dockerfile).
 - **`env_file` instead of `${VAR}` substitution**, deliberately: the Argon2 admin token is full of `$` characters that Compose would otherwise try to expand as variables. This is the same class of problem as this repo's [WireGuard](../../VPN/wireguard/) service, solved the opposite way there (`$$`-doubling) because that one genuinely needs substitution.
 - **No private `<service>-net`** — single container, no database to isolate, so it joins `main-net` directly (same as Jellyfin/LinkStack).
-- Upstream's own example publishes a host port unconditionally; here that's optional (default: no), matching this repo's "NPM-only unless you opt in" convention.
+- **No host-port option at all** — the only service here without one. Every other service offers it as an optional quick-look path; for Vaultwarden it can't work (browser secure-context rule) *and* it would corrupt `DOMAIN` for the NPM path, so it's omitted rather than offered-and-caveated. See [above](#️-https-only--there-is-no-direct-port-option).
 
 ---
 

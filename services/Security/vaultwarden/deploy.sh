@@ -92,30 +92,24 @@ if [[ -f "$INSTALL_DIR/.env" ]]; then
 else
     prompt_mem_limit "vaultwarden" "512m"
 
-    # Unlike every other service here, a direct host port does NOT give you
-    # a usable "quick look": the Bitwarden web vault calls the Web Crypto
-    # API (crypto.subtle), which browsers expose only in a *secure context*
-    # — HTTPS, or a localhost/127.0.0.1 address. Over plain http:// on a LAN
-    # IP the vault refuses to load at all ("You are not using a secure
-    # context..."). Say so before the prompt rather than after, so nobody
-    # picks a port expecting it to work.
-    print_warn "Heads up before the next question: a direct host port will NOT give you a working web vault. Browsers block the crypto API this app needs unless the page is HTTPS or on localhost, so http://<server-ip>:<port> shows a 'not a secure context' error instead of the vault. It's only useful if you reach it through an SSH tunnel (which makes it localhost). Answering 'no' and going straight to NPM+SSL is the normal path."
-    prompt_host_port "8222"
-
-    # DOMAIN must match how you actually reach Vaultwarden — it's not
-    # cosmetic here: attachments, WebAuthn/2FA registration, and emailed
-    # links are all built from it. Same derivation pattern as this repo's
-    # Vikunja/PhotoPrism.
-    if [[ -n "$HOST_PORT" ]]; then
-        SERVER_IP_FOR_URL=$(hostname -I 2>/dev/null | awk '{print $1}')
-        [[ -z "${SERVER_IP_FOR_URL:-}" ]] && SERVER_IP_FOR_URL="localhost"
-        DOMAIN_VALUE="http://$SERVER_IP_FOR_URL:$HOST_PORT"
-        print_warn "DOMAIN set to '$DOMAIN_VALUE'. Remember: opening that URL directly in a browser will show 'You are not using a secure context' instead of the vault — that's the browser blocking it, not a misconfiguration. Reach it over an SSH tunnel, or set up NPM+SSL and change DOMAIN to your https:// domain in .env, then rerun deploy.sh."
-    else
-        read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. vault.example.com): " VAULTWARDEN_DOMAIN
-        [[ -n "$VAULTWARDEN_DOMAIN" ]] || print_error "A domain is required — Vaultwarden builds attachment, 2FA, and email links from it."
-        DOMAIN_VALUE="https://$VAULTWARDEN_DOMAIN"
-    fi
+    # NOTE: this service deliberately does NOT offer the optional direct
+    # host port that every other service here does. Two reasons, both
+    # dead ends rather than trade-offs:
+    #   1. The Bitwarden web vault encrypts in the browser via the Web
+    #      Crypto API (crypto.subtle), which browsers expose only in a
+    #      *secure context* — HTTPS, or a localhost/127.0.0.1 address. On
+    #      http://<lan-ip>:<port> the vault refuses to load at all, showing
+    #      "You are not using a secure context". No server-side setting can
+    #      change that; it's the browser's rule.
+    #   2. Worse, taking that path would set DOMAIN to http://<ip>:<port>,
+    #      and DOMAIN must match the real access URL — so it would then
+    #      quietly break the NPM+HTTPS path too, until someone noticed and
+    #      edited DOMAIN by hand.
+    # So the domain is always asked for, and NPM+SSL is the only supported
+    # route. See README.md.
+    read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. vault.example.com): " VAULTWARDEN_DOMAIN
+    [[ -n "$VAULTWARDEN_DOMAIN" ]] || print_error "A domain is required — Vaultwarden builds attachment, 2FA, and email links from it, and the web vault only works over HTTPS."
+    DOMAIN_VALUE="https://$VAULTWARDEN_DOMAIN"
 
     ADMIN_PASSWORD=$(generate_secret)
     hash_admin_token "$ADMIN_PASSWORD"
@@ -130,7 +124,6 @@ ADMIN_TOKEN='$ADMIN_TOKEN_STORED'
 SIGNUPS_ALLOWED=true
 EOF
     [[ -n "$MEM_LIMIT" ]] && echo "MEM_LIMIT=$MEM_LIMIT" >> "$INSTALL_DIR/.env"
-    [[ -n "$HOST_PORT" ]] && echo "HOST_PORT=$HOST_PORT" >> "$INSTALL_DIR/.env"
     chmod 600 "$INSTALL_DIR/.env"
 
     {
@@ -155,23 +148,18 @@ fi
 
 # docker-compose.override.yml is fully owned by this script (never hand-edit
 # it), so it's always safe to regenerate from whatever .env currently has.
+# Only a memory cap can land here — there is no host-port option for this
+# service (see the comment above the domain prompt for why).
 ENV_MEM_LIMIT=""
-ENV_HOST_PORT=""
 grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
-if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" ]]; then
+if [[ -n "$ENV_MEM_LIMIT" ]]; then
     {
         echo "services:"
         echo "  vaultwarden:"
-        [[ -n "$ENV_MEM_LIMIT" ]] && echo "    mem_limit: $ENV_MEM_LIMIT"
-        if [[ -n "$ENV_HOST_PORT" ]]; then
-            echo "    ports:"
-            echo "      - \"$ENV_HOST_PORT:80\""
-        fi
+        echo "    mem_limit: $ENV_MEM_LIMIT"
     } > "$INSTALL_DIR/docker-compose.override.yml"
-    [[ -n "$ENV_MEM_LIMIT" ]] && print_info "Memory limit $ENV_MEM_LIMIT applied to the 'vaultwarden' container."
-    [[ -n "$ENV_HOST_PORT" ]] && print_info "Host port $ENV_HOST_PORT published for direct access."
+    print_info "Memory limit $ENV_MEM_LIMIT applied to the 'vaultwarden' container."
 else
     rm -f "$INSTALL_DIR/docker-compose.override.yml"
 fi
@@ -183,15 +171,7 @@ print_info "Starting Vaultwarden..."
 print_info "Vaultwarden is starting."
 echo
 echo "──────────────────────────────────────────────"
-if [[ -n "$ENV_HOST_PORT" ]]; then
-    SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-    [[ -z "${SERVER_IP:-}" ]] && SERVER_IP="<your-server-ip>"
-    echo "🌐 Host port:    $ENV_HOST_PORT  ⚠️ NOT usable directly in a browser"
-    echo "                 (http://$SERVER_IP:$ENV_HOST_PORT → 'not a secure context')"
-    echo "                 Reach it via SSH tunnel instead:"
-    echo "                   ssh -L $ENV_HOST_PORT:localhost:$ENV_HOST_PORT $USER@$SERVER_IP"
-    echo "                 then open http://localhost:$ENV_HOST_PORT"
-fi
+echo "🌐 URL:          $(grep '^DOMAIN=' "$INSTALL_DIR/.env" | cut -d= -f2-)  (once NPM is set up below)"
 echo "🔗 Proxy target: vaultwarden-app:80 on 'main-net'"
 echo "👤 First visit:  create your own account — Vaultwarden has no default user"
 echo "🔐 Admin page:   /admin  (password in the secrets file below)"

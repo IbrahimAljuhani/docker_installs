@@ -7,9 +7,12 @@
 # backup.sh is needed (the generic volume backup in lib/common.sh covers it).
 #
 # Deliberate deviations / notes:
-#   - No host port published by default — NGINX Proxy Manager reaches it by
-#     container name over the shared 'main-net' instead (see README.md).
-#     Upstream's own example publishes a host port unconditionally.
+#   - No host port, and no option to add one — unlike every other service
+#     here. The web vault needs a browser "secure context" (HTTPS or
+#     localhost) for the Web Crypto API, so a plain http://<ip>:<port> page
+#     can't load it at all; offering the option would also set DOMAIN to
+#     that URL and silently break the NPM path. NGINX Proxy Manager reaches
+#     it by container name over 'main-net' instead. See README.md.
 #   - No private '<service>-net' — like LinkStack/Jellyfin, there's a single
 #     container and no database to isolate, so it joins 'main-net' directly.
 #   - Container port is 80, NOT the 8000 shown in upstream's .env.template:
