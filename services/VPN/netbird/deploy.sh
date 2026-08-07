@@ -250,6 +250,12 @@ echo "      200 + application/json  → routing is correct, you're done."
 echo "      404 + text/html         → the routing block is missing or wrong;"
 echo "                                /oauth2 is still hitting the dashboard."
 echo
+echo "   🧹 Once that returns 200, open the site in a PRIVATE window. The"
+echo "      dashboard caches auth state, so any failed attempts from before"
+echo "      the fix keep showing 'Unauthenticated' on a normal reload — a"
+echo "      successful fix can look like it changed nothing. Trust the curl,"
+echo "      not the page."
+echo
 echo "🔌 Also open 3478/udp to the internet (router port-forward). NAT"
 echo "   traversal needs it, and it cannot go through Cloudflare Tunnel or"
 echo "   any HTTP reverse proxy — see the README."

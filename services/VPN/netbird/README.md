@@ -133,7 +133,7 @@ curl -sk -o /dev/null -w '%{http_code} %{content_type}\n' \
 | Result | Meaning |
 |---|---|
 | `200 application/json` | ✅ Routing is correct — `/oauth2` reaches `netbird-server`. |
-| `404 text/html` | ❌ The Advanced block is missing or wrong. `/oauth2` is still hitting `netbird-dashboard`, which only serves static files — this is what produces **"Oops, something went wrong — Error: Unauthenticated"** at login. |
+| `404 text/html` | ❌ The routing block is missing or wrong. `/oauth2` is still hitting `netbird-dashboard`, which only serves static files — this is what produces **"Oops, something went wrong — Error: Unauthenticated"** at login. |
 
 If it returns 404, confirm the block actually reached NPM — don't rely on remembering. Read NPM's own generated config:
 
@@ -144,6 +144,34 @@ docker exec npm-app-1 grep -c "http2"          "$conf"   # 0 = HTTP/2 not enable
 ```
 
 If `netbird-server` counts 0, the block isn't saved — check you used the **⚙️ Custom Nginx Configuration** box (see the warning in step 4), not the "Custom Locations" tab.
+
+### 🧹 Once it returns 200, open the dashboard in a private window
+
+**Do this even if you're sure the page is broken.** The dashboard keeps OAuth
+state in the browser's `localStorage`, and every failed attempt while the
+routing was wrong leaves stale state behind. That state survives a normal
+reload, so the page keeps showing the old **"Error: Unauthenticated"** long
+after the server side is fixed — making a successful repair look like another
+failure.
+
+`curl` returning `200 application/json` is the authoritative signal, not the
+page. When it does, open the site in a **private/incognito window**. If it
+works there, go back to your normal window and clear this site's data.
+
+### 🩺 Diagnosing in the right order
+
+If something is wrong, work outwards from the server — each step rules out one
+layer, so you never guess:
+
+| # | Check | Rules out |
+|---|---|---|
+| 1 | `docker logs netbird-server \| grep "Dex IDP initialized"` — should show `https://your-domain/oauth2` | The server and its generated `config.yaml` |
+| 2 | Read NPM's generated config (command above) | Whether the routing block actually saved |
+| 3 | `curl` the OIDC endpoint (command above) | Whether routing works end to end |
+| 4 | Open in a private window | Browser cache vs. a real server problem |
+
+Steps 1–3 all pass but the page still errors? It's step 4 — the browser, not
+the deployment.
 
 To confirm the server itself is healthy independently of NPM:
 
