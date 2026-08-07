@@ -69,7 +69,10 @@ else
     # so reaching it at http://<ip>:<port> would break the login flow
     # outright. The domain is always required.
     read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. netbird.example.com): " NETBIRD_DOMAIN_VALUE
-    [[ -n "$NETBIRD_DOMAIN_VALUE" ]] || print_error "A domain is required — NetBird builds its OAuth redirects and peer endpoints from it."
+    # Validated, not just checked for emptiness: this value ends up in OAuth
+    # redirect URIs and the gRPC endpoint, where a stray character produces a
+    # deployment that starts fine and then fails login with "Unauthenticated".
+    validate_domain "$NETBIRD_DOMAIN_VALUE" "domain"
 
     prompt_mem_limit "netbird-server" "1g"
 
@@ -115,12 +118,20 @@ EOF
 fi
 
 # Read back from .env so a rerun after hand-editing the domain regenerates
-# config.yaml/dashboard.env to match.
-ENV_DOMAIN=$(grep '^NETBIRD_DOMAIN=' "$INSTALL_DIR/.env" | cut -d= -f2-)
-ENV_RELAY_SECRET=$(grep '^NETBIRD_RELAY_AUTH_SECRET=' "$INSTALL_DIR/.env" | cut -d= -f2-)
-ENV_DATASTORE_KEY=$(grep '^DATASTORE_ENCRYPTION_KEY=' "$INSTALL_DIR/.env" | cut -d= -f2-)
-ENV_SESSION_KEY=$(grep '^SESSION_COOKIE_ENCRYPTION_KEY=' "$INSTALL_DIR/.env" | cut -d= -f2-)
-ENV_TRUSTED_CIDR=$(grep '^TRUSTED_PROXY_CIDR=' "$INSTALL_DIR/.env" | cut -d= -f2-)
+# config.yaml/dashboard.env to match. read_env_value (lib/common.sh) is
+# binary-safe — a plain `grep | cut` here once handed back the literal string
+# "Binary file ... matches" as the domain, producing OAuth URLs that failed
+# with "Unauthenticated" on a deploy that otherwise looked successful.
+ENV_DOMAIN=$(read_env_value NETBIRD_DOMAIN "$INSTALL_DIR/.env")
+ENV_RELAY_SECRET=$(read_env_value NETBIRD_RELAY_AUTH_SECRET "$INSTALL_DIR/.env")
+ENV_DATASTORE_KEY=$(read_env_value DATASTORE_ENCRYPTION_KEY "$INSTALL_DIR/.env")
+ENV_SESSION_KEY=$(read_env_value SESSION_COOKIE_ENCRYPTION_KEY "$INSTALL_DIR/.env")
+ENV_TRUSTED_CIDR=$(read_env_value TRUSTED_PROXY_CIDR "$INSTALL_DIR/.env")
+
+# Belt and braces: if the domain still came back empty or malformed for any
+# reason, stop here rather than writing config files that would deploy
+# cleanly and then fail authentication with no obvious cause.
+validate_domain "$ENV_DOMAIN" "NETBIRD_DOMAIN in $INSTALL_DIR/.env"
 
 # config.yaml + dashboard.env are fully owned by this script (never
 # hand-edit them — edit .env and rerun). Reproduced from upstream's
@@ -191,7 +202,7 @@ fi
 # it). Only a memory cap can land here — there's no host-port option for
 # this service (see the comment above the domain prompt).
 ENV_MEM_LIMIT=""
-grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep -a '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 if [[ -n "$ENV_MEM_LIMIT" ]]; then
     {
@@ -221,13 +232,21 @@ echo "────────────────────────�
 echo
 echo "🚨 NPM NEEDS MORE THAN THE USUAL SETUP HERE. NetBird speaks gRPC and"
 echo "   WebSocket alongside plain HTTP, so a default Proxy Host is not"
-echo "   enough — it will look like it works, then peers will fail to"
-echo "   connect. You must:"
+echo "   enough — the dashboard will load and then logins fail with"
+echo "   'Unauthenticated', because /oauth2 lands on the dashboard"
+echo "   container instead of the server. You must:"
 echo "     • forward to netbird-dashboard, port 80"
 echo "     • enable HTTP/2 Support in the SSL tab  (required for gRPC)"
 echo "     • paste the routing block from this service's README into the"
 echo "       Advanced tab — it routes /api, /oauth2, /relay and the gRPC"
 echo "       paths to netbird-server:80"
+echo
+echo "   ✅ VERIFY IT AFTERWARDS — one command, unambiguous answer:"
+echo "        curl -sk -o /dev/null -w '%{http_code} %{content_type}\\n' \\"
+echo "          https://$ENV_DOMAIN/oauth2/.well-known/openid-configuration"
+echo "      200 + application/json  → routing is correct, you're done."
+echo "      404 + text/html         → the Advanced block is missing or wrong;"
+echo "                                /oauth2 is still hitting the dashboard."
 echo
 echo "🔌 Also open 3478/udp to the internet (router port-forward). NAT"
 echo "   traversal needs it, and it cannot go through Cloudflare Tunnel or"

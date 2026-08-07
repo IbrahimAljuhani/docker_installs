@@ -119,6 +119,30 @@ location ~ ^/(api|oauth2)/ {
 
 This block is upstream's own — it's what their setup script emits when you choose "Nginx Proxy Manager" as the reverse proxy.
 
+### ✅ Verify the routing actually took effect
+
+Don't judge this by whether the dashboard loads — it loads either way. Run this instead:
+
+```bash
+curl -sk -o /dev/null -w '%{http_code} %{content_type}\n' \
+  https://your-domain/oauth2/.well-known/openid-configuration
+```
+
+| Result | Meaning |
+|---|---|
+| `200 application/json` | ✅ Routing is correct — `/oauth2` reaches `netbird-server`. |
+| `404 text/html` | ❌ The Advanced block is missing or wrong. `/oauth2` is still hitting `netbird-dashboard`, which only serves static files — this is what produces **"Oops, something went wrong — Error: Unauthenticated"** at login. |
+
+If it returns 404, re-check that you pasted the block into the **Advanced** tab (not Custom Locations), saved it, and enabled **HTTP/2 Support** on the SSL tab.
+
+To confirm the server itself is healthy independently of NPM:
+
+```bash
+docker logs netbird-server | grep -i "Dex IDP initialized"
+```
+
+It should print the issuer as `https://your-domain/oauth2`. If that line looks right, any remaining problem is in NPM, not in this deployment.
+
 ✅ No HTTP host port is published — NPM reaches both containers by name over `main-net`. `3478/udp` is separate and always published; it does not go through NPM.
 
 ---
