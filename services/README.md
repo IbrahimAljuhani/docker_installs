@@ -57,7 +57,7 @@ Only relevant if you opt into a service's **direct host port** prompt (default i
 | AdGuard Home | Setup wizard `3000` ⚠️ same as Redmine's default, admin UI `8080` ⚠️ same as OpenProject/Nextcloud (both optional, asked together). DNS itself (`53`) is **always** bound to the host, not an opt-in prompt — same reasoning as Pi-hole's DNS port. |
 | Plex | `32400` |
 | PhotoPrism | `2342` |
-| Vaultwarden | `8222` — for a first look only; HTTPS via NPM is effectively required (browser password managers and 2FA/WebAuthn refuse plain HTTP) |
+| Vaultwarden | **none** — the only service with no host-port option. Its web vault needs a browser "secure context" (HTTPS or localhost), so a direct port can't work; NPM + SSL is the only route. |
 
 ---
 
