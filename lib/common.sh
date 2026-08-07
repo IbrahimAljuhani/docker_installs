@@ -114,19 +114,49 @@ validate_domain() {
 # services here name something after this value and are perfectly happy with
 # an IP for a LAN-only deployment.
 #
-# $1 = prompt text, $2 = label for error messages. Sets DOMAIN_VALUE in the
+# $1 = prompt text, $2 = label for error messages. Sets PROMPTED_DOMAIN in the
 # caller's shell (same no-command-substitution reasoning as prompt_mem_limit).
-DOMAIN_VALUE=""
+#
+# Named PROMPTED_DOMAIN, not the more obvious DOMAIN_VALUE: vaultwarden's
+# deploy.sh already owns a variable by that name for something different (the
+# full https:// URL), and a helper in a shared library must not quietly
+# reach into a caller's namespace and overwrite it.
+PROMPTED_DOMAIN=""
 prompt_domain() {
     local prompt="$1" label="${2:-domain}" value msg
-    DOMAIN_VALUE=""
+    PROMPTED_DOMAIN=""
     while true; do
         read -rp "$prompt" value
         if msg=$( (validate_domain "$value" "$label") 2>&1 ); then
-            DOMAIN_VALUE="$value"
+            PROMPTED_DOMAIN="$value"
             return 0
         fi
         echo "$msg" >&2
+    done
+}
+
+# Same as prompt_domain, but an empty answer is a legitimate one meaning
+# "skip this". Used where the domain is genuinely optional (Jellyfin and Plex
+# ask for one only to fill in an autodiscovery URL). A non-empty answer still
+# has to be a valid domain, so a typo or a pasted invisible character gets
+# caught and re-asked rather than silently baked into a broken URL — the
+# whole point, since a wrong value here fails quietly rather than loudly.
+#
+# $1 = prompt text, $2 = label. Sets PROMPTED_DOMAIN, empty if skipped.
+prompt_optional_domain() {
+    local prompt="$1" label="${2:-domain}" value msg
+    PROMPTED_DOMAIN=""
+    while true; do
+        read -rp "$prompt" value
+        if [[ -z "$value" ]]; then
+            return 0
+        fi
+        if msg=$( (validate_domain "$value" "$label") 2>&1 ); then
+            PROMPTED_DOMAIN="$value"
+            return 0
+        fi
+        echo "$msg" >&2
+        echo "(or press Enter to skip)" >&2
     done
 }
 
