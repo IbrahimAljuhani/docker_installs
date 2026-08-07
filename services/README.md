@@ -6,7 +6,7 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 
 ## 📋 Services Roadmap
 
-![Progress](https://img.shields.io/badge/built-20%20%2F%2039%20services-46a049?style=for-the-badge)
+![Progress](https://img.shields.io/badge/built-21%20%2F%2038%20services-46a049?style=for-the-badge)
 
 [`services.sh`](services.sh) presents these grouped by category. ✅ = deployable now, 🚧 = listed in the menu already (shows "coming soon" if picked) but not built yet.
 
@@ -24,7 +24,7 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 | **Projects** | ✅ [![OpenProject](https://img.shields.io/badge/OpenProject-0770B8?style=flat-square&logo=openproject&logoColor=white)](Projects/openproject/) · ✅ [![Plane](https://img.shields.io/badge/Plane-121212?style=flat-square&logo=plane&logoColor=white)](Projects/plane/) · ✅ [![Vikunja](https://img.shields.io/badge/Vikunja-196AFF?style=flat-square&logo=vikunja&logoColor=white)](Projects/vikunja/) · ✅ [![Redmine](https://img.shields.io/badge/Redmine-B32024?style=flat-square&logo=redmine&logoColor=white)](Projects/redmine/) · ✅ <a href="Projects/taiga/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/taiga.svg" width="20" height="20" alt="Taiga" title="Taiga"></a> |
 | **Security** | ✅ [![Vaultwarden](https://img.shields.io/badge/Vaultwarden-000000?style=flat-square&logo=vaultwarden&logoColor=white)](Security/vaultwarden/) · 🚧 [![Authentik](https://img.shields.io/badge/Authentik-FD4B2D?style=flat-square&logo=authentik&logoColor=white)](Security/authentik/) · 🚧 [![Keycloak](https://img.shields.io/badge/Keycloak-4D4D4D?style=flat-square&logo=keycloak&logoColor=white)](Security/keycloak/) |
 | **Storage** | ✅ [![Nextcloud](https://img.shields.io/badge/Nextcloud-0082C9?style=flat-square&logo=nextcloud&logoColor=white)](Storage/nextcloud/) · 🚧 [![Seafile](https://img.shields.io/badge/Seafile-FF9800?style=flat-square&logo=seafile&logoColor=white)](Storage/seafile/) · 🚧 [![ownCloud](https://img.shields.io/badge/ownCloud-041E42?style=flat-square&logo=owncloud&logoColor=white)](Storage/owncloud/) |
-| **VPN** | ✅ [![WireGuard](https://img.shields.io/badge/WireGuard-88171A?style=flat-square&logo=wireguard&logoColor=white)](VPN/wireguard/) · 🚧 <a href="VPN/headscale/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/headscale.svg" width="20" height="20" alt="Headscale" title="Headscale"></a> · ✅ <a href="VPN/netbird/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/netbird.svg" width="20" height="20" alt="NetBird" title="NetBird"></a> · 🚧 [![OpenVPN](https://img.shields.io/badge/OpenVPN-EA7E20?style=flat-square&logo=openvpn&logoColor=white)](VPN/openvpn/) |
+| **VPN** | ✅ [![WireGuard](https://img.shields.io/badge/WireGuard-88171A?style=flat-square&logo=wireguard&logoColor=white)](VPN/wireguard/) · ✅ <a href="VPN/netbird/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/netbird.svg" width="20" height="20" alt="NetBird" title="NetBird"></a> · ✅ [![OpenVPN](https://img.shields.io/badge/OpenVPN-EA7E20?style=flat-square&logo=openvpn&logoColor=white)](VPN/openvpn/) (Access Server — 2 free concurrent connections) |
 | **Web** | ✅ [![WordPress](https://img.shields.io/badge/WordPress-21759B?style=flat-square&logo=wordpress&logoColor=white)](Web/wordpress/) · 🚧 [![Ghost](https://img.shields.io/badge/Ghost-15171A?style=flat-square&logo=ghost&logoColor=white)](Web/ghost/) · ✅ <a href="Web/linkstack/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/linkstack.svg" width="20" height="20" alt="LinkStack" title="LinkStack (multi-instance)"></a> |
 
 This is the project roadmap, not a promise of order — services get built one at a time. The category/service list itself lives in [`services.sh`](services.sh)'s `CATALOG` array; a service becomes ✅ automatically the moment its `services/<Category>/<slug>/deploy.sh` exists, no separate flag to flip. **The count badge above is hand-maintained — bump it when you add a service.**
@@ -58,6 +58,7 @@ Only relevant if you opt into a service's **direct host port** prompt (default i
 | Plex | `32400` |
 | PhotoPrism | `2342` |
 | Vaultwarden | **none** — no host-port option. Its web vault needs a browser "secure context" (HTTPS or localhost), so a direct port can't work; NPM + SSL is the only route. |
+| OpenVPN (Access Server) | Web UI `9443` (optional) → the container's own `943`; deliberately not `943` itself, which the shared port prompt rejects as below `1024`. The VPN data port (`1194/udp`) is **always** bound to the host, not an opt-in prompt — same reasoning as WireGuard's. An OpenVPN-over-TCP fallback is optional on `8443` ⚠️ deliberately not `443` (upstream's own default) — NPM owns that. |
 | NetBird | **none** for HTTP — the domain is load-bearing for OAuth/gRPC, so NPM + SSL only. STUN (`3478/udp`) is **always** bound to the host and must reach the internet; it can't go through NPM or Cloudflare Tunnel. |
 
 ---

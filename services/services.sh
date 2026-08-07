@@ -100,7 +100,6 @@ CATALOG=(
     "Storage|seafile|Seafile"
     "Storage|owncloud|ownCloud"
     "VPN|wireguard|WireGuard"
-    "VPN|headscale|Headscale"
     "VPN|netbird|NetBird"
     "VPN|openvpn|OpenVPN"
     "Web|wordpress|WordPress"
