@@ -40,6 +40,7 @@ source "$LIB_COMMON"
 declare -A SERVICE_FILES=(
     [odoo]="docker-compose.yml backup.sh"
     [erpnext]="docker-compose.yml backup.sh"
+    [dolibarr]="docker-compose.yml backup.sh"
     [openproject]="docker-compose.yml backup.sh"
     [redmine]="docker-compose.yml backup.sh"
     [plane]="docker-compose.yml backup.sh"
