@@ -63,6 +63,12 @@ prompt_originals_path() {
             echo "Try a path your user can write to (e.g. under \$HOME), or create it yourself first with sudo mkdir -p and sudo chown \$USER on it." >&2
         done
     else
+        # Warn only on this branch: pointing at an EXISTING library is the
+        # only case where PhotoPrism's read-write mount can touch photos you
+        # already care about. Creating a fresh empty folder (the branch
+        # above) has nothing at risk, so the warning would just be noise
+        # there.
+        print_warn "PhotoPrism will MODIFY this folder — it organizes files and writes YAML sidecar metadata alongside them. That's normal for this app, but unlike this repo's Jellyfin/Plex (which mount media read-only). Back up irreplaceable originals first, or see the README on PHOTOPRISM_READONLY."
         while true; do
             read -rp "Path to your existing photo library (e.g. /mnt/photos): " path
             if [[ -z "$path" ]]; then
@@ -87,8 +93,8 @@ ensure_main_net
 if [[ -f "$INSTALL_DIR/.env" ]]; then
     print_info "Existing deployment found at $INSTALL_DIR — reusing its .env (not regenerated)."
 else
-    print_warn "PhotoPrism will MODIFY the photo folder you point it at — it organizes files and writes YAML sidecar metadata alongside them. That's normal for this app, but unlike this repo's Jellyfin/Plex (which mount media read-only). Back up irreplaceable originals first, or see the README on PHOTOPRISM_READONLY."
-
+    # The read-write / "PhotoPrism modifies your files" warning lives inside
+    # prompt_originals_path, on the existing-folder branch only — see there.
     prompt_originals_path
 
     # Upstream explicitly warns against memory limits here, so this differs
