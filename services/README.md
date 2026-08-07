@@ -1,4 +1,4 @@
-# 🧱 Services
+# 🧩 Services
 
 Optional services that run on top of the core infrastructure ([`install_dockhub.sh`](../install_dockhub.sh) — Docker CE, Compose, NGINX Proxy Manager, Portainer, and the shared `main-net` network). Each one lives in its own folder here, is deployed independently, and you only run the ones you actually need.
 
@@ -6,9 +6,7 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 
 ## 📋 Services Roadmap
 
-**18 of 39 services built — 46%**
-
-`████████████░░░░░░░░░░░░░░` 46%
+![Progress](https://img.shields.io/badge/built-18%20%2F%2039%20services-46a049?style=for-the-badge)
 
 [`services.sh`](services.sh) presents these grouped by category. ✅ = deployable now, 🚧 = listed in the menu already (shows "coming soon" if picked) but not built yet.
 
@@ -29,15 +27,15 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 | **VPN** | ✅ [![WireGuard](https://img.shields.io/badge/WireGuard-88171A?style=flat-square&logo=wireguard&logoColor=white)](VPN/wireguard/) · 🚧 <a href="VPN/headscale/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/headscale.svg" width="20" height="20" alt="Headscale" title="Headscale"></a> · 🚧 <a href="VPN/netbird/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/netbird.svg" width="20" height="20" alt="NetBird" title="NetBird"></a> · 🚧 [![OpenVPN](https://img.shields.io/badge/OpenVPN-EA7E20?style=flat-square&logo=openvpn&logoColor=white)](VPN/openvpn/) |
 | **Web** | ✅ [![WordPress](https://img.shields.io/badge/WordPress-21759B?style=flat-square&logo=wordpress&logoColor=white)](Web/wordpress/) · 🚧 [![Ghost](https://img.shields.io/badge/Ghost-15171A?style=flat-square&logo=ghost&logoColor=white)](Web/ghost/) · ✅ <a href="Web/linkstack/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/linkstack.svg" width="20" height="20" alt="LinkStack" title="LinkStack (multi-instance)"></a> |
 
-Icons are pulled live (no local image files to maintain) from three sources: well-known brands get a named badge from [Simple Icons](https://simpleicons.org/) via [shields.io](https://shields.io/); the niche self-hosted-specific apps that shields.io has no logo for get a plain icon from [dashboard-icons](https://github.com/homarr-labs/dashboard-icons) (the set used by Homarr/Homepage dashboards) via jsDelivr; llama.cpp, LocalAI, and Paperclip (in neither set) link straight to their own official logo assets.
-
-This is the project roadmap, not a promise of order — services get built one at a time. The category/service list itself lives in [`services.sh`](services.sh)'s `CATALOG` array; a service becomes ✅ automatically the moment its `services/<Category>/<slug>/deploy.sh` exists, no separate flag to flip. **The counts above are maintained by hand — update them when you add a service.**
+This is the project roadmap, not a promise of order — services get built one at a time. The category/service list itself lives in [`services.sh`](services.sh)'s `CATALOG` array; a service becomes ✅ automatically the moment its `services/<Category>/<slug>/deploy.sh` exists, no separate flag to flip. **The count badge above is hand-maintained — bump it when you add a service.**
 
 ---
 
 ## 🔌 Suggested Default Ports
 
 Only relevant if you opt into a service's **direct host port** prompt (default is no host port at all — NPM reaches every service by container name). Listed so you can mentally track what's in use before deploying several services at once; each `deploy.sh` still lets you type any port you want at the prompt.
+
+> ⚠️ **Pi-hole and AdGuard Home cannot run on the same host.** Both are DNS servers that bind port `53` unconditionally (not an opt-in prompt), so the second one to start will fail. Pick one — they do the same job.
 
 | Service | Suggested port |
 |---|---|
@@ -56,7 +54,7 @@ Only relevant if you opt into a service's **direct host port** prompt (default i
 | Pi-hole | Web UI `8081` (optional, deliberately not `80` — NPM owns that already). DNS itself (`53`) is **always** bound to the host, not an opt-in prompt — see its README for the systemd-resolved conflict almost every Ubuntu server has out of the box. |
 | WireGuard (wg-easy) | Web UI `51821` (optional). The VPN data port (`51820/udp`) is **always** bound to the host, not an opt-in prompt — same reasoning as Pi-hole's DNS port. |
 | WordPress | `8082` ⚠️ deliberately not `8080` (upstream's own default) — already taken by OpenProject/Nextcloud's suggested defaults above |
-| AdGuard Home | Setup wizard `3000`, admin UI `80` (both optional together). DNS itself (`53`) is **always** bound to the host, not an opt-in prompt — same reasoning as Pi-hole's DNS port. |
+| AdGuard Home | Setup wizard `3000` ⚠️ same as Redmine's default, admin UI `8080` ⚠️ same as OpenProject/Nextcloud (both optional, asked together). DNS itself (`53`) is **always** bound to the host, not an opt-in prompt — same reasoning as Pi-hole's DNS port. |
 | Plex | `32400` |
 | PhotoPrism | `2342` |
 
@@ -108,6 +106,7 @@ Or run `bash services/services.sh` (or `bash deploy.sh` inside any service's own
 
 - **Its own `.env`** — generated automatically by `deploy.sh` with random secrets (never committed; covered by the root [`.gitignore`](../.gitignore)), `chmod 600`.
 - **Networking**: a private `<service>-net` for the service's own containers (app ↔ db, etc.), and only the app/entrypoint container also joins the shared external `main-net` so NPM can reach it by container name. Databases and internal-only containers never touch `main-net` and never publish a host port.
+  - *Two documented exceptions.* **Single-container services with no database** (Jellyfin, Plex, LinkStack, Pi-hole, AdGuard Home) skip the private network entirely and join `main-net` directly — there's nothing to isolate them from. **[Home Assistant](Home-Automation/home-assistant/) joins no Docker network at all**: it needs `network_mode: host` for local-device discovery (mDNS/SSDP), which is exclusive of Compose networking, so NPM forwards to the server's own LAN IP instead of a container name. Each exception is explained in that service's own README.
 - **Naming**: containers are `<service>-app` / `<service>-db` (or descriptive names for additional containers in multi-container stacks, e.g. `openproject-worker`).
 - **Runtime state**: lives under `~/docker/<service>/` on the host (not inside this repo checkout) — logs, generated `.env`, and secrets files all land there, so the whole host's state stays backupable as one `~/docker/` tree.
 - **Reruns are safe**: `deploy.sh` never overwrites an existing `docker-compose.yml` at `~/docker/<service>/` (so manual edits survive) and reuses an existing `.env` without re-prompting.
@@ -124,6 +123,9 @@ Or run `bash services/services.sh` (or `bash deploy.sh` inside any service's own
 1. Pick the category it belongs to (see the roadmap table above, or `services.sh`'s `CATALOG` array), then copy [`_template/`](_template/) to `services/<Category>/<slug>/` and adapt `deploy.sh.template` and `docker-compose.template.yml` to the new service, following the conventions above. See [`services/ERP/odoo/deploy.sh`](ERP/odoo/deploy.sh) for a full-featured example (multi-instance, interactive secret generation) or [`services/Storage/nextcloud/deploy.sh`](Storage/nextcloud/deploy.sh) for a simpler single-instance one.
 2. Add `[<slug>]="docker-compose.yml ..."` to `services.sh`'s `SERVICE_FILES` table, listing every file besides `deploy.sh` the service needs (keep in sync with that service's own README "Installation" curl commands).
 3. If `<slug>` isn't already in `services.sh`'s `CATALOG` array as a `🚧` placeholder, add it there too (`Category|slug|Display Name`) — otherwise it's already there and just flips to ✅ automatically. `Category` here must exactly match the folder name from step 1.
-4. If the service has a separate database container (Postgres/MySQL), define `backup_<slug>()`/`restore_<slug>()` in its `deploy.sh` — see the commented-out example at the bottom of `deploy.sh.template`. Otherwise skip this; the generic volume-based backup in `lib/common.sh` is picked up automatically.
+4. If the service has a separate database container (Postgres/MySQL), copy [`_template/backup.sh.template`](_template/backup.sh.template) to `services/<Category>/<slug>/backup.sh` and adapt its `backup_<slug>()`/`restore_<slug>()` to that database (`pg_dump`/`psql` for Postgres, `mariadb-dump`/`mysqldump` for MySQL/MariaDB) — see [`Projects/vikunja/backup.sh`](Projects/vikunja/backup.sh) or [`Web/wordpress/backup.sh`](Web/wordpress/backup.sh) for worked examples. Add `backup.sh` to the service's `SERVICE_FILES` entry from step 2 as well.
+   > ⚠️ These functions must go in **`backup.sh`, not `deploy.sh`**. `services.sh` only ever `exec`s `deploy.sh` as its own process (never sources it, since it's full of top-level side-effecting code), so a backup function defined there would be **silently invisible** — backups would appear to work and quietly fall back to the generic volume copy.
+
+   Services with no separate database (SQLite-embedded, like Jellyfin or LinkStack) don't need a `backup.sh` at all — the generic volume-based backup in `lib/common.sh` already covers them correctly.
 
 Don't guess at a new service's official Docker image, required environment variables, or ports — check that project's own official Docker/Compose documentation first.

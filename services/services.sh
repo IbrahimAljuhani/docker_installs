@@ -38,11 +38,11 @@ source "$LIB_COMMON"
 # Extra files (besides deploy.sh) each service needs — keep this in sync with
 # that service's own README.md "Installation" curl commands.
 declare -A SERVICE_FILES=(
-    [odoo]="docker-compose.yml"
-    [openproject]="docker-compose.yml"
-    [redmine]="docker-compose.yml"
-    [plane]="docker-compose.yml"
-    [vikunja]="docker-compose.yml"
+    [odoo]="docker-compose.yml backup.sh"
+    [openproject]="docker-compose.yml backup.sh"
+    [redmine]="docker-compose.yml backup.sh"
+    [plane]="docker-compose.yml backup.sh"
+    [vikunja]="docker-compose.yml backup.sh"
     [linkstack]="docker-compose.yml"
     [jellyfin]="docker-compose.yml"
     [home-assistant]="docker-compose.yml"
@@ -53,9 +53,9 @@ declare -A SERVICE_FILES=(
     [photoprism]="docker-compose.yml backup.sh"
     [wireguard]="docker-compose.yml"
     [wordpress]="docker-compose.yml backup.sh"
-    [nextcloud]="docker-compose.yml"
-    [n8n]="docker-compose.yml init-data.sh"
-    [taiga]="docker-compose.yml docker-compose-inits.yml taiga-gateway/taiga.conf i18n-overrides/django-ar.po i18n-overrides/locale-ar.json i18n-overrides/apply-front-locale.sh"
+    [nextcloud]="docker-compose.yml backup.sh"
+    [n8n]="docker-compose.yml init-data.sh backup.sh"
+    [taiga]="docker-compose.yml docker-compose-inits.yml backup.sh taiga-gateway/taiga.conf i18n-overrides/django-ar.po i18n-overrides/locale-ar.json i18n-overrides/apply-front-locale.sh"
 )
 
 # Full target catalog, grouped by category: CATEGORY|slug|Display Name.
