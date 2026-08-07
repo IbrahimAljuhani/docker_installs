@@ -1,10 +1,11 @@
 # Dolibarr via the official dolibarr/dolibarr image, verified against the
 # Dolibarr team's own repo: https://github.com/Dolibarr/dolibarr-docker
 #
-# Two containers: dolibarr-app (Apache + PHP + Dolibarr) and dolibarr-db
-# (MariaDB). Much lighter than this repo's other ERP options — Odoo needs
-# Postgres plus a worker, and ERPNext runs eleven containers. 1 GB RAM is a
-# realistic floor here.
+# Three containers: dolibarr-app (Apache + PHP + Dolibarr), dolibarr-cron
+# (the same image running only the scheduled-job loop) and dolibarr-db
+# (MariaDB). Still much lighter than this repo's other ERP options — Odoo
+# needs Postgres plus a worker, and ERPNext runs eleven containers. 1 GB RAM
+# is a realistic floor here.
 #
 # The image installs Dolibarr itself on first boot (DOLI_INSTALL_AUTO=1),
 # so there's no web-based installer to click through: deploy.sh supplies the
@@ -32,10 +33,12 @@
 #     attachments is worse than one that's slightly more generous. NPM has
 #     its own separate limit — deploy.sh writes an npm-custom-nginx.conf to
 #     match, otherwise the proxy rejects the upload before PHP ever sees it.
-#   - DOLI_CRON enabled with a generated key. Upstream defaults it off, but
-#     Dolibarr's scheduled jobs are what drive recurring invoices, stock
-#     alerts and email reminders — off by default means those silently never
-#     run, which in an ERP looks like data loss rather than a missing option.
+#   - Scheduled jobs enabled, via the dedicated dolibarr-cron container.
+#     Upstream's main example leaves cron off entirely; their separate
+#     examples/with-cron/ shows the two-container shape used here. Dolibarr's
+#     scheduled jobs drive recurring invoices, stock alerts and email
+#     reminders — off by default means those silently never run, which in an
+#     ERP looks like data loss rather than a missing option.
 #   - `links:` dropped (legacy Compose v1); the private dolibarr-net does the
 #     same job. Only dolibarr-app joins main-net so NPM can reach it.
 #   - No host port by default — upstream publishes 80 unconditionally.
@@ -46,6 +49,32 @@
 # This file is the SOURCE template (tracked in git). deploy.sh copies it
 # (and the generated .env) to ~/docker/dolibarr/ and runs it from there.
 
+# Every Dolibarr setting both containers share. The ONLY difference between
+# the web container and the cron container is DOLI_CRON — see the cron
+# service below for why that single flag needs a whole second container.
+x-dolibarr-env: &dolibarr_env
+  DOLI_INSTALL_AUTO: "1"
+  DOLI_INIT_DEMO: "0"
+  DOLI_PROD: "1"
+  DOLI_INSTANCE_UNIQUE_ID: ${DOLI_INSTANCE_UNIQUE_ID}
+  DOLI_DB_TYPE: mysqli
+  DOLI_DB_HOST: dolibarr-db
+  DOLI_DB_HOST_PORT: "3306"
+  DOLI_DB_NAME: ${DOLI_DB_NAME:-dolidb}
+  DOLI_DB_USER: ${DOLI_DB_USER:-dolidbuser}
+  DOLI_DB_PASSWORD: ${DOLI_DB_PASSWORD}
+  DOLI_URL_ROOT: ${DOLI_URL_ROOT}
+  DOLI_ADMIN_LOGIN: ${DOLI_ADMIN_LOGIN:-admin}
+  DOLI_ADMIN_PASSWORD: ${DOLI_ADMIN_PASSWORD}
+  DOLI_CRON_KEY: ${DOLI_CRON_KEY}
+  # Required whenever cron runs. Without it cron_run_jobs.php is invoked with
+  # a key but no user and just prints its usage message forever.
+  DOLI_CRON_USER: ${DOLI_ADMIN_LOGIN:-admin}
+  PHP_INI_DATE_TIMEZONE: ${TZ:-UTC}
+  PHP_INI_MEMORY_LIMIT: 512M
+  PHP_INI_UPLOAD_MAX_FILESIZE: 32M
+  PHP_INI_POST_MAX_SIZE: 40M
+
 services:
   dolibarr-app:
     image: dolibarr/dolibarr:${DOLIBARR_VERSION:-23}
@@ -55,31 +84,43 @@ services:
       dolibarr-db:
         condition: service_healthy
     environment:
-      DOLI_INSTALL_AUTO: "1"
-      DOLI_INIT_DEMO: "0"
-      DOLI_PROD: "1"
-      DOLI_INSTANCE_UNIQUE_ID: ${DOLI_INSTANCE_UNIQUE_ID}
-      DOLI_DB_TYPE: mysqli
-      DOLI_DB_HOST: dolibarr-db
-      DOLI_DB_HOST_PORT: "3306"
-      DOLI_DB_NAME: ${DOLI_DB_NAME:-dolidb}
-      DOLI_DB_USER: ${DOLI_DB_USER:-dolidbuser}
-      DOLI_DB_PASSWORD: ${DOLI_DB_PASSWORD}
-      DOLI_URL_ROOT: ${DOLI_URL_ROOT}
-      DOLI_ADMIN_LOGIN: ${DOLI_ADMIN_LOGIN:-admin}
-      DOLI_ADMIN_PASSWORD: ${DOLI_ADMIN_PASSWORD}
-      DOLI_CRON: "1"
-      DOLI_CRON_KEY: ${DOLI_CRON_KEY}
-      PHP_INI_DATE_TIMEZONE: ${TZ:-UTC}
-      PHP_INI_MEMORY_LIMIT: 512M
-      PHP_INI_UPLOAD_MAX_FILESIZE: 32M
-      PHP_INI_POST_MAX_SIZE: 40M
+      <<: *dolibarr_env
+      # MUST be 0 here. DOLI_CRON=1 does not "also run cron" — it makes the
+      # entrypoint run the cron loop INSTEAD of apache2-foreground. Set it to
+      # 1 on this container and the port stays published but nothing ever
+      # listens on it: every request dies with "connection reset by peer",
+      # and the only clue in the logs is cron_run_jobs.php printing usage.
+      DOLI_CRON: "0"
     volumes:
       - dolibarr-documents:/var/www/documents
       - dolibarr-custom:/var/www/html/custom
     networks:
       - dolibarr-net
       - main-net
+
+  # A second Dolibarr container that runs only the scheduled-job loop. This
+  # is upstream's own documented shape (examples/with-cron/), not an
+  # invention — the image can be a web server or a cron runner, never both.
+  # It publishes no ports and stays off main-net: nothing should reach it.
+  dolibarr-cron:
+    image: dolibarr/dolibarr:${DOLIBARR_VERSION:-23}
+    container_name: dolibarr-cron
+    restart: unless-stopped
+    depends_on:
+      dolibarr-db:
+        condition: service_healthy
+      # Sequenced after the web container so the first-run install happens
+      # once, in one place, instead of both containers racing to do it.
+      dolibarr-app:
+        condition: service_started
+    environment:
+      <<: *dolibarr_env
+      DOLI_CRON: "1"
+    volumes:
+      - dolibarr-documents:/var/www/documents
+      - dolibarr-custom:/var/www/html/custom
+    networks:
+      - dolibarr-net
 
   dolibarr-db:
     image: mariadb:11.8
