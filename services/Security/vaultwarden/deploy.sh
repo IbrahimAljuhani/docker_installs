@@ -44,13 +44,20 @@ source "$LIB_COMMON"
 # recommends storing instead of the raw token, using the binary's own
 # `hash` subcommand inside a throwaway container.
 #
-# Deliberately defensive: that subcommand prompts for the password twice on
-# a TTY, and whether it accepts piped stdin can change between releases. If
-# anything goes wrong — command missing, no output, output that isn't a PHC
-# string — we fall back to storing the plaintext token, which Vaultwarden
-# still accepts. A working deploy with a slightly weaker token beats a
-# deploy that dies on an upstream CLI change (see this repo's WireGuard
-# service, where exactly that happened with wg-easy's `wgpw`).
+# Expect this to fall back on current versions. Upstream's hash subcommand
+# reads the password with rpassword::prompt_password(), which opens the
+# controlling terminal (/dev/tty) directly rather than reading stdin — so
+# piping a password into it cannot work by design, no matter the shell
+# plumbing. Automating it would need a pseudo-terminal (expect/script),
+# which is fragile enough that a documented manual upgrade path beats it.
+# The attempt is kept anyway: it costs one command, and it starts working
+# for free if upstream ever adds a non-interactive input path.
+#
+# The fallback stores the plaintext token, which Vaultwarden still accepts
+# — see this service's README for the one-command upgrade to a hash. A
+# working deploy with a weaker-at-rest token beats a deploy that dies on an
+# upstream CLI quirk (see this repo's WireGuard service, where exactly that
+# happened with wg-easy's `wgpw`).
 #
 # Sets ADMIN_TOKEN_STORED (what goes in .env) and TOKEN_IS_HASHED (1/0).
 ADMIN_TOKEN_STORED=""
@@ -84,6 +91,15 @@ if [[ -f "$INSTALL_DIR/.env" ]]; then
     print_info "Existing deployment found at $INSTALL_DIR — reusing its .env (not regenerated)."
 else
     prompt_mem_limit "vaultwarden" "512m"
+
+    # Unlike every other service here, a direct host port does NOT give you
+    # a usable "quick look": the Bitwarden web vault calls the Web Crypto
+    # API (crypto.subtle), which browsers expose only in a *secure context*
+    # — HTTPS, or a localhost/127.0.0.1 address. Over plain http:// on a LAN
+    # IP the vault refuses to load at all ("You are not using a secure
+    # context..."). Say so before the prompt rather than after, so nobody
+    # picks a port expecting it to work.
+    print_warn "Heads up before the next question: a direct host port will NOT give you a working web vault. Browsers block the crypto API this app needs unless the page is HTTPS or on localhost, so http://<server-ip>:<port> shows a 'not a secure context' error instead of the vault. It's only useful if you reach it through an SSH tunnel (which makes it localhost). Answering 'no' and going straight to NPM+SSL is the normal path."
     prompt_host_port "8222"
 
     # DOMAIN must match how you actually reach Vaultwarden — it's not
@@ -94,7 +110,7 @@ else
         SERVER_IP_FOR_URL=$(hostname -I 2>/dev/null | awk '{print $1}')
         [[ -z "${SERVER_IP_FOR_URL:-}" ]] && SERVER_IP_FOR_URL="localhost"
         DOMAIN_VALUE="http://$SERVER_IP_FOR_URL:$HOST_PORT"
-        print_warn "Using '$DOMAIN_VALUE' as DOMAIN for now. Browser password managers and 2FA/WebAuthn require HTTPS — plain http:// is fine for a first look, but switch DOMAIN to your real https:// domain in .env before storing anything real."
+        print_warn "DOMAIN set to '$DOMAIN_VALUE'. Remember: opening that URL directly in a browser will show 'You are not using a secure context' instead of the vault — that's the browser blocking it, not a misconfiguration. Reach it over an SSH tunnel, or set up NPM+SSL and change DOMAIN to your https:// domain in .env, then rerun deploy.sh."
     else
         read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. vault.example.com): " VAULTWARDEN_DOMAIN
         [[ -n "$VAULTWARDEN_DOMAIN" ]] || print_error "A domain is required — Vaultwarden builds attachment, 2FA, and email links from it."
@@ -170,7 +186,11 @@ echo "────────────────────────�
 if [[ -n "$ENV_HOST_PORT" ]]; then
     SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
     [[ -z "${SERVER_IP:-}" ]] && SERVER_IP="<your-server-ip>"
-    echo "🌐 URL:          http://$SERVER_IP:$ENV_HOST_PORT"
+    echo "🌐 Host port:    $ENV_HOST_PORT  ⚠️ NOT usable directly in a browser"
+    echo "                 (http://$SERVER_IP:$ENV_HOST_PORT → 'not a secure context')"
+    echo "                 Reach it via SSH tunnel instead:"
+    echo "                   ssh -L $ENV_HOST_PORT:localhost:$ENV_HOST_PORT $USER@$SERVER_IP"
+    echo "                 then open http://localhost:$ENV_HOST_PORT"
 fi
 echo "🔗 Proxy target: vaultwarden-app:80 on 'main-net'"
 echo "👤 First visit:  create your own account — Vaultwarden has no default user"

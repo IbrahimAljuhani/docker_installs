@@ -12,9 +12,33 @@ See the top of [`docker-compose.yml`](docker-compose.yml) for the exact, deliber
 
 Everything in this repo is worth securing, but this service *is* the security. Three things are not optional:
 
-1. **HTTPS is mandatory in practice.** Browser password managers and 2FA/WebAuthn registration simply refuse to operate over plain `http://`. A direct host port is fine for a first look; put it behind NPM with SSL before storing anything real.
+1. **HTTPS is genuinely required — not just recommended.** See [the section below](#️-the-web-vault-will-not-load-over-plain-http): the web vault refuses to load at all over plain `http://` on a normal address. This is a browser rule, not a Vaultwarden setting, and nothing in `.env` can turn it off.
 2. **Close registration immediately after creating your account** — see [below](#-required-close-registration-after-your-first-account). Open signups on a reachable instance means strangers can register on your password manager.
 3. **`DOMAIN` must be correct.** It's not cosmetic: attachments, WebAuthn/2FA, and emailed links are all built from it.
+
+---
+
+## ⛔️ The Web Vault Will Not Load Over Plain HTTP
+
+If you open Vaultwarden on a plain `http://<server-ip>:<port>` address, you get this instead of the login page:
+
+> You are not using a secure context which is required for the Subtle Crypto API to work. You need to enable HTTPS!
+
+**This is expected and unavoidable.** The web vault does its encryption in the browser via the Web Crypto API (`crypto.subtle`), and browsers only expose that API in a **secure context**: an HTTPS page, or a `localhost` / `127.0.0.1` address. A LAN IP over plain HTTP is neither.
+
+So unlike every other service in this repo, **the optional direct host port does not give you a working "quick look"**. Two ways to actually reach it:
+
+**Option A — NPM + SSL (the normal path).** Skip the host port entirely, set up the Proxy Host below, and use your `https://` domain.
+
+**Option B — SSH tunnel (works with the host port).** Forwarding the port to your own machine makes the address `localhost`, which *is* a secure context:
+
+```bash
+ssh -L 8222:localhost:8222 you@your-server
+```
+
+then open `http://localhost:8222`. Useful for a first look or for admin access without exposing anything.
+
+Either way, once you're on HTTPS, set `DOMAIN` in `~/docker/vaultwarden/.env` to that `https://` URL and rerun `deploy.sh`.
 
 ---
 
@@ -43,11 +67,11 @@ bash deploy.sh
 
 This is a **single-instance** service: one Vaultwarden deployment per host, under `~/docker/vaultwarden/`.
 
-`deploy.sh` generates a random admin-page password and stores it as an **Argon2 hash** in `.env` (using Vaultwarden's own `hash --preset owasp` command), while the plaintext you actually type goes to `~/docker/vaultwarden/.vaultwarden-docker-secrets.txt` (`600`).
+`deploy.sh` generates a random admin-page password and saves it to `~/docker/vaultwarden/.vaultwarden-docker-secrets.txt` (`600`).
 
-> 💡 If hashing isn't available in your Vaultwarden version, `deploy.sh` falls back to a plaintext token rather than failing the whole deploy, and tells you it did. Vaultwarden accepts both. To upgrade later, see [Re-hashing the admin token](#-re-hashing-the-admin-token).
+> 💡 **The token is stored in `.env` as plaintext, not an Argon2 hash — expect this.** `deploy.sh` tries to hash it with Vaultwarden's own `hash --preset owasp` command, but that command reads the password straight from the terminal device (`/dev/tty`) rather than standard input, so it can't be scripted at all. Vaultwarden accepts both forms; hashing just protects the token if someone reads `.env` without otherwise owning the host. Upgrading takes one command — see [Re-hashing the admin token](#-re-hashing-the-admin-token) — and `deploy.sh` tells you which form it used.
 
-You'll also be asked whether to cap memory on the `vaultwarden` container (default suggestion: `512m`) and whether to publish a host port for direct access without NPM (default suggestion: `8222`, default answer no).
+You'll also be asked whether to cap memory on the `vaultwarden` container (default suggestion: `512m`) and whether to publish a host port (default suggestion: `8222`, default answer no — and see the [secure-context warning](#️-the-web-vault-will-not-load-over-plain-http) for why that port needs an SSH tunnel to be useful).
 
 ---
 
@@ -113,7 +137,7 @@ cd ~/docker/vaultwarden
 
 ### 🔁 Re-hashing the admin token
 
-If your token was stored as plaintext (the fallback path), you can replace it with an Argon2 hash at any time:
+`deploy.sh` stores the token as plaintext (see [above](#2-deploy-vaultwarden) for why it can't be automated). To replace it with an Argon2 hash — worth doing, and it takes about ten seconds:
 
 ```bash
 docker run --rm -it vaultwarden/server /vaultwarden hash --preset owasp
