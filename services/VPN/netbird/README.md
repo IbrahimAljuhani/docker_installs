@@ -217,7 +217,7 @@ cd ~/docker/netbird
 | `docker compose logs -f dashboard` | Follow the web UI's logs |
 | `docker compose pull && docker compose up -d` | Update to the latest images |
 
-> 🩺 **Dashboard loads but peers won't connect?** That's almost always the NPM Advanced block missing, HTTP/2 not enabled, or `3478/udp` unreachable — in that order.
+> 🩺 **Dashboard loads but peers won't connect?** That's almost always the NPM custom nginx block missing, HTTP/2 not enabled, or `3478/udp` unreachable — in that order.
 
 ---
 
