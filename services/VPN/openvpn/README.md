@@ -105,7 +105,7 @@ Users then get their own profile from the **client portal** (the same address *w
    - **Forward Port**: `943`
 3. Enable **SSL** with Let's Encrypt from the UI.
 
-> ⚠️ **The Scheme dropdown is the one thing people miss here.** Access Server terminates TLS itself on 943 with a self-signed certificate — it does not serve plain HTTP. Leave the scheme on `http` and NPM gets a TLS handshake where it expected a plain response, which surfaces as a **502 Bad Gateway**. NPM does not verify the upstream's self-signed certificate, so no extra config is needed beyond setting the scheme.
+> ⚠️ **The Scheme dropdown is the one thing people miss here** — NPM defaults it to `http`, and only two services in this whole repo need it changed (this one and [LinkStack](../../Web/linkstack/)). Access Server terminates TLS itself on 943 with a self-signed certificate; it does not serve plain HTTP. Leave the scheme on `http` and NPM gets a TLS handshake where it expected a plain response, which surfaces as a **502 Bad Gateway**. NPM does not verify the upstream's self-signed certificate, so no extra config is needed beyond setting the scheme. See [502 Bad Gateway](../../../docs/troubleshooting.md#502-bad-gateway-from-openresty) for how to read the setting back off the server and confirm it saved.
 
 No custom nginx block is required for this service — unlike [NetBird](../netbird/) or [OpenProject](../../Projects/openproject/), a plain Proxy Host is enough.
 
