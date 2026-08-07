@@ -1,0 +1,95 @@
+# Ghost via the official `ghost` Docker Official Image, verified against
+# https://hub.docker.com/_/ghost
+#
+# Two containers: ghost-app (Node.js) and ghost-db (MySQL).
+#
+# ⚠️ MYSQL ONLY — NOT MariaDB. This is the one thing that separates Ghost
+# from every other database-backed service in this repo. Ghost 5+ supports
+# MySQL 8 exclusively in production: not MariaDB, not PostgreSQL, not SQLite.
+# MariaDB and MySQL have also drifted far enough apart that their dumps are
+# no longer interchangeable, so "it starts, I'll migrate later" is not a
+# recovery plan. This repo's Dolibarr and ERPNext both use MariaDB; do not
+# copy their db service into this one.
+#
+# ⚠️ `url` IS LOAD-BEARING. Ghost builds every absolute link from it —
+# canonical URLs, RSS, newsletter links, and the redirect after admin login.
+# Get it wrong and the site renders but the admin panel bounces you between
+# hosts. Same class of setting as Dolibarr's DOLI_URL_ROOT and OpenProject's
+# OPENPROJECT_HOST__NAME. deploy.sh derives it from the domain/host-port
+# choice; change it by editing .env and rerunning, never by hand-editing
+# anything inside the container.
+#
+# Deliberate deviations from the official example:
+#   - MySQL 8.4, not the example's 8.0. MySQL 8.0 reached end of life in
+#     April 2026; 8.4 is the current LTS. Ghost's own docs say "MySQL 8"
+#     without pinning a minor, and Ghost's mysql2 driver speaks
+#     caching_sha2_password (8.4's default) natively. Deliberately NO
+#     `--default-authentication-plugin` flag: that option was REMOVED in 8.4,
+#     and passing it is what breaks the setups people report as "Ghost
+#     doesn't work with 8.4". If you ever need to fall back, changing this
+#     one tag to `8.0` is the whole change.
+#   - A dedicated database user. The official example connects Ghost as
+#     MySQL `root`.
+#   - No host port by default — the example publishes 8080 unconditionally.
+#     NGINX Proxy Manager reaches ghost-app by container name over main-net.
+#   - A private ghost-net for app↔db; the example uses the default network.
+#
+# This is a single-instance service: one Ghost deployment per host, under
+# ~/docker/ghost/.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it
+# (and the generated .env) to ~/docker/ghost/ and runs it from there.
+
+services:
+  ghost-app:
+    image: ghost:${GHOST_VERSION:-6}
+    container_name: ghost-app
+    restart: unless-stopped
+    depends_on:
+      ghost-db:
+        condition: service_healthy
+    environment:
+      # Ghost only reads the database__* variables in production mode.
+      NODE_ENV: production
+      url: ${GHOST_URL}
+      database__client: mysql
+      database__connection__host: ghost-db
+      database__connection__port: "3306"
+      database__connection__user: ${GHOST_DB_USER:-ghost}
+      database__connection__password: ${GHOST_DB_PASSWORD}
+      database__connection__database: ${GHOST_DB_NAME:-ghost}
+    volumes:
+      - ghost-content:/var/lib/ghost/content
+    networks:
+      - ghost-net
+      - main-net
+
+  ghost-db:
+    image: mysql:8.4
+    container_name: ghost-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${GHOST_DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${GHOST_DB_NAME:-ghost}
+      MYSQL_USER: ${GHOST_DB_USER:-ghost}
+      MYSQL_PASSWORD: ${GHOST_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      start_period: 20s
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - ghost-db-data:/var/lib/mysql
+    networks:
+      - ghost-net
+
+volumes:
+  ghost-content:
+  ghost-db-data:
+
+networks:
+  ghost-net:
+    driver: bridge
+  main-net:
+    external: true
