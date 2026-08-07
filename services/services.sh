@@ -57,6 +57,7 @@ declare -A SERVICE_FILES=(
     [photoprism]="docker-compose.yml backup.sh"
     [wireguard]="docker-compose.yml"
     [wordpress]="docker-compose.yml backup.sh"
+    [ghost]="docker-compose.yml backup.sh"
     [nextcloud]="docker-compose.yml backup.sh"
     [n8n]="docker-compose.yml init-data.sh backup.sh"
     [taiga]="docker-compose.yml docker-compose-inits.yml backup.sh taiga-gateway/taiga.conf i18n-overrides/django-ar.po i18n-overrides/locale-ar.json i18n-overrides/apply-front-locale.sh"
