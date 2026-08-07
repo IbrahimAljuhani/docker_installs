@@ -6,7 +6,7 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 
 ## 📋 Services Roadmap
 
-![Progress](https://img.shields.io/badge/built-21%20%2F%2038%20services-46a049?style=for-the-badge)
+![Progress](https://img.shields.io/badge/built-22%20%2F%2038%20services-46a049?style=for-the-badge)
 
 [`services.sh`](services.sh) presents these grouped by category. ✅ = deployable now, 🚧 = listed in the menu already (shows "coming soon" if picked) but not built yet.
 
@@ -17,7 +17,7 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 | **AI** | 🚧 [![Ollama](https://img.shields.io/badge/Ollama-000000?style=flat-square&logo=ollama&logoColor=white)](AI/ollama/) · 🚧 <a href="AI/open-webui/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg" width="20" height="20" alt="Open WebUI" title="Open WebUI"></a> · 🚧 [![Dify](https://img.shields.io/badge/Dify-0033FF?style=flat-square&logo=dify&logoColor=white)](AI/dify/) · 🚧 <a href="AI/llama-cpp/"><img src="https://llama-cpp.com/wp-content/uploads/2025/10/Llama-cpp-300x108.jpg" height="20" alt="llama.cpp" title="llama.cpp"></a> · 🚧 <a href="AI/localai/"><img src="https://localai.io/img/logo-mark.png" height="20" alt="LocalAI" title="LocalAI"></a> · 🚧 <a href="AI/paperclip/"><img src="https://paperclip.ing/favicon.svg" width="20" height="20" alt="Paperclip" title="Paperclip — deferred, no pre-built image upstream"></a> |
 | **Automation** | ✅ [![n8n](https://img.shields.io/badge/n8n-EA4B71?style=flat-square&logo=n8n&logoColor=white)](Automation/n8n/) · 🚧 <a href="Automation/openclaw/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/openclaw.svg" width="20" height="20" alt="OpenClaw" title="OpenClaw"></a> · 🚧 <a href="Automation/hermes/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/hermes-icon.svg" width="20" height="20" alt="Hermes" title="Hermes"></a> |
 | **DNS** | ✅ [![Pi-hole](https://img.shields.io/badge/Pi--hole-96060C?style=flat-square&logo=pihole&logoColor=white)](DNS/pi-hole/) · ✅ [![AdGuard](https://img.shields.io/badge/AdGuard-68BC71?style=flat-square&logo=adguard&logoColor=white)](DNS/adguard/) |
-| **ERP** | 🚧 [![ERPNext](https://img.shields.io/badge/ERPNext-0089FF?style=flat-square&logo=erpnext&logoColor=white)](ERP/erpnext/) · 🚧 [![Dolibarr](https://img.shields.io/badge/Dolibarr-263C5C?style=flat-square&logo=dolibarr&logoColor=white)](ERP/dolibarr/) · ✅ [![Odoo](https://img.shields.io/badge/Odoo-714B67?style=flat-square&logo=odoo&logoColor=white)](ERP/odoo/) (multi-instance) |
+| **ERP** | ✅ [![ERPNext](https://img.shields.io/badge/ERPNext-0089FF?style=flat-square&logo=erpnext&logoColor=white)](ERP/erpnext/) · 🚧 [![Dolibarr](https://img.shields.io/badge/Dolibarr-263C5C?style=flat-square&logo=dolibarr&logoColor=white)](ERP/dolibarr/) · ✅ [![Odoo](https://img.shields.io/badge/Odoo-714B67?style=flat-square&logo=odoo&logoColor=white)](ERP/odoo/) (multi-instance) |
 | **Home-Automation** | ✅ [![Home Assistant](https://img.shields.io/badge/Home_Assistant-18BCF2?style=flat-square&logo=homeassistant&logoColor=white)](Home-Automation/home-assistant/) · 🚧 [![Zigbee2MQTT](https://img.shields.io/badge/Zigbee2MQTT-FFC135?style=flat-square&logo=zigbee2mqtt&logoColor=white)](Home-Automation/zigbee2mqtt/) · 🚧 [![Eclipse Mosquitto](https://img.shields.io/badge/Eclipse_Mosquitto-3C5280?style=flat-square&logo=eclipsemosquitto&logoColor=white)](Home-Automation/mosquitto/) |
 | **Media** | ✅ [![Jellyfin](https://img.shields.io/badge/Jellyfin-00A4DC?style=flat-square&logo=jellyfin&logoColor=white)](Media/jellyfin/) · ✅ [![Plex](https://img.shields.io/badge/Plex-EBAF00?style=flat-square&logo=plex&logoColor=white)](Media/plex/) (proprietary — needs a Plex account) |
 | **Photos** | ✅ [![Immich](https://img.shields.io/badge/Immich-4250AF?style=flat-square&logo=immich&logoColor=white)](Photos/immich/) · ✅ <a href="Photos/photoprism/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/photoprism.svg" width="20" height="20" alt="PhotoPrism" title="PhotoPrism"></a> |
@@ -40,6 +40,7 @@ Only relevant if you opt into a service's **direct host port** prompt (default i
 | Service | Suggested port |
 |---|---|
 | Odoo | `8069` (+ `8072` for WebSocket/longpolling) |
+| ERPNext | `8085` (optional) → the frontend container's `8080`. Note the site is named after your domain, so a direct IP:port only works because `FRAPPE_SITE_NAME_HEADER` is pinned to that name — see its README. |
 | OpenProject | `8080` |
 | Nextcloud | `8080` ⚠️ same suggested default as OpenProject — pick a different one if running both |
 | n8n | `5678` |
