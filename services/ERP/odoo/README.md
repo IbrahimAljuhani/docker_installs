@@ -229,7 +229,17 @@ Since the `odoo` container shares the `main-net` network with NPM, proxy to it *
    - **Forward Hostname/IP**: `odoo-<instance>` (e.g. `odoo-prod`)
    - **Forward Port**: `8069`
    - Enable **Websockets Support**
-3. In NPM's **Custom Nginx Configuration** box — a tab named **Advanced** in older versions, or the **⚙️ gear icon** in the *Edit Proxy Host* dialog in current ones (not the "Custom Locations" tab) — add a custom location so `/websocket` routes to the longpolling port:
+3. In NPM's **Custom Nginx Configuration** box — a tab named **Advanced** in older versions, or the **⚙️ gear icon** in the *Edit Proxy Host* dialog in current ones (not the "Custom Locations" tab) — add a custom location so `/websocket` routes to the longpolling port.
+
+   `deploy.sh` already wrote that block to a file **with your instance's real container name filled in**, so you don't have to copy it from here and edit the placeholder:
+
+   ```bash
+   cat ~/docker/odoo/<instance>/npm-custom-nginx.conf
+   ```
+
+   <details>
+   <summary>The block itself, if you'd rather copy it from here</summary>
+
    ```nginx
    location /websocket {
        proxy_pass http://odoo-<instance>:8072;
@@ -238,6 +248,12 @@ Since the `odoo` container shares the `main-net` network with NPM, proxy to it *
        proxy_set_header Connection "upgrade";
    }
    ```
+
+   Replace `<instance>` with the name you gave the instance — the generated file above already has it.
+
+   </details>
+
+   Without it Odoo loads normally, but anything live — Discuss chat, POS sync, real-time notifications — silently won't update.
 4. Enable **SSL** with Let's Encrypt from the UI.
 
 ✅ No need to expose ports publicly — NPM handles HTTPS termination and WebSocket routing over `main-net`.

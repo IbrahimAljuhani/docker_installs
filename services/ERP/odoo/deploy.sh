@@ -428,6 +428,31 @@ EOF
         print_warn "Could not chown odoo.conf to the container's odoo user; left it world-readable (644) so the container can still read it. Run 'sudo chown $ODOO_UID:$ODOO_GID $INSTANCE_DIR/config/odoo.conf && sudo chmod 640 $INSTANCE_DIR/config/odoo.conf' to tighten this."
     fi
 
+    # NPM routing block, written per instance. Note this one is NOT a quoted
+    # heredoc: the container name has to be interpolated, so the instance's
+    # real name lands in the file. The README can only show a
+    # 'odoo-<instance>' placeholder the reader has to substitute by hand —
+    # this removes that step, and the mistake that comes with it.
+    # nginx's own variables are escaped (\$) to survive the interpolation.
+    cat > "$INSTANCE_DIR/npm-custom-nginx.conf" <<NGINXEOF
+# Paste this whole file into NGINX Proxy Manager:
+#   Edit Proxy Host → ⚙️ gear icon → "Custom Nginx Configuration" → Save
+# (not the "Custom Locations" tab — that's a different feature)
+#
+# Routes Odoo's WebSocket/longpolling traffic to the gevent worker.
+# Without it Odoo works, but live chat, POS sync and bus notifications
+# silently fall back to polling or don't work at all.
+#
+# Generated for instance '$INSTANCE_NAME' — container names already filled in.
+
+location /websocket {
+    proxy_pass http://odoo-$INSTANCE_NAME:8072;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade \$http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+NGINXEOF
+
     print_step "Starting Odoo instance..."
     (cd "$INSTANCE_DIR" && $COMPOSE_CMD up -d 2>&1 | tee -a "$LOGFILE") \
         || print_error "Failed to start Odoo containers. Check log: $LOGFILE"
@@ -474,6 +499,13 @@ EOF
     echo "     - Master Password: $ADMIN_PASS"
     echo "     - Database Name:   $DB_NAME"
     echo "   Odoo will create and initialize the DB tables itself."
+    echo
+    echo "🌐 NGINX Proxy Manager:"
+    echo "   1. Forward to  odoo-$INSTANCE_NAME : 8069"
+    echo "   2. ⚙️ gear icon → 'Custom Nginx Configuration' → paste this file:"
+    echo "        cat $INSTANCE_DIR/npm-custom-nginx.conf"
+    echo "      (routes /websocket — without it live chat / POS sync won't work)"
+    echo "   3. Enable SSL with Let's Encrypt"
     echo
     echo "To manage containers:"
     echo "  cd $INSTANCE_DIR && $COMPOSE_CMD [ps|logs|stop|rm]"
