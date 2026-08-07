@@ -106,3 +106,37 @@ rewritten too.
 Current `deploy.sh` scripts validate the domain at the prompt and reject
 anything that isn't a plain hostname, so this shouldn't recur — but an `.env`
 written by an older version can still carry a bad value.
+
+---
+
+## "I pasted the custom nginx config but nothing changed"
+
+Some services need extra nginx routing beyond a plain Proxy Host — NetBird
+(gRPC + OAuth paths), Odoo (`/websocket`), OpenProject (`/hocuspocus`), Immich
+(upload limits). If it seems to have no effect, the usual cause is that it was
+never saved where nginx reads it.
+
+**Where the box actually is:** in current NGINX Proxy Manager versions there is
+**no tab called "Advanced"**. Open *Edit Proxy Host* and look for the **⚙️ gear
+icon** at the top-right, beside the `Details / Custom Locations / SSL` tabs — it
+opens a box titled **"Custom Nginx Configuration"**. That is the right place.
+The **"Custom Locations" tab is a different feature** and will not work for
+these blocks.
+
+**Verify it landed, rather than trusting the UI.** NPM writes a real nginx file
+per Proxy Host; read it back:
+
+```bash
+conf=$(docker exec npm-app-1 sh -c 'grep -l "your-domain" /data/nginx/proxy_host/*.conf')
+echo "$conf"
+docker exec npm-app-1 cat "$conf"
+```
+
+Your pasted directives should appear verbatim in that output. If they don't,
+they weren't saved — reopen the ⚙️ box, paste again, and hit **Save**.
+
+A quick targeted check for one expected string:
+
+```bash
+docker exec npm-app-1 grep -c "netbird-server" "$conf"   # 0 = not applied
+```
