@@ -1,0 +1,77 @@
+# OpenVPN via the official OpenVPN Access Server image (openvpn/openvpn-as),
+# verified against OpenVPN Inc.'s own Docker repo:
+# https://github.com/OpenVPN/as-docker
+#
+# WHY ACCESS SERVER AND NOT A PLAIN OPENVPN IMAGE
+# Plain OpenVPN has no web UI and no user management — certificate handling
+# is entirely manual (easy-rsa on the CLI). The community wrappers that add
+# a UI are all in poor shape as of this writing: kylemanna/openvpn's image
+# was last built in 2020, and d3vilh/openvpn-server's in December 2024. For
+# a VPN — where the whole point is the crypto stack being current — shipping
+# a years-old image is the wrong default. openvpn/openvpn-as is the only
+# option that is both official and actively rebuilt.
+#
+# ⚠️ THE TRADE-OFF: Access Server allows 2 CONCURRENT CONNECTIONS without a
+# license. Not 2 users — 2 simultaneous tunnels. You can define as many user
+# accounts as you like; the third device trying to connect at the same time
+# is refused. It is not a time-limited trial: 2 connections stay free
+# forever. If you need more, this repo's WireGuard and NetBird services are
+# unlimited, or you buy an Access Server license.
+#
+# Deliberate deviations from upstream's own docker-compose example:
+#   - Port 443 is NOT published. Upstream publishes it for OpenVPN-over-TCP,
+#     but in this repo NGINX Proxy Manager owns 80/443 — publishing it here
+#     would make the whole stack fail to start with a port conflict. The TCP
+#     daemon is therefore turned off by default (deploy.sh sets
+#     vpn.server.daemon.tcp.n_daemons=0), and deploy.sh instead offers an
+#     optional TCP fallback on a non-conflicting port for clients on
+#     networks that block UDP.
+#   - Port 943 (admin + client web UI) is NOT published by default —
+#     NGINX Proxy Manager reaches it by container name over 'main-net'
+#     instead. Note it speaks HTTPS with a self-signed certificate, so the
+#     Proxy Host's Forward Scheme must be set to 'https' (see README.md).
+#   - The VPN data port (1194/udp) stays unconditionally published — like
+#     WireGuard's 51820/udp and Pi-hole's 53, this is a raw UDP protocol no
+#     HTTP reverse proxy can front, and it can't go through Cloudflare
+#     Tunnel either. VPN clients must reach it directly.
+#   - A named volume is used for /openvpn rather than a host bind mount.
+#     Access Server stores its PKI and its user database there, both owned
+#     by uids internal to the container.
+#
+# This is a single-instance service: one Access Server deployment per host,
+# under ~/docker/openvpn/.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it
+# (and the generated .env) to ~/docker/openvpn/ and runs it from there.
+
+services:
+  openvpn-as:
+    image: openvpn/openvpn-as:${OPENVPN_AS_VERSION:-latest}
+    container_name: openvpn-as
+    restart: unless-stopped
+    # NET_ADMIN lets it build its own routing/NAT rules for VPN clients;
+    # MKNOD lets it create the tun device node. Both are required by
+    # upstream — Access Server will not start without them.
+    cap_add:
+      - NET_ADMIN
+      - MKNOD
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    # Client traffic is routed out through this container, which needs
+    # forwarding enabled in its own network namespace. Same reason the
+    # WireGuard service sets it.
+    sysctls:
+      - net.ipv4.ip_forward=1
+    volumes:
+      - openvpn-as-data:/openvpn
+    ports:
+      - "1194:1194/udp"
+    networks:
+      - main-net
+
+volumes:
+  openvpn-as-data:
+
+networks:
+  main-net:
+    external: true
