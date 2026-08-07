@@ -64,7 +64,7 @@ Immich has **no default admin account**. Visiting the site for the first time ru
    - **Forward Port**: `2283`
    - Enable **Websockets Support**
 3. Enable **SSL** with Let's Encrypt from the UI.
-4. On the **Advanced** tab (the ⚙️ icon), add — Immich's own docs recommend this for large photo/video uploads, verified against [Immich's reverse-proxy docs](https://docs.immich.app/administration/reverse-proxy):
+4. In NPM's **Custom Nginx Configuration** box (the **⚙️ gear icon** in the *Edit Proxy Host* dialog, or a tab named **Advanced** in older versions — not "Custom Locations"), add — Immich's own docs recommend this for large photo/video uploads, verified against [Immich's reverse-proxy docs](https://docs.immich.app/administration/reverse-proxy):
    ```
    client_max_body_size 50000M;
    proxy_request_buffering off;

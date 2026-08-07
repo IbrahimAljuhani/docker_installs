@@ -13,8 +13,8 @@ backup_immich() {
     local dump_file="$install_dir/db.sql"
 
     local pg_user pg_db
-    pg_user=$(grep '^DB_USERNAME=' "$install_dir/.env" | cut -d= -f2)
-    pg_db=$(grep '^DB_DATABASE_NAME=' "$install_dir/.env" | cut -d= -f2)
+    pg_user=$(grep -a '^DB_USERNAME=' "$install_dir/.env" | cut -d= -f2)
+    pg_db=$(grep -a '^DB_DATABASE_NAME=' "$install_dir/.env" | cut -d= -f2)
 
     if docker exec immich-db pg_dump -U "$pg_user" "$pg_db" > "$dump_file" 2>/dev/null; then
         print_info "Database dumped to $dump_file"
@@ -36,8 +36,8 @@ restore_immich() {
 
     if [[ -f "$install_dir/db.sql" ]]; then
         local pg_user pg_db
-        pg_user=$(grep '^DB_USERNAME=' "$install_dir/.env" | cut -d= -f2)
-        pg_db=$(grep '^DB_DATABASE_NAME=' "$install_dir/.env" | cut -d= -f2)
+        pg_user=$(grep -a '^DB_USERNAME=' "$install_dir/.env" | cut -d= -f2)
+        pg_db=$(grep -a '^DB_DATABASE_NAME=' "$install_dir/.env" | cut -d= -f2)
         # db container needs to be up (but the app itself doesn't) for this —
         # services.sh's restore_menu already ran `compose down` before
         # calling this, so bring just the database service back up first.
