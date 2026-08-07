@@ -140,3 +140,49 @@ A quick targeted check for one expected string:
 ```bash
 docker exec npm-app-1 grep -c "netbird-server" "$conf"   # 0 = not applied
 ```
+
+---
+
+## The fix worked, but the page still shows the old error
+
+A trap worth knowing before it costs you an hour: **a browser can keep showing a
+failure long after the server side is fixed.**
+
+Single-page apps (NetBird's dashboard, Vaultwarden's vault, and most
+login-driven UIs here) cache tokens and auth state in `localStorage` /
+`sessionStorage`. Every failed attempt made while something *was* genuinely
+broken leaves that state behind, and it survives an ordinary reload — including
+Ctrl-R. So a repair that actually succeeded can look like it changed nothing,
+and the natural reaction is to "fix" something that was never wrong.
+
+**Rule: trust `curl`, not the page.** A command-line request carries no cached
+state, so it reflects the server's real behaviour:
+
+```bash
+curl -sk -o /dev/null -w '%{http_code} %{content_type}\n' https://your-domain/some/endpoint
+```
+
+If `curl` looks right and the browser doesn't, the remaining problem is in the
+browser. Confirm in a **private/incognito window** — it starts with empty
+storage. If it works there, clear that site's data in your normal window
+(usually: padlock icon → site settings → clear data) and reload.
+
+### Diagnose outwards, one layer at a time
+
+When something is broken, resist changing several things at once. Work from the
+container outwards, so each step eliminates exactly one layer:
+
+1. **Container logs** — `docker compose logs -f <service>`. Is the app healthy,
+   and do the values it printed at startup (domain, issuer, URLs) match what you
+   configured?
+2. **NPM's generated config** — read the actual file, don't trust the UI:
+   ```bash
+   conf=$(docker exec npm-app-1 sh -c 'grep -l "your-domain" /data/nginx/proxy_host/*.conf')
+   docker exec npm-app-1 cat "$conf"
+   ```
+3. **`curl` through the domain** — tests DNS, tunnel/port-forward, TLS and
+   routing together, with no browser involved.
+4. **A private browser window** — the only step left once 1–3 all pass.
+
+Most of the confusing failures in this repo's history came from skipping
+straight to step 4's symptom while the real cause sat in step 2.
