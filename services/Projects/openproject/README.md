@@ -71,7 +71,17 @@ OpenProject needs **two proxy targets** on the same domain — the main app, and
    - **Forward Hostname/IP**: `openproject-app`
    - **Forward Port**: `8080`
    - Enable **Websockets Support**
-3. On the **Advanced** tab, route `/hocuspocus` to the collaborative-editing server:
+3. In NPM's **Custom Nginx Configuration** box — a tab named **Advanced** in older versions, or the **⚙️ gear icon** in the *Edit Proxy Host* dialog in current ones (not the "Custom Locations" tab) — route `/hocuspocus` to the collaborative-editing server.
+
+   `deploy.sh` already wrote that block to a file for you, so you don't have to copy it out of this page:
+
+   ```bash
+   cat ~/docker/openproject/npm-custom-nginx.conf
+   ```
+
+   <details>
+   <summary>The block itself, if you'd rather copy it from here</summary>
+
    ```nginx
    location /hocuspocus {
        proxy_pass http://openproject-hocuspocus:1234;
@@ -80,6 +90,10 @@ OpenProject needs **two proxy targets** on the same domain — the main app, and
        proxy_set_header Connection "upgrade";
    }
    ```
+
+   </details>
+
+   Without it OpenProject works fine, but two people editing the same work package silently won't see each other's changes.
 4. Enable **SSL** with Let's Encrypt from the UI.
 
 ✅ No host ports are published for `web` or `hocuspocus` — NPM reaches both by container name over `main-net`, matching the reverse-proxy convention used everywhere else in this repo.

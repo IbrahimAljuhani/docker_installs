@@ -74,7 +74,10 @@ else
     else
         OPENPROJECT_HTTPS_VALUE="true"
         read -rp "Enter the public domain you'll point NGINX Proxy Manager at (e.g. openproject.example.com): " HOST_NAME
-        [[ -n "$HOST_NAME" ]] || print_error "A host domain is required (used for the collaborative-editing websocket URL)."
+        # Format-checked too, not just non-empty: an invisible character
+        # tagging along from a paste silently corrupts every URL built from
+        # this (see validate_domain in lib/common.sh).
+        validate_domain "$HOST_NAME" "host domain"
     fi
 
     cat > "$INSTALL_DIR/.env" <<EOF
@@ -109,8 +112,8 @@ fi
 # it), so it's always safe to regenerate from whatever .env currently has.
 ENV_MEM_LIMIT=""
 ENV_HOST_PORT=""
-grep -q '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
-grep -q '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^MEM_LIMIT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_MEM_LIMIT=$(grep -a '^MEM_LIMIT=' "$INSTALL_DIR/.env" | cut -d= -f2)
+grep -qa '^HOST_PORT=' "$INSTALL_DIR/.env" 2>/dev/null && ENV_HOST_PORT=$(grep -a '^HOST_PORT=' "$INSTALL_DIR/.env" | cut -d= -f2)
 
 if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" ]]; then
     {
@@ -127,6 +130,27 @@ if [[ -n "$ENV_MEM_LIMIT" || -n "$ENV_HOST_PORT" ]]; then
 else
     rm -f "$INSTALL_DIR/docker-compose.override.yml"
 fi
+
+# The NPM routing block, written to a file instead of only living in the
+# README — so it can be copied straight off the server with `cat` rather
+# than out of a browser. Quoted heredoc: the $ below are nginx's own
+# variables, not ours.
+cat > "$INSTALL_DIR/npm-custom-nginx.conf" <<'NGINXEOF'
+# Paste this whole file into NGINX Proxy Manager:
+#   Edit Proxy Host → ⚙️ gear icon → "Custom Nginx Configuration" → Save
+# (not the "Custom Locations" tab — that's a different feature)
+#
+# Routes real-time collaborative editing to the hocuspocus container.
+# Without it OpenProject works, but simultaneous editing of the same work
+# package silently won't sync.
+
+location /hocuspocus {
+    proxy_pass http://openproject-hocuspocus:1234;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+}
+NGINXEOF
 
 print_info "Starting OpenProject (first run seeds the database and can take a few minutes)..."
 (cd "$INSTALL_DIR" && $COMPOSE_CMD up -d 2>&1 | tee -a "$LOGFILE") \
@@ -154,8 +178,12 @@ if [[ -n "$ENV_HOST_PORT" ]]; then
     echo "   OPENPROJECT_HTTPS=true in .env and rerun deploy.sh."
     echo
 fi
-echo "Set up NGINX Proxy Manager (see README.md 'Reverse Proxy' section for the"
-echo "exact Advanced/custom-location config /hocuspocus needs)."
+echo "Set up NGINX Proxy Manager:"
+echo "   1. Forward to  openproject-app : 8080"
+echo "   2. ⚙️ gear icon → 'Custom Nginx Configuration' → paste this file:"
+echo "        cat $INSTALL_DIR/npm-custom-nginx.conf"
+echo "      (routes /hocuspocus — without it, real-time co-editing won't sync)"
+echo "   3. Enable SSL with Let's Encrypt"
 print_tunnel_reminder_if_relevant
 echo
 echo "To manage: cd $INSTALL_DIR && $COMPOSE_CMD [ps|logs -f|stop|restart]"
