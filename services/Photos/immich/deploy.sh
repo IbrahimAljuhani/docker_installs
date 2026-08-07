@@ -105,6 +105,24 @@ else
     rm -f "$INSTALL_DIR/docker-compose.override.yml"
 fi
 
+# The NPM upload-tuning block, written to a file instead of only living in
+# the README — so it can be copied straight off the server with `cat` rather
+# than out of a browser.
+cat > "$INSTALL_DIR/npm-custom-nginx.conf" <<'NGINXEOF'
+# Paste this whole file into NGINX Proxy Manager:
+#   Edit Proxy Host → ⚙️ gear icon → "Custom Nginx Configuration" → Save
+# (not the "Custom Locations" tab — that's a different feature)
+#
+# Immich's own recommended settings for large photo/video uploads. Without
+# them NPM's 1 MB default body limit rejects anything but small photos.
+
+client_max_body_size 50000M;
+proxy_request_buffering off;
+proxy_read_timeout 600s;
+proxy_send_timeout 600s;
+send_timeout 600s;
+NGINXEOF
+
 print_info "Starting Immich (first run pulls 4 images and can take a few minutes)..."
 (cd "$INSTALL_DIR" && $COMPOSE_CMD up -d 2>&1 | tee -a "$LOGFILE") \
     || print_error "Failed to start Immich. Check log: $LOGFILE"
@@ -124,9 +142,12 @@ echo "📜 Log:          $LOGFILE"
 [[ -f "$SECRETS_FILE" ]] && echo "🔒 Secrets:      $SECRETS_FILE"
 echo "──────────────────────────────────────────────"
 echo
-echo "Set up NGINX Proxy Manager: forward to immich-app, port 2283, enable"
-echo "Websockets Support, enable SSL. See the README's Reverse Proxy section"
-echo "for the upload-size/timeout settings large photo/video libraries need."
+echo "Set up NGINX Proxy Manager:"
+echo "   1. Forward to  immich-app : 2283  + enable 'Websockets Support'"
+echo "   2. ⚙️ gear icon → 'Custom Nginx Configuration' → paste this file:"
+echo "        cat $INSTALL_DIR/npm-custom-nginx.conf"
+echo "      (raises the upload limit — without it, big videos fail to upload)"
+echo "   3. Enable SSL with Let's Encrypt"
 print_tunnel_reminder_if_relevant
 echo
 echo "To manage: cd $INSTALL_DIR && $COMPOSE_CMD [ps|logs -f|stop|restart]"

@@ -64,14 +64,28 @@ Immich has **no default admin account**. Visiting the site for the first time ru
    - **Forward Port**: `2283`
    - Enable **Websockets Support**
 3. Enable **SSL** with Let's Encrypt from the UI.
-4. In NPM's **Custom Nginx Configuration** box (the **⚙️ gear icon** in the *Edit Proxy Host* dialog, or a tab named **Advanced** in older versions — not "Custom Locations"), add — Immich's own docs recommend this for large photo/video uploads, verified against [Immich's reverse-proxy docs](https://docs.immich.app/administration/reverse-proxy):
+4. In NPM's **Custom Nginx Configuration** box (the **⚙️ gear icon** in the *Edit Proxy Host* dialog, or a tab named **Advanced** in older versions — not "Custom Locations"), paste the upload-tuning block. NPM defaults to a 1 MB request body, so without this anything larger than a small photo fails to upload.
+
+   `deploy.sh` already wrote it to a file for you, so you don't have to copy it out of this page:
+
+   ```bash
+   cat ~/docker/immich/npm-custom-nginx.conf
    ```
+
+   <details>
+   <summary>The block itself, if you'd rather copy it from here</summary>
+
+   ```nginx
    client_max_body_size 50000M;
    proxy_request_buffering off;
    proxy_read_timeout 600s;
    proxy_send_timeout 600s;
    send_timeout 600s;
    ```
+
+   </details>
+
+   These are Immich's own recommended values, verified against [Immich's reverse-proxy docs](https://docs.immich.app/administration/reverse-proxy).
 
 ✅ No host port is published for `immich-app` by default — NPM reaches it by container name over `main-net`. `immich-machine-learning`, `redis`, and `database` stay on the private `immich-net` only.
 
