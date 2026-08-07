@@ -102,6 +102,34 @@ validate_domain() {
     fi
 }
 
+# Asks for a domain and keeps asking until it's valid, instead of exiting the
+# whole script on the first typo. validate_domain() below exits by design —
+# it's also used to check values already sitting in a .env, where aborting is
+# the right response — so this runs it inside a subshell: the subshell dies,
+# the caller lives, and its message is captured and shown. That means one
+# stray pasted character or an accidental Enter costs a retry, not a rerun of
+# the whole deploy (menus, warnings and all).
+#
+# Note an IPv4 address passes validate_domain, and that's deliberate: several
+# services here name something after this value and are perfectly happy with
+# an IP for a LAN-only deployment.
+#
+# $1 = prompt text, $2 = label for error messages. Sets DOMAIN_VALUE in the
+# caller's shell (same no-command-substitution reasoning as prompt_mem_limit).
+DOMAIN_VALUE=""
+prompt_domain() {
+    local prompt="$1" label="${2:-domain}" value msg
+    DOMAIN_VALUE=""
+    while true; do
+        read -rp "$prompt" value
+        if msg=$( (validate_domain "$value" "$label") 2>&1 ); then
+            DOMAIN_VALUE="$value"
+            return 0
+        fi
+        echo "$msg" >&2
+    done
+}
+
 # Idempotent main-net creation — identical block used to be copy-pasted in
 # every deploy.sh. Safe to call even if install_dockhub.sh already created it
 # (this script can also be run standalone, out of order).
