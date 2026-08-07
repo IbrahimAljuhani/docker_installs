@@ -26,19 +26,29 @@ Adapted from Frappe's own [`frappe_docker`](https://github.com/frappe/frappe_doc
 
 None are optional — Frappe genuinely splits the work this way. Budget **4 GB RAM minimum**, 8 GB to be comfortable. First-run site creation compiles assets and takes **5–15 minutes**; `deploy.sh` waits for it and reports progress rather than claiming success early.
 
-**2. The site is named after your domain, and that's not cosmetic.**
+**2. Every ERPNext site has a name, and you're asked for it up front.**
 
-Frappe is multi-tenant: it decides *which site to serve* from the HTTP `Host` header. So a site must be **named** after the domain it's reached at. Serve a site named `erp.example.com` at `erp.other.com` and you get **"Site not found"** — the stack is healthy, it just doesn't recognise the name.
+Frappe is multi-tenant. By default it decides *which site to serve* from the HTTP `Host` header, which is why upstream deployments must name a site after its domain — serve a site named `erp.example.com` at `erp.other.com` and you'd get **"Site not found"**.
 
-This is why the domain question during `deploy.sh` is unconditional, unlike most services here where it's tied to whether you want a host port.
+**This deployment removes that constraint.** `FRAPPE_SITE_NAME_HEADER` is pinned to the site name instead of upstream's `$host` default, and Frappe's nginx template substitutes it into `proxy_set_header X-Frappe-Site-Name` when the config is built — so *every* request resolves to this one site, whatever `Host` arrives. A domain, a different domain, a raw IP:port: all reach it.
 
-> 💡 **You can still reach it by IP:port.** Upstream leaves `FRAPPE_SITE_NAME_HEADER` at `$host` (resolve strictly by Host header); this deployment pins it to the site name instead, so a direct `http://<server-ip>:8085` serves the same site rather than 404-ing. The trade is that this is single-site by design — which it is here anyway.
+So the site name is effectively a **label**, and the question is unconditional simply because a site must be called something at creation time.
+
+It still matters for one thing: `host_name`, which Frappe uses to build absolute URLs in password-reset links, notification emails, and PDF assets. `deploy.sh` sets it from the name you give. That's the real reason to use your actual domain if you have one — not reachability.
+
+> 📌 The trade for pinning is that this is **single-site** by design. It is anyway.
 
 ### Just trying it out, with no domain?
 
 Answer the domain question with your **server's LAN IP** (e.g. `10.0.0.27`) and say yes to the host port. Frappe accepts an IP as a site name — upstream's own docs use `127.0.0.1` for local debugging — and `deploy.sh` adjusts accordingly: `host_name` becomes `http://10.0.0.27:8085` instead of an `https://` URL the site doesn't serve, and it skips the NPM instructions rather than printing a route that wouldn't work.
 
-> ⚠️ **An IP-named site is LAN-only, and switching to a domain later means renaming the site** — the site directory and its database are named after the IP, and Frappe matches the Host header against that name. Renaming is a manual `bench` operation. If you already know the domain you'll use, enter it now even if DNS isn't pointing at the server yet; nothing about site creation requires the domain to resolve.
+**Adding a domain later works without renaming anything.** Because the site name is pinned rather than matched against `Host` (see above), you can put NPM in front of an IP-named site whenever you like and it will serve normally. The one thing to update is the link-building config:
+
+```bash
+docker exec erpnext-backend bench --site 10.0.0.27 set-config host_name https://erp.example.com
+```
+
+> 💡 Still, if you already know the domain you'll use, enter it now — it saves that step and keeps the site name meaningful. Nothing about site creation requires the domain to resolve yet, so you can enter it before DNS points anywhere.
 
 ---
 
@@ -101,7 +111,7 @@ ERPNext then runs its own setup wizard on first login — company name, currency
 
 1. Open `http://<server-ip>:81`
 2. Create a **Proxy Host**:
-   - **Domain**: the same domain you gave `deploy.sh` — this must match, see above
+   - **Domain**: your domain. It does *not* have to equal the site name — the site name is pinned, see above — but using the same one keeps `host_name` and generated links correct with no extra step.
    - **Forward Hostname/IP**: `erpnext-frontend`
    - **Forward Port**: `8080`
    - Enable **Websockets Support** ← required; real-time updates use socket.io
@@ -117,21 +127,23 @@ No custom nginx block is needed. Upload size (`50m`) and proxy timeout (`120s`) 
 
 ## 🩺 "Site not found" / blank page
 
-Almost always the Host header not matching the site name. Check what sites actually exist:
+This shouldn't happen here — the site name is pinned rather than matched against `Host` — so if you see it, the two halves have drifted apart. Check what site actually exists:
 
 ```bash
 docker exec erpnext-backend ls sites
 ```
 
-You should see a directory named exactly like your domain. Then confirm what the frontend was told to look for:
+Then what the frontend was told to ask for:
 
 ```bash
 docker exec erpnext-frontend env | grep FRAPPE_SITE_NAME_HEADER
 ```
 
-Those two must be identical. If they aren't, fix `SITE_NAME` in `~/docker/erpnext/.env` and rerun `deploy.sh`.
+**Those two must be identical.** They can drift if `SITE_NAME` in `.env` was edited after the site was created — the frontend picks up the new value on restart, but the site directory keeps its original name. Set `SITE_NAME` back to the name that actually exists under `sites/` and rerun `deploy.sh`.
 
-> ⚠️ **Changing the domain after the site is created is not just an `.env` edit** — the site directory and its database are named after the old domain. Renaming a Frappe site is a manual `bench` operation; for a fresh deployment it is far quicker to remove and redeploy (services.sh → **Reinstall**) than to rename.
+> ⚠️ **Editing `SITE_NAME` does not rename an existing site.** The site directory and its database keep the name they were created with; only the frontend's pinned header follows `.env`. To genuinely change a site's name, either use Frappe's own `bench` rename procedure, or — on a deployment with nothing in it yet — remove and redeploy (services.sh → **Reinstall**), which is much faster.
+>
+> If all you want is a domain in front of an IP-named site, you don't need any of this: proxy it and update `host_name` (see [Just trying it out](#just-trying-it-out-with-no-domain)).
 
 If the site directory doesn't exist at all, site creation failed or is still running:
 

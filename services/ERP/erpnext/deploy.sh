@@ -138,6 +138,25 @@ else
     rm -f "$INSTALL_DIR/docker-compose.override.yml"
 fi
 
+# Frappe builds absolute URLs (password-reset links, notification emails, PDF
+# asset paths) from host_name. Computed here rather than inside the
+# site-ready branch below so the summary can always refer to it, even when
+# site creation timed out.
+#
+# An IP site name means a LAN deployment reached on the host port, so it gets
+# http:// and the port; a domain gets https:// and none. Handing an IP
+# deployment "https://10.0.0.27" would bake a scheme it doesn't serve and a
+# port it isn't on into every generated link.
+if [[ "$ENV_SITE_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    if [[ -n "$ENV_HOST_PORT" ]]; then
+        HOST_NAME_URL="http://$ENV_SITE_NAME:$ENV_HOST_PORT"
+    else
+        HOST_NAME_URL="http://$ENV_SITE_NAME"
+    fi
+else
+    HOST_NAME_URL="https://$ENV_SITE_NAME"
+fi
+
 print_info "Starting ERPNext (first run pulls several images — this takes a while)..."
 (cd "$INSTALL_DIR" && $COMPOSE_CMD up -d 2>&1 | tee -a "$LOGFILE") \
     || print_error "Failed to start ERPNext. Check log: $LOGFILE"
@@ -184,20 +203,6 @@ if (( SITE_READY )); then
     # PDF asset paths) from host_name. Left unset it guesses from the request
     # and can emit http:// links for an https:// site.
     #
-    # An IP site name means a LAN deployment reached directly on the host
-    # port, not through NPM — so it gets http:// and the port, where a domain
-    # gets https:// and none. Handing an IP deployment "https://10.0.0.27"
-    # would put a scheme it doesn't serve and a port it isn't on into every
-    # generated link.
-    if [[ "$ENV_SITE_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        if [[ -n "$ENV_HOST_PORT" ]]; then
-            HOST_NAME_URL="http://$ENV_SITE_NAME:$ENV_HOST_PORT"
-        else
-            HOST_NAME_URL="http://$ENV_SITE_NAME"
-        fi
-    else
-        HOST_NAME_URL="https://$ENV_SITE_NAME"
-    fi
     docker exec erpnext-backend \
         bench --site "$ENV_SITE_NAME" set-config host_name "$HOST_NAME_URL" >/dev/null 2>&1 \
         || print_warn "Couldn't set host_name automatically — if generated links come out wrong, run: docker exec erpnext-backend bench --site $ENV_SITE_NAME set-config host_name $HOST_NAME_URL"
@@ -210,13 +215,30 @@ fi
 echo
 echo "──────────────────────────────────────────────"
 if [[ -n "$ENV_HOST_PORT" ]]; then
-    echo "🌐 URL (direct):  http://$ENV_SITE_NAME:$ENV_HOST_PORT"
+    if [[ "$ENV_SITE_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        DIRECT_HOST="$ENV_SITE_NAME"
+    else
+        # A domain won't necessarily resolve on the LAN, so show the server's
+        # own address for the direct route rather than a name that may only
+        # exist in public DNS.
+        # `|| true` matters: under `set -o pipefail` a failing `hostname -I`
+        # (it doesn't exist on busybox, for one) makes the whole assignment
+        # fail and `set -e` kills the script — defeating the fallback on the
+        # very next line, which exists precisely to handle not knowing the IP.
+        DIRECT_HOST=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
+        [[ -z "${DIRECT_HOST:-}" ]] && DIRECT_HOST="<your-server-ip>"
+    fi
+    echo "🌐 URL (direct):  http://$DIRECT_HOST:$ENV_HOST_PORT"
 fi
-# Only advertise the NPM route when the site is named after a domain. A site
-# named after an IP is a LAN deployment: NPM can still proxy to it, but the
-# Host header would then be the domain, which is not this site's name, so it
-# would answer "Site not found" — printing it as a URL would be a lie.
-if [[ ! "$ENV_SITE_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+# The NPM route is always available, whatever the site is named. This
+# deployment pins FRAPPE_SITE_NAME_HEADER to the site name, and Frappe's
+# nginx template substitutes that into `proxy_set_header X-Frappe-Site-Name`
+# at config-build time — so every request resolves to this one site no matter
+# what Host header arrives. (Upstream's `$host` default is what makes site
+# name and domain have to agree; pinning it is precisely what removes that.)
+if [[ "$ENV_SITE_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "🌐 URL (via NPM): https://<any-domain-you-proxy>  — works, but see the note below"
+else
     echo "🌐 URL (via NPM): https://$ENV_SITE_NAME"
 fi
 echo "🔗 Proxy target:  erpnext-frontend:8080 on 'main-net'"
@@ -225,20 +247,25 @@ echo "📜 Log:           $LOGFILE"
 [[ -f "$SECRETS_FILE" ]] && echo "🔒 Secrets:       $SECRETS_FILE"
 echo "──────────────────────────────────────────────"
 echo
-if [[ "$ENV_SITE_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-    echo "📌 This site is named after an IP, so it's LAN-only as deployed."
-    echo "   To put it behind NGINX Proxy Manager on a real domain later, the"
-    echo "   site has to be RENAMED to that domain — Frappe matches the Host"
-    echo "   header against the site name. On a fresh install it's far quicker"
-    echo "   to remove and redeploy with the domain than to rename by hand."
-else
-    echo "Set up NGINX Proxy Manager:"
-    echo "   1. Forward to  erpnext-frontend : 8080  + enable 'Websockets Support'"
-    echo "   2. Enable SSL with Let's Encrypt"
+if [[ -z "$ENV_HOST_PORT" && "$ENV_SITE_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "⚠️  No host port was published, so there is no direct URL to open."
+    echo "   Either rerun after adding HOST_PORT=8085 to $INSTALL_DIR/.env,"
+    echo "   or reach it through NGINX Proxy Manager as below."
     echo
-    echo "⚠️  The domain MUST be $ENV_SITE_NAME — Frappe picks the site from the"
-    echo "   Host header, so a different domain returns 'Site not found'."
-    print_tunnel_reminder_if_relevant
 fi
+echo "Set up NGINX Proxy Manager:"
+echo "   1. Forward to  erpnext-frontend : 8080  + enable 'Websockets Support'"
+echo "   2. Enable SSL with Let's Encrypt"
+if [[ "$ENV_SITE_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo
+    echo "📌 Any domain you point at it will serve this site — the site name is"
+    echo "   pinned, not matched against the Host header. But links ERPNext"
+    echo "   generates (password resets, notification emails) come from"
+    echo "   host_name, currently '$HOST_NAME_URL'. Once you put a domain in"
+    echo "   front, update it:"
+    echo "     docker exec erpnext-backend bench --site $ENV_SITE_NAME \\"
+    echo "       set-config host_name https://your-domain.com"
+fi
+print_tunnel_reminder_if_relevant
 echo
 echo "To manage: cd $INSTALL_DIR && $COMPOSE_CMD [ps|logs -f|stop|restart]"
