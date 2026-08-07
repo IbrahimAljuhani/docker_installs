@@ -79,7 +79,9 @@ The secrets file holds server-side keys (relay auth, datastore encryption, sessi
    - **Forward Hostname/IP**: `netbird-dashboard`
    - **Forward Port**: `80`
 3. **SSL tab** → enable Let's Encrypt **and turn on "HTTP/2 Support"**. This one isn't cosmetic: gRPC runs over HTTP/2, and without it peer registration fails.
-4. **Advanced tab** → paste this block. It routes the non-dashboard paths to `netbird-server` — API, OAuth, WebSocket relay, and native gRPC:
+4. **Custom Nginx Configuration** → paste this block. It routes the non-dashboard paths to `netbird-server` — API, OAuth, WebSocket relay, and native gRPC.
+
+   > ⚠️ **Where to find it:** depending on your NPM version this is either a tab labelled **Advanced**, or — in current versions — the **⚙️ gear icon** at the top-right of the *Edit Proxy Host* dialog, next to the `Details / Custom Locations / SSL` tabs. It opens a box titled **"Custom Nginx Configuration"**. It is *not* the "Custom Locations" tab.
 
 ```nginx
 # Required for long-lived connections (gRPC and WebSocket)
@@ -133,7 +135,15 @@ curl -sk -o /dev/null -w '%{http_code} %{content_type}\n' \
 | `200 application/json` | ✅ Routing is correct — `/oauth2` reaches `netbird-server`. |
 | `404 text/html` | ❌ The Advanced block is missing or wrong. `/oauth2` is still hitting `netbird-dashboard`, which only serves static files — this is what produces **"Oops, something went wrong — Error: Unauthenticated"** at login. |
 
-If it returns 404, re-check that you pasted the block into the **Advanced** tab (not Custom Locations), saved it, and enabled **HTTP/2 Support** on the SSL tab.
+If it returns 404, confirm the block actually reached NPM — don't rely on remembering. Read NPM's own generated config:
+
+```bash
+conf=$(docker exec npm-app-1 sh -c 'grep -l "your-domain" /data/nginx/proxy_host/*.conf')
+docker exec npm-app-1 grep -c "netbird-server" "$conf"   # 0 = block not applied
+docker exec npm-app-1 grep -c "http2"          "$conf"   # 0 = HTTP/2 not enabled
+```
+
+If `netbird-server` counts 0, the block isn't saved — check you used the **⚙️ Custom Nginx Configuration** box (see the warning in step 4), not the "Custom Locations" tab.
 
 To confirm the server itself is healthy independently of NPM:
 
