@@ -34,6 +34,12 @@ This is why the domain question during `deploy.sh` is unconditional, unlike most
 
 > 💡 **You can still reach it by IP:port.** Upstream leaves `FRAPPE_SITE_NAME_HEADER` at `$host` (resolve strictly by Host header); this deployment pins it to the site name instead, so a direct `http://<server-ip>:8085` serves the same site rather than 404-ing. The trade is that this is single-site by design — which it is here anyway.
 
+### Just trying it out, with no domain?
+
+Answer the domain question with your **server's LAN IP** (e.g. `10.0.0.27`) and say yes to the host port. Frappe accepts an IP as a site name — upstream's own docs use `127.0.0.1` for local debugging — and `deploy.sh` adjusts accordingly: `host_name` becomes `http://10.0.0.27:8085` instead of an `https://` URL the site doesn't serve, and it skips the NPM instructions rather than printing a route that wouldn't work.
+
+> ⚠️ **An IP-named site is LAN-only, and switching to a domain later means renaming the site** — the site directory and its database are named after the IP, and Frappe matches the Host header against that name. Renaming is a manual `bench` operation. If you already know the domain you'll use, enter it now even if DNS isn't pointing at the server yet; nothing about site creation requires the domain to resolve.
+
 ---
 
 ## 📥 Installation

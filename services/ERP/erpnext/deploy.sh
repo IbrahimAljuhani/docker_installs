@@ -60,10 +60,11 @@ else
     # services here, there's no "skip the domain if you only want a host
     # port" path, because the site has to be named something at creation
     # time and renaming a Frappe site afterwards is a manual chore.
-    echo "ERPNext names its site after the domain you'll serve it on — Frappe picks"
+    echo "ERPNext names its site after the address you'll serve it on — Frappe picks"
     echo "the site from the Host header, so the two have to match."
-    read -rp "Enter the domain for this ERPNext site (e.g. erp.example.com): " SITE_NAME_VALUE
-    validate_domain "$SITE_NAME_VALUE" "site domain"
+    echo "A LAN IP is fine here too, if you just want to try it without a domain."
+    prompt_domain "Domain or IP for this ERPNext site (e.g. erp.example.com or 10.0.0.27): " "site domain"
+    SITE_NAME_VALUE="$DOMAIN_VALUE"
 
     DB_PASSWORD=$(generate_secret 24)
     ADMIN_PASSWORD=$(generate_secret 20)
@@ -182,9 +183,24 @@ if (( SITE_READY )); then
     # Frappe builds absolute URLs (password-reset links, notification emails,
     # PDF asset paths) from host_name. Left unset it guesses from the request
     # and can emit http:// links for an https:// site.
+    #
+    # An IP site name means a LAN deployment reached directly on the host
+    # port, not through NPM — so it gets http:// and the port, where a domain
+    # gets https:// and none. Handing an IP deployment "https://10.0.0.27"
+    # would put a scheme it doesn't serve and a port it isn't on into every
+    # generated link.
+    if [[ "$ENV_SITE_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        if [[ -n "$ENV_HOST_PORT" ]]; then
+            HOST_NAME_URL="http://$ENV_SITE_NAME:$ENV_HOST_PORT"
+        else
+            HOST_NAME_URL="http://$ENV_SITE_NAME"
+        fi
+    else
+        HOST_NAME_URL="https://$ENV_SITE_NAME"
+    fi
     docker exec erpnext-backend \
-        bench --site "$ENV_SITE_NAME" set-config host_name "https://$ENV_SITE_NAME" >/dev/null 2>&1 \
-        || print_warn "Couldn't set host_name automatically — if emailed links come out as http://, run: docker exec erpnext-backend bench --site $ENV_SITE_NAME set-config host_name https://$ENV_SITE_NAME"
+        bench --site "$ENV_SITE_NAME" set-config host_name "$HOST_NAME_URL" >/dev/null 2>&1 \
+        || print_warn "Couldn't set host_name automatically — if generated links come out wrong, run: docker exec erpnext-backend bench --site $ENV_SITE_NAME set-config host_name $HOST_NAME_URL"
 else
     print_warn "Site creation hasn't finished after 30 minutes."
     print_warn "It may still be running. Check with:"
@@ -194,23 +210,35 @@ fi
 echo
 echo "──────────────────────────────────────────────"
 if [[ -n "$ENV_HOST_PORT" ]]; then
-    SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
-    [[ -z "${SERVER_IP:-}" ]] && SERVER_IP="<your-server-ip>"
-    echo "🌐 URL (direct):  http://$SERVER_IP:$ENV_HOST_PORT"
+    echo "🌐 URL (direct):  http://$ENV_SITE_NAME:$ENV_HOST_PORT"
 fi
-echo "🌐 URL (via NPM): https://$ENV_SITE_NAME"
+# Only advertise the NPM route when the site is named after a domain. A site
+# named after an IP is a LAN deployment: NPM can still proxy to it, but the
+# Host header would then be the domain, which is not this site's name, so it
+# would answer "Site not found" — printing it as a URL would be a lie.
+if [[ ! "$ENV_SITE_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "🌐 URL (via NPM): https://$ENV_SITE_NAME"
+fi
 echo "🔗 Proxy target:  erpnext-frontend:8080 on 'main-net'"
 echo "👤 Login:         Administrator / the generated password below"
 echo "📜 Log:           $LOGFILE"
 [[ -f "$SECRETS_FILE" ]] && echo "🔒 Secrets:       $SECRETS_FILE"
 echo "──────────────────────────────────────────────"
 echo
-echo "Set up NGINX Proxy Manager:"
-echo "   1. Forward to  erpnext-frontend : 8080  + enable 'Websockets Support'"
-echo "   2. Enable SSL with Let's Encrypt"
-echo
-echo "⚠️  The domain MUST be $ENV_SITE_NAME — Frappe picks the site from the"
-echo "   Host header, so a different domain returns 'Site not found'."
-print_tunnel_reminder_if_relevant
+if [[ "$ENV_SITE_NAME" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    echo "📌 This site is named after an IP, so it's LAN-only as deployed."
+    echo "   To put it behind NGINX Proxy Manager on a real domain later, the"
+    echo "   site has to be RENAMED to that domain — Frappe matches the Host"
+    echo "   header against the site name. On a fresh install it's far quicker"
+    echo "   to remove and redeploy with the domain than to rename by hand."
+else
+    echo "Set up NGINX Proxy Manager:"
+    echo "   1. Forward to  erpnext-frontend : 8080  + enable 'Websockets Support'"
+    echo "   2. Enable SSL with Let's Encrypt"
+    echo
+    echo "⚠️  The domain MUST be $ENV_SITE_NAME — Frappe picks the site from the"
+    echo "   Host header, so a different domain returns 'Site not found'."
+    print_tunnel_reminder_if_relevant
+fi
 echo
 echo "To manage: cd $INSTALL_DIR && $COMPOSE_CMD [ps|logs -f|stop|restart]"
