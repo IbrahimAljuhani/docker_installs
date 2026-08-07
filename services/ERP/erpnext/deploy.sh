@@ -54,15 +54,16 @@ else
     print_warn "creation compiles assets and takes 5-15 minutes."
     echo
 
-    # Frappe is multi-tenant and resolves which site to serve from the HTTP
-    # Host header, so the site's NAME must be the domain it's reached at.
-    # That makes this question unavoidable and unconditional — unlike most
-    # services here, there's no "skip the domain if you only want a host
-    # port" path, because the site has to be named something at creation
-    # time and renaming a Frappe site afterwards is a manual chore.
-    echo "ERPNext names its site after the address you'll serve it on — Frappe picks"
-    echo "the site from the Host header, so the two have to match."
-    echo "A LAN IP is fine here too, if you just want to try it without a domain."
+    # Unconditional, unlike most services here where the domain question is
+    # tied to whether you want a host port: a Frappe site has to be called
+    # something at creation time, and this value is also what host_name is
+    # derived from. Note it does NOT have to match the domain you serve on —
+    # docker-compose.yml pins FRAPPE_SITE_NAME_HEADER to this name, so any
+    # Host header resolves here (see the summary at the end of this script).
+    echo "Every ERPNext site has a name, and this is it. Use the domain you'll"
+    echo "serve it on: any domain reaches the site either way, but this is what"
+    echo "the links in password-reset and notification emails are built from."
+    echo "A LAN IP is fine too, if you just want to try it without a domain."
     prompt_domain "Domain or IP for this ERPNext site (e.g. erp.example.com or 10.0.0.27): " "site domain"
     SITE_NAME_VALUE="$DOMAIN_VALUE"
 
