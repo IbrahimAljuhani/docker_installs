@@ -62,6 +62,38 @@ validate_identifier() {
     fi
 }
 
+# Reads one KEY=value out of a .env file. Always use this instead of a bare
+# `grep ... | cut`: without -a, GNU grep prints "Binary file X matches"
+# instead of the line the moment the file contains one byte it considers
+# binary, and `cut` then happily hands that sentence back as the value. That
+# produced a NetBird deploy whose domain silently became the literal string
+# "Binary file ... matches", generating OAuth URLs that failed with
+# "Unauthenticated" — a broken-but-running install with no error anywhere.
+# $1 = key name, $2 = path to the .env file. Prints nothing if unset.
+read_env_value() {
+    local key="$1" file="$2"
+    [[ -f "$file" ]] || return 0
+    grep -a "^${key}=" "$file" 2>/dev/null | head -n1 | cut -d= -f2-
+}
+
+# Validates a public domain/hostname. Rejects anything that isn't a plain
+# ASCII hostname — including a scheme, a path, a port, or an invisible
+# non-ASCII character pasted in by accident (a real hazard when typing a
+# Latin domain inside an Arabic or other RTL context, where directional
+# marks travel along with the text unseen). $1 = value, $2 = label.
+validate_domain() {
+    local value="$1" label="${2:-domain}"
+    [[ -n "$value" ]] || print_error "A $label is required."
+    case "$value" in
+        *://*)  print_error "Enter the $label only, without the http:// or https:// prefix." ;;
+        */*)    print_error "Enter the $label only, without a path." ;;
+        *:*)    print_error "Enter the $label only, without a port number." ;;
+    esac
+    if [[ ! "$value" =~ ^[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?(\.[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$ ]]; then
+        print_error "Invalid $label: '$value'. Expected something like sub.example.com (letters, digits, hyphens and dots only). If you pasted it, an invisible character may have come along — retype it by hand."
+    fi
+}
+
 # Idempotent main-net creation — identical block used to be copy-pasted in
 # every deploy.sh. Safe to call even if install_dockhub.sh already created it
 # (this script can also be run standalone, out of order).
@@ -152,8 +184,8 @@ read_dockhub_env() {
     DOCKHUB_ENVIRONMENT=""
     DOCKHUB_ACCESS_METHOD=""
     [[ -f "$env_file" ]] || return 0
-    DOCKHUB_ENVIRONMENT=$(grep '^ENVIRONMENT=' "$env_file" 2>/dev/null | cut -d= -f2)
-    DOCKHUB_ACCESS_METHOD=$(grep '^ACCESS_METHOD=' "$env_file" 2>/dev/null | cut -d= -f2)
+    DOCKHUB_ENVIRONMENT=$(grep -a '^ENVIRONMENT=' "$env_file" 2>/dev/null | cut -d= -f2)
+    DOCKHUB_ACCESS_METHOD=$(grep -a '^ACCESS_METHOD=' "$env_file" 2>/dev/null | cut -d= -f2)
 }
 
 # Call at the end of a service's post-deploy summary, after printing the
