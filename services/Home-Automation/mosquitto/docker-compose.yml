@@ -41,7 +41,11 @@
 
 services:
   mosquitto:
-    image: eclipse-mosquitto:${MOSQUITTO_VERSION:-2.1}
+    # `2.1-alpine`, not `2.1`: the 2.1 line ships ONLY -alpine and -ubuntu
+    # variants — a bare `2.1` tag does not exist. Bare tags stop at 2.0.22.
+    # `latest`, `2` and `2.1-alpine` currently resolve to the same digest,
+    # so this is mainline rather than a side variant.
+    image: eclipse-mosquitto:${MOSQUITTO_VERSION:-2.1-alpine}
     container_name: mosquitto
     restart: unless-stopped
     volumes:

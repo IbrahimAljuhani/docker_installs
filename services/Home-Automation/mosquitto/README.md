@@ -148,7 +148,7 @@ cd ~/docker/mosquitto
 | `docker compose ps` | Check the container |
 | `docker compose logs -f` | Follow the broker's log (connections, auth failures) |
 | `docker compose restart` | Reload after editing a config file |
-| `docker compose pull && docker compose up -d` | Update within the pinned 2.1 line |
+| `docker compose pull && docker compose up -d` | Update within the pinned `2.1-alpine` line |
 
 Logs go to **stdout** (`log_dest stdout`), so `docker compose logs` shows connection and authentication events as they happen — which is how you diagnose a device that won't connect.
 
@@ -169,6 +169,7 @@ The `mosquitto-data` volume holds retained messages and persistent subscriptions
 - **The WebSocket listener is opt-in**, where many example configs enable it unconditionally. It only serves browser-based MQTT clients, and an unused open port is an unused open port.
 - **`log_dest stdout`** instead of Mosquitto's default log file, so `docker compose logs` is useful.
 - **No TLS listener.** Mosquitto supports MQTTS on 8883 with your own certificates; that needs a certificate lifecycle this deployment doesn't manage. The VPN route above is the simpler answer for remote access.
+- **Pinned to `2.1-alpine`, not `2.1`.** There is no bare `2.1` tag — the 2.1 line ships only `-alpine` and `-ubuntu` variants, and bare tags stop at `2.0.22`. This isn't a niche choice: `latest`, `2` and `2.1-alpine` all resolve to the same image digest.
 
 ---
 

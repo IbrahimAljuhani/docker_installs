@@ -28,6 +28,15 @@ INSTALL_DIR="$HOME/docker/mosquitto"
 LOGFILE="$INSTALL_DIR/deploy.log"
 SECRETS_FILE="$INSTALL_DIR/.mosquitto-docker-secrets.txt"
 MQTT_USER="mqtt"
+# Single source of truth for the image tag: it is written into .env AND used
+# for the throwaway password-file container below. Those were two separate
+# literals once, which is exactly how they drifted apart.
+#
+# `2.1-alpine`, not `2.1`: the 2.1 line ships ONLY -alpine and -ubuntu
+# variants — a bare `2.1` tag does not exist and never did. (Bare tags stop
+# at 2.0.22.) `latest`, `2` and `2.1-alpine` currently share one digest, so
+# this is mainline, not a side variant.
+MOSQUITTO_TAG="2.1-alpine"
 
 # Shared helpers — sourced from a git checkout if present, self-fetched
 # otherwise so standalone curl usage still works with no extra steps.
@@ -78,7 +87,7 @@ else
     prompt_mem_limit "mosquitto" "128m"
 
     cat > "$INSTALL_DIR/.env" <<EOF
-MOSQUITTO_VERSION=2.1
+MOSQUITTO_VERSION=$MOSQUITTO_TAG
 MQTT_PORT=$MQTT_PORT_VALUE
 MQTT_USER=$MQTT_USER
 ENABLE_WEBSOCKETS=$ENABLE_WS
@@ -104,11 +113,11 @@ EOF
     # to load it outright.
     print_info "Generating the MQTT password file..."
     docker run --rm -v "$INSTALL_DIR/config":/mosquitto/config \
-        "eclipse-mosquitto:2.1" \
+        "eclipse-mosquitto:$MOSQUITTO_TAG" \
         sh -c "mosquitto_passwd -b -c /mosquitto/config/passwd '$MQTT_USER' '$MQTT_PASSWORD' \
                && chown 1883:1883 /mosquitto/config/passwd \
                && chmod 0600 /mosquitto/config/passwd" \
-        || print_error "Failed to create the password file. Check that Docker can pull eclipse-mosquitto:2.1."
+        || print_error "Failed to create the password file. Check that Docker can pull eclipse-mosquitto:$MOSQUITTO_TAG."
 
     print_info "Generated .env and saved a copy of the secrets to $SECRETS_FILE."
 fi
