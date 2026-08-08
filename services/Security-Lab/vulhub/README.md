@@ -24,7 +24,19 @@ ports:
 
 Applying our hardening would mean forking hundreds of files that change with every update to the library. So we don't pretend to: the honest answer is a machine you can wipe.
 
-> A spare laptop, an old mini-PC, or a throwaway VM all work. If you genuinely accept the risk anyway, `--allow-production-host` exists — but it is a decision, not a workaround.
+> A spare laptop, an old mini-PC, or a throwaway VM all work.
+
+### The override is deliberately awkward
+
+`--allow-production-host` exists, but **it does not work through the menus.** `install_dockhub.sh` and `services.sh` hand off to a service's `deploy.sh` without forwarding arguments, so passing the flag to either of them does nothing — you'll just see the refusal again.
+
+That's intentional rather than an oversight. A flag whose only purpose is to switch off a safety check should not be reachable from the friendliest entry point. To use it, invoke this script directly:
+
+```bash
+bash services/Security-Lab/vulhub/deploy.sh --allow-production-host
+```
+
+The refusal message prints that exact command, with the right path for your machine.
 
 ---
 

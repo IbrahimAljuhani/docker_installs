@@ -85,7 +85,15 @@ if docker network ls --format '{{.Name}}' | grep -qx "main-net"; then
         echo >&2
         print_warn "Run this on a separate, disposable machine or VM."
         echo >&2
-        print_error "Refusing to continue. If you have genuinely accepted this risk, rerun with --allow-production-host"
+        print_warn "If you have genuinely accepted this risk, the override is NOT available"
+        print_warn "through the install_dockhub.sh / services.sh menus — deliberately. Those"
+        print_warn "hand off without forwarding arguments, and a flag whose only purpose is"
+        print_warn "to switch off a safety check should not be reachable from the friendliest"
+        print_warn "entry point. Invoke this script directly instead:"
+        echo >&2
+        echo "    bash $SOURCE_DIR/deploy.sh --allow-production-host" >&2
+        echo >&2
+        print_error "Refusing to continue."
     fi
     print_warn "--allow-production-host given: continuing on a host that runs your real services."
 fi
