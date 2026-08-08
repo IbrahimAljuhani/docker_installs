@@ -1,0 +1,72 @@
+# OWASP Juice Shop — DELIBERATELY VULNERABLE SOFTWARE.
+#
+# ⚠️ Read services/Security-Lab/README.md before touching this file. It
+# carries the threat model this compose file is built around, and explains
+# why the settings below are stricter than anywhere else in DockHub.
+#
+# The governing principle, restated because it explains every line here:
+#   The application must be vulnerable. The container must not be escapable.
+# The SQL injection working is the lesson. The SQL injection becoming a
+# foothold on the host is not.
+#
+# Image: the official one, from the project lead (juice-shop/juice-shop is
+# the OWASP repo; bkimminich is its maintainer and publishes the image).
+# It already runs as uid 65532 (nonroot) out of the box — unusually good
+# hygiene for a deliberately vulnerable app, and worth not undoing.
+#
+# WHY THERE IS NO NPM PATH, NO DOMAIN, NO main-net
+# Every other service in this repo wants to be reachable. This one wants the
+# opposite. It joins its own private network only, binds to a single LAN
+# address rather than 0.0.0.0, and is never proxied or given a certificate.
+#
+# WHY restart: "no"
+# The failure mode for a lab isn't an exotic exploit, it's forgetting. A
+# vulnerable app that quietly came back after a reboot and ran for six months
+# is the realistic incident. Stopped stays stopped.
+#
+# NOT SET, deliberately: read_only. Juice Shop writes to its own working
+# directories during several challenges (file upload, the FTP folder) and
+# rewrites its SQLite database on every restart as part of its self-healing.
+# A read-only rootfs would need tmpfs mounts over exactly the paths the
+# challenges target, which risks breaking lessons in ways that look like
+# bugs. The capability, privilege and resource limits below are the ones
+# that actually stand between an app-layer exploit and the host.
+#
+# This is a single-instance service, under ~/docker/juice-shop/.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it
+# (and the generated .env) to ~/docker/juice-shop/ and runs it from there.
+
+services:
+  juice-shop:
+    image: bkimminich/juice-shop:${JUICE_SHOP_VERSION:-v20.1.1}
+    container_name: juice-shop
+    # NOT unless-stopped. See the header.
+    restart: "no"
+    labels:
+      # Lets you find every lab container you left running:
+      #   docker ps --filter "label=dockhub.security-lab=true"
+      dockhub.security-lab: "true"
+    environment:
+      # 'unsafe' unlocks the challenges Juice Shop disables by default —
+      # the ones that touch the filesystem rather than just the app. Set by
+      # deploy.sh only if you asked for it.
+      NODE_ENV: ${JUICE_SHOP_MODE:-production}
+    ports:
+      # Bound to one LAN address, never 0.0.0.0. deploy.sh fills SECLAB_BIND
+      # with this host's primary address.
+      - "${SECLAB_BIND}:${JUICE_SHOP_PORT:-3000}:3000"
+    # ── Containment ─────────────────────────────────────────────────────
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Fork bombs are a genuine risk here: running a payload you found online
+    # is the whole activity. This caps the blast radius at the container.
+    pids_limit: 200
+    networks:
+      - juice-shop-net
+
+networks:
+  juice-shop-net:
+    driver: bridge

@@ -50,6 +50,8 @@ declare -A SERVICE_FILES=(
     [home-assistant]="docker-compose.yml"
     # No backup.sh: no database, so the generic volume backup covers it.
     [mosquitto]="docker-compose.yml"
+    # Security-Lab: no backup.sh by design — these hold no data of yours.
+    [juice-shop]="docker-compose.yml"
     [immich]="docker-compose.yml backup.sh"
     [pi-hole]="docker-compose.yml"
     [adguard]="docker-compose.yml"
