@@ -52,6 +52,7 @@ declare -A SERVICE_FILES=(
     [mosquitto]="docker-compose.yml"
     # Security-Lab: no backup.sh by design — these hold no data of yours.
     [juice-shop]="docker-compose.yml"
+    [webgoat]="docker-compose.yml"
     [immich]="docker-compose.yml backup.sh"
     [pi-hole]="docker-compose.yml"
     [adguard]="docker-compose.yml"

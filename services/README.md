@@ -6,7 +6,7 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 
 ## 📋 Services Roadmap
 
-![Progress](https://img.shields.io/badge/built-28%20%2F%2038%20services-46a049?style=for-the-badge)
+![Progress](https://img.shields.io/badge/built-29%20%2F%2038%20services-46a049?style=for-the-badge)
 
 [`services.sh`](services.sh) presents these grouped by category. ✅ = deployable now, 🚧 = listed in the menu already (shows "coming soon" if picked) but not built yet.
 
@@ -23,7 +23,7 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 | **Photos** | ✅ [![Immich](https://img.shields.io/badge/Immich-4250AF?style=flat-square&logo=immich&logoColor=white)](Photos/immich/) · ✅ <a href="Photos/photoprism/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/photoprism.svg" width="20" height="20" alt="PhotoPrism" title="PhotoPrism"></a> |
 | **Projects** | ✅ [![OpenProject](https://img.shields.io/badge/OpenProject-0770B8?style=flat-square&logo=openproject&logoColor=white)](Projects/openproject/) · ✅ [![Plane](https://img.shields.io/badge/Plane-121212?style=flat-square&logo=plane&logoColor=white)](Projects/plane/) · ✅ [![Vikunja](https://img.shields.io/badge/Vikunja-196AFF?style=flat-square&logo=vikunja&logoColor=white)](Projects/vikunja/) · ✅ [![Redmine](https://img.shields.io/badge/Redmine-B32024?style=flat-square&logo=redmine&logoColor=white)](Projects/redmine/) · ✅ <a href="Projects/taiga/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/taiga.svg" width="20" height="20" alt="Taiga" title="Taiga"></a> |
 | **Security** | ✅ [![Vaultwarden](https://img.shields.io/badge/Vaultwarden-000000?style=flat-square&logo=vaultwarden&logoColor=white)](Security/vaultwarden/) |
-| **Security-Lab** ⚠️ | ✅ [![OWASP Juice Shop](https://img.shields.io/badge/OWASP_Juice_Shop-000000?style=flat-square&logo=owasp&logoColor=white)](Security-Lab/juice-shop/) · 🚧 [![WebGoat](https://img.shields.io/badge/WebGoat-000000?style=flat-square&logo=owasp&logoColor=white)](Security-Lab/webgoat/) · 🚧 [![Vulhub](https://img.shields.io/badge/Vulhub-C1272D?style=flat-square&logo=docker&logoColor=white)](Security-Lab/vulhub/) |
+| **Security-Lab** ⚠️ | ✅ [![OWASP Juice Shop](https://img.shields.io/badge/OWASP_Juice_Shop-000000?style=flat-square&logo=owasp&logoColor=white)](Security-Lab/juice-shop/) · ✅ [![WebGoat](https://img.shields.io/badge/WebGoat-000000?style=flat-square&logo=owasp&logoColor=white)](Security-Lab/webgoat/) · 🚧 [![Vulhub](https://img.shields.io/badge/Vulhub-C1272D?style=flat-square&logo=docker&logoColor=white)](Security-Lab/vulhub/) |
 | **Storage** | ✅ [![Nextcloud](https://img.shields.io/badge/Nextcloud-0082C9?style=flat-square&logo=nextcloud&logoColor=white)](Storage/nextcloud/) · ✅ [![Seafile](https://img.shields.io/badge/Seafile-FF9800?style=flat-square&logo=seafile&logoColor=white)](Storage/seafile/) · ✅ [![ownCloud](https://img.shields.io/badge/ownCloud-041E42?style=flat-square&logo=owncloud&logoColor=white)](Storage/owncloud/) (Infinite Scale — one container, no database) |
 | **VPN** | ✅ [![WireGuard](https://img.shields.io/badge/WireGuard-88171A?style=flat-square&logo=wireguard&logoColor=white)](VPN/wireguard/) · ✅ <a href="VPN/netbird/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/netbird.svg" width="20" height="20" alt="NetBird" title="NetBird"></a> · ✅ [![OpenVPN](https://img.shields.io/badge/OpenVPN-EA7E20?style=flat-square&logo=openvpn&logoColor=white)](VPN/openvpn/) (Access Server — 2 free concurrent connections) |
 | **Web** | ✅ [![WordPress](https://img.shields.io/badge/WordPress-21759B?style=flat-square&logo=wordpress&logoColor=white)](Web/wordpress/) · ✅ [![Ghost](https://img.shields.io/badge/Ghost-15171A?style=flat-square&logo=ghost&logoColor=white)](Web/ghost/) · ✅ <a href="Web/linkstack/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/linkstack.svg" width="20" height="20" alt="LinkStack" title="LinkStack (multi-instance)"></a> |
@@ -47,6 +47,7 @@ Only relevant if you opt into a service's **direct host port** prompt (default i
 | Nextcloud | `8080` ⚠️ same suggested default as OpenProject — pick a different one if running both |
 | n8n | `5678` |
 | Redmine | `3000` |
+| OWASP WebGoat | `8080` ⚠️ same as OpenProject/Nextcloud, **plus `9090` for WebWolf**. Both are required — WebWolf is the attacker-side half and several lessons silently never complete without it. LAN-bound, not optional. See [Security-Lab](Security-Lab/README.md). |
 | OWASP Juice Shop | `3000` ⚠️ same as Redmine — pick another if running both. Unlike every other row here the port is **not optional** (there is no NPM path) and it binds to your **LAN address only**, never `0.0.0.0`. See [Security-Lab](Security-Lab/README.md). |
 | Taiga | `9000` |
 | Vikunja | `3456` |
