@@ -1,0 +1,69 @@
+# OWASP WebGoat — DELIBERATELY VULNERABLE SOFTWARE.
+#
+# ⚠️ Read services/Security-Lab/README.md before touching this file. It
+# carries the threat model this compose file is built around.
+#
+# The governing principle, restated:
+#   The application must be vulnerable. The container must not be escapable.
+#
+# ONE CONTAINER, TWO APPS. WebGoat (the lessons, :8080) and WebWolf (the
+# attacker-side companion, :9090) both run inside the single webgoat/webgoat
+# image. Several lessons — the ones where you exfiltrate data to a server you
+# control, or catch a request — genuinely do not work without WebWolf, and
+# most guides omit it entirely because they only publish 8080.
+#
+# The older two-image split (webgoat/goatandwolf) was last built in 2021.
+# Do not use it.
+#
+# ⚠️ WEBGOAT_HOST / WEBWOLF_HOST ARE ADVERTISED HOSTNAMES, NOT BIND ADDRESSES.
+# WebGoat builds the links that send you between the two apps from these. Left
+# unset they resolve to localhost, which is correct only if your browser runs
+# on the server itself — from a laptop those links are dead, and the lesson
+# looks broken rather than misconfigured. deploy.sh sets both to this host's
+# LAN address, the same one the ports are bound to.
+#
+# For the record, since it is widely misreported: this image does NOT bind to
+# localhost internally. Its Dockerfile ends with `--server.address 0.0.0.0`
+# and it already runs as a non-root user. The `server.address` advice you'll
+# find belongs to running the JAR standalone, outside Docker.
+#
+# This is a single-instance service, under ~/docker/webgoat/.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it
+# (and the generated .env) to ~/docker/webgoat/ and runs it from there.
+
+services:
+  webgoat:
+    image: webgoat/webgoat:${WEBGOAT_VERSION:-v2025.3}
+    container_name: webgoat
+    # NOT unless-stopped — a forgotten lab must not return after a reboot.
+    restart: "no"
+    labels:
+      dockhub.security-lab: "true"
+    environment:
+      # Advertised hostnames — see the header. Not bind addresses.
+      WEBGOAT_HOST: ${SECLAB_BIND}
+      WEBWOLF_HOST: ${SECLAB_BIND}
+      # The image defaults to Europe/Amsterdam. Several lessons compare
+      # timestamps and misbehave when the container's clock is in a different
+      # zone than yours, which reads as a broken lesson.
+      TZ: ${WEBGOAT_TZ:-UTC}
+    ports:
+      - "${SECLAB_BIND}:${WEBGOAT_PORT:-8080}:8080"
+      - "${SECLAB_BIND}:${WEBWOLF_PORT:-9090}:9090"
+    # ── Containment ─────────────────────────────────────────────────────
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Deliberately far higher than Juice Shop's 200. This is a JVM, and on
+    # Linux every Java thread counts against pids_limit — the JDK plus the
+    # compiler some lessons invoke will blow past a low cap, and the failures
+    # look like random lesson errors rather than a resource limit.
+    pids_limit: 512
+    networks:
+      - webgoat-net
+
+networks:
+  webgoat-net:
+    driver: bridge
