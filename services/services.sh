@@ -48,6 +48,8 @@ declare -A SERVICE_FILES=(
     [linkstack]="docker-compose.yml"
     [jellyfin]="docker-compose.yml"
     [home-assistant]="docker-compose.yml"
+    # No backup.sh: no database, so the generic volume backup covers it.
+    [mosquitto]="docker-compose.yml"
     [immich]="docker-compose.yml backup.sh"
     [pi-hole]="docker-compose.yml"
     [adguard]="docker-compose.yml"
@@ -90,7 +92,6 @@ CATALOG=(
     "ERP|dolibarr|Dolibarr"
     "ERP|odoo|Odoo"
     "Home-Automation|home-assistant|Home Assistant"
-    "Home-Automation|zigbee2mqtt|Zigbee2MQTT"
     "Home-Automation|mosquitto|Eclipse Mosquitto"
     "Media|jellyfin|Jellyfin"
     "Media|plex|Plex"
@@ -102,8 +103,15 @@ CATALOG=(
     "Projects|redmine|Redmine"
     "Projects|taiga|Taiga"
     "Security|vaultwarden|Vaultwarden"
-    "Security|authentik|Authentik"
-    "Security|keycloak|Keycloak"
+    # Security-Lab is deliberately its OWN category, not part of Security.
+    # Everything below is software that is vulnerable ON PURPOSE — training
+    # targets with real, working flaws. Listing them next to Vaultwarden, a
+    # password manager holding real secrets, would invite exactly the wrong
+    # mental grouping. These are also the only services in this repo that must
+    # NOT join main-net or get a public domain; see their READMEs.
+    "Security-Lab|juice-shop|OWASP Juice Shop"
+    "Security-Lab|webgoat|WebGoat"
+    "Security-Lab|vulhub|Vulhub"
     "Storage|nextcloud|Nextcloud"
     "Storage|seafile|Seafile"
     "Storage|owncloud|ownCloud"
