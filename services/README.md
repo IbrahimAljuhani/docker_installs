@@ -6,7 +6,7 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 
 ## 📋 Services Roadmap
 
-![Progress](https://img.shields.io/badge/built-25%20%2F%2038%20services-46a049?style=for-the-badge)
+![Progress](https://img.shields.io/badge/built-26%20%2F%2038%20services-46a049?style=for-the-badge)
 
 [`services.sh`](services.sh) presents these grouped by category. ✅ = deployable now, 🚧 = listed in the menu already (shows "coming soon" if picked) but not built yet.
 
@@ -23,7 +23,7 @@ Optional services that run on top of the core infrastructure ([`install_dockhub.
 | **Photos** | ✅ [![Immich](https://img.shields.io/badge/Immich-4250AF?style=flat-square&logo=immich&logoColor=white)](Photos/immich/) · ✅ <a href="Photos/photoprism/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/photoprism.svg" width="20" height="20" alt="PhotoPrism" title="PhotoPrism"></a> |
 | **Projects** | ✅ [![OpenProject](https://img.shields.io/badge/OpenProject-0770B8?style=flat-square&logo=openproject&logoColor=white)](Projects/openproject/) · ✅ [![Plane](https://img.shields.io/badge/Plane-121212?style=flat-square&logo=plane&logoColor=white)](Projects/plane/) · ✅ [![Vikunja](https://img.shields.io/badge/Vikunja-196AFF?style=flat-square&logo=vikunja&logoColor=white)](Projects/vikunja/) · ✅ [![Redmine](https://img.shields.io/badge/Redmine-B32024?style=flat-square&logo=redmine&logoColor=white)](Projects/redmine/) · ✅ <a href="Projects/taiga/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/taiga.svg" width="20" height="20" alt="Taiga" title="Taiga"></a> |
 | **Security** | ✅ [![Vaultwarden](https://img.shields.io/badge/Vaultwarden-000000?style=flat-square&logo=vaultwarden&logoColor=white)](Security/vaultwarden/) · 🚧 [![Authentik](https://img.shields.io/badge/Authentik-FD4B2D?style=flat-square&logo=authentik&logoColor=white)](Security/authentik/) · 🚧 [![Keycloak](https://img.shields.io/badge/Keycloak-4D4D4D?style=flat-square&logo=keycloak&logoColor=white)](Security/keycloak/) |
-| **Storage** | ✅ [![Nextcloud](https://img.shields.io/badge/Nextcloud-0082C9?style=flat-square&logo=nextcloud&logoColor=white)](Storage/nextcloud/) · 🚧 [![Seafile](https://img.shields.io/badge/Seafile-FF9800?style=flat-square&logo=seafile&logoColor=white)](Storage/seafile/) · ✅ [![ownCloud](https://img.shields.io/badge/ownCloud-041E42?style=flat-square&logo=owncloud&logoColor=white)](Storage/owncloud/) (Infinite Scale — one container, no database) |
+| **Storage** | ✅ [![Nextcloud](https://img.shields.io/badge/Nextcloud-0082C9?style=flat-square&logo=nextcloud&logoColor=white)](Storage/nextcloud/) · ✅ [![Seafile](https://img.shields.io/badge/Seafile-FF9800?style=flat-square&logo=seafile&logoColor=white)](Storage/seafile/) · ✅ [![ownCloud](https://img.shields.io/badge/ownCloud-041E42?style=flat-square&logo=owncloud&logoColor=white)](Storage/owncloud/) (Infinite Scale — one container, no database) |
 | **VPN** | ✅ [![WireGuard](https://img.shields.io/badge/WireGuard-88171A?style=flat-square&logo=wireguard&logoColor=white)](VPN/wireguard/) · ✅ <a href="VPN/netbird/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/netbird.svg" width="20" height="20" alt="NetBird" title="NetBird"></a> · ✅ [![OpenVPN](https://img.shields.io/badge/OpenVPN-EA7E20?style=flat-square&logo=openvpn&logoColor=white)](VPN/openvpn/) (Access Server — 2 free concurrent connections) |
 | **Web** | ✅ [![WordPress](https://img.shields.io/badge/WordPress-21759B?style=flat-square&logo=wordpress&logoColor=white)](Web/wordpress/) · ✅ [![Ghost](https://img.shields.io/badge/Ghost-15171A?style=flat-square&logo=ghost&logoColor=white)](Web/ghost/) · ✅ <a href="Web/linkstack/"><img src="https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/linkstack.svg" width="20" height="20" alt="LinkStack" title="LinkStack (multi-instance)"></a> |
 
@@ -59,6 +59,7 @@ Only relevant if you opt into a service's **direct host port** prompt (default i
 | AdGuard Home | Setup wizard `3000` ⚠️ same as Redmine's default, admin UI `8080` ⚠️ same as OpenProject/Nextcloud (both optional, asked together). DNS itself (`53`) is **always** bound to the host, not an opt-in prompt — same reasoning as Pi-hole's DNS port. |
 | Plex | `32400` |
 | PhotoPrism | `2342` |
+| Seafile | `8087` (optional) → the container's `80`. ⚠️ `SEAFILE_SERVER_HOSTNAME` in `.env` must carry the port for a direct-port deployment (`10.0.0.27:8087`), and `SEAFILE_SERVER_PROTOCOL` must match — a mismatch surfaces as "CSRF verification failed" at login, not as a config error. |
 | ownCloud (Infinite Scale) | `9200` (optional, oCIS's own port). ⚠️ Even this direct port is **https** with a self-signed cert — oCIS's web UI is an OIDC client and needs a browser secure context, so plain http can't work. See its README. |
 | Ghost | `2368` (optional, Ghost's own port). `GHOST_URL` in `.env` must match how you reach it — see its README. |
 | Vaultwarden | **none** — no host-port option. Its web vault needs a browser "secure context" (HTTPS or localhost), so a direct port can't work; NPM + SSL is the only route. |

@@ -63,6 +63,7 @@ declare -A SERVICE_FILES=(
     # No backup.sh: oCIS has no separate database container, so the generic
     # volume backup already captures everything (both named volumes).
     [owncloud]="docker-compose.yml"
+    [seafile]="docker-compose.yml backup.sh"
     [n8n]="docker-compose.yml init-data.sh backup.sh"
     [taiga]="docker-compose.yml docker-compose-inits.yml backup.sh taiga-gateway/taiga.conf i18n-overrides/django-ar.po i18n-overrides/locale-ar.json i18n-overrides/apply-front-locale.sh"
 )
