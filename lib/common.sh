@@ -235,6 +235,44 @@ prompt_host_port() {
     done
 }
 
+# ── Security-Lab helpers ────────────────────────────────────────────────
+# Used ONLY by services/Security-Lab/*, which deploy software that is
+# deliberately vulnerable. Nothing else in this repo should call these.
+
+# A typed-confirmation gate. Not theatre: services.sh presents Security-Lab
+# in the same menu as everything else, so a user tabbing through and pressing
+# Enter could otherwise stand up an exploitable app without registering what
+# they did. A y/N prompt is exactly what muscle memory defeats; typing a
+# phrase is not. $1 = service name shown in the warning.
+confirm_vulnerable_deploy() {
+    local name="$1" answer
+    echo >&2
+    print_warn "$name is DELIBERATELY VULNERABLE software. That is its purpose."
+    print_warn "Anything that can reach it can compromise it — and from there reach"
+    print_warn "this host and everything else on your network. Never expose it to the"
+    print_warn "internet, and stop it when you are done practising."
+    echo >&2
+    read -rp "Type I-UNDERSTAND to continue (anything else aborts): " answer
+    [[ "$answer" == "I-UNDERSTAND" ]] || print_error "Aborted — nothing was deployed."
+}
+
+# Security-Lab services bind to a specific address rather than 0.0.0.0, so a
+# deliberately vulnerable app isn't silently offered to every interface the
+# host has. Sets SECLAB_BIND in the caller's shell to the primary LAN address
+# (the agreed default: attack tooling on a laptop needs to reach it, and SSH
+# tunnels make that painful). Falls back to 127.0.0.1 when no address can be
+# determined — failing closed is the right direction here.
+SECLAB_BIND=""
+detect_seclab_bind() {
+    SECLAB_BIND=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
+    if [[ -z "${SECLAB_BIND:-}" ]]; then
+        SECLAB_BIND="127.0.0.1"
+        print_warn "Could not determine this host's LAN address — binding to 127.0.0.1."
+        print_warn "Reach it with: ssh -L <port>:localhost:<port> <user>@<this-host>"
+    fi
+    return 0
+}
+
 # ── Environment detection (home vs VPS) ─────────────────────────────────
 # Reads ~/docker/.dockhub-env, written once by install_dockhub.sh on first
 # core-infra install. Sets DOCKHUB_ENVIRONMENT ("home"/"vps") and
