@@ -197,6 +197,48 @@ print_info "Starting Mosquitto..."
 SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}' || true)
 [[ -z "${SERVER_IP:-}" ]] && SERVER_IP="<your-server-ip>"
 
+# ── Self-test ───────────────────────────────────────────────────────────
+# "Container Started" says nothing about whether the broker accepts
+# connections: a bad passwd file, a listener bound to the wrong interface or
+# a config typo all leave a running container that refuses every client.
+# MQTT has no web page to open, so there's no casual way to notice — hence
+# an actual publish/subscribe round trip here.
+#
+# Uses a RETAINED message (-r) rather than a backgrounded subscriber: the
+# broker holds the last retained message per topic and hands it to any new
+# subscriber immediately, which turns this into two sequential commands with
+# no race and no background job to clean up. The final publish with -n sends
+# an empty payload, which is how MQTT clears retention — without it the test
+# message would sit in the broker forever.
+mqtt_selftest() {
+    local pass topic="dockhub/selftest" out
+    pass=$(awk -F': ' '/MQTT password:/{print $2; exit}' "$SECRETS_FILE" 2>/dev/null || true)
+    [[ -n "$pass" ]] || return 1
+
+    # The container is up but mosquitto may still be binding its listener.
+    local waited=0
+    while (( waited < 15 )); do
+        docker exec mosquitto mosquitto_pub -h localhost -u "$ENV_MQTT_USER" -P "$pass" \
+            -t "$topic" -m "dockhub-ok" -r >/dev/null 2>&1 && break
+        sleep 1
+        waited=$(( waited + 1 ))
+    done
+    (( waited < 15 )) || return 1
+
+    out=$(docker exec mosquitto mosquitto_sub -h localhost -u "$ENV_MQTT_USER" -P "$pass" \
+        -t "$topic" -C 1 -W 5 2>/dev/null || true)
+    docker exec mosquitto mosquitto_pub -h localhost -u "$ENV_MQTT_USER" -P "$pass" \
+        -t "$topic" -n -r >/dev/null 2>&1 || true
+
+    [[ "$out" == "dockhub-ok" ]]
+}
+
+if mqtt_selftest; then
+    SELFTEST_RESULT="✅ Self-test passed — published and received a message over MQTT."
+else
+    SELFTEST_RESULT="⚠️  Self-test did NOT pass. The container is running, but a publish/subscribe round trip failed — see below."
+fi
+
 print_info "Mosquitto is running."
 echo
 echo "──────────────────────────────────────────────"
@@ -207,11 +249,17 @@ echo "📜 Log:          $LOGFILE"
 [[ -f "$SECRETS_FILE" ]] && echo "🔒 Secrets:      $SECRETS_FILE"
 echo "──────────────────────────────────────────────"
 echo
-echo "🩺 Verify it actually accepts connections:"
-echo "     docker exec mosquitto mosquitto_sub -h localhost -u $ENV_MQTT_USER -P '<password>' -t test -C 1 &"
-echo "     docker exec mosquitto mosquitto_pub -h localhost -u $ENV_MQTT_USER -P '<password>' -t test -m hello"
-echo "   The subscriber should print 'hello' and exit."
+echo "$SELFTEST_RESULT"
 echo
+if [[ "$SELFTEST_RESULT" != ✅* ]]; then
+    echo "   Check the broker's own log first — it names the reason:"
+    echo "     cd $INSTALL_DIR && $COMPOSE_CMD logs --tail=30 mosquitto"
+    echo "   To repeat the test by hand:"
+    echo "     P=\$(awk -F': ' '/MQTT password:/{print \$2; exit}' $SECRETS_FILE)"
+    echo "     docker exec mosquitto mosquitto_pub -h localhost -u $ENV_MQTT_USER -P \"\$P\" -t t -m hi -r"
+    echo "     docker exec mosquitto mosquitto_sub -h localhost -u $ENV_MQTT_USER -P \"\$P\" -t t -C 1 -W 5"
+    echo
+fi
 echo "📌 There is no web interface — MQTT is a protocol, not a website, so"
 echo "   there's nothing to point NGINX Proxy Manager at. Point your clients"
 echo "   (Home Assistant, ESP devices, sensors) straight at the port above."

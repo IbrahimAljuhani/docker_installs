@@ -68,14 +68,37 @@ cat ~/docker/mosquitto/.mosquitto-docker-secrets.txt
 
 ## 🩺 Verify it actually works
 
-A broker that starts is not the same as a broker that accepts connections. Publish and subscribe to prove it:
+A broker that starts is not the same as a broker that accepts connections — a bad password file, a listener on the wrong interface, or a config typo all leave a **running container that refuses every client**. And unlike every other service in this repo, there's no page to open that would show you.
 
-```bash
-docker exec mosquitto mosquitto_sub -h localhost -u mqtt -P '<password>' -t test -C 1 &
-docker exec mosquitto mosquitto_pub -h localhost -u mqtt -P '<password>' -t test -m hello
+**`deploy.sh` now tests this for you** and prints the result:
+
+```
+✅ Self-test passed — published and received a message over MQTT.
 ```
 
-The subscriber prints `hello` and exits. If instead you get `Connection Refused: not authorised`, the password is wrong; if you get a connection error from a *remote* machine but this works locally, it's a firewall on the host rather than Mosquitto.
+If it doesn't pass, the script prints the broker log command and the manual commands to repeat the test.
+
+### Running it by hand
+
+```bash
+cd ~/docker/mosquitto
+P=$(awk -F': ' '/MQTT password:/{print $2; exit}' .mosquitto-docker-secrets.txt)
+docker exec mosquitto mosquitto_pub -h localhost -u mqtt -P "$P" -t dockhub/selftest -m 'it works' -r
+docker exec mosquitto mosquitto_sub -h localhost -u mqtt -P "$P" -t dockhub/selftest -C 1 -W 5
+docker exec mosquitto mosquitto_pub -h localhost -u mqtt -P "$P" -t dockhub/selftest -n -r
+```
+
+The subscriber prints `it works`. The last line clears the retained message so it doesn't sit in the broker forever.
+
+> 💡 **Why publish before subscribing?** The `-r` flag marks the message *retained*: the broker keeps the last retained message per topic and hands it to any new subscriber the moment it connects. That turns the test into plain sequential commands. The obvious alternative — backgrounding a subscriber with `&` and then publishing — races the two against each other and fails intermittently for no visible reason.
+
+### Reading the failure
+
+| What you see | What it means |
+|---|---|
+| `Connection Refused: not authorised` | Wrong username or password. |
+| `Connection refused` / timeout | The broker isn't listening — check `docker compose logs mosquitto`. |
+| Works locally, fails from another machine | A firewall on the host, not Mosquitto. |
 
 ---
 
