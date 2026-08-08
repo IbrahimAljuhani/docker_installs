@@ -1,0 +1,66 @@
+# Eclipse Mosquitto — the reference MQTT broker — via the official
+# `eclipse-mosquitto` Docker Official Image.
+#
+# One container, no database, a few megabytes of RAM. This is the smallest
+# service in this repo.
+#
+# ⚠️ MOSQUITTO 2.x DOES NOT ACCEPT REMOTE CONNECTIONS WITHOUT A CONFIG FILE.
+# Run this image with no configuration and it starts, logs happily, and binds
+# only to 127.0.0.1 inside its own container — so every client on your
+# network gets "connection refused" against a broker that looks perfectly
+# healthy. Upstream calls this local-only mode and it is the single most
+# reported Mosquitto-in-Docker problem. deploy.sh always generates a
+# mosquitto.conf with an explicit `listener`, which is what turns it off.
+#
+# ⚠️ IT ALSO HAS NO AUTHENTICATION UNLESS YOU BUILD IT. `allow_anonymous`
+# governs that, and an anonymous broker is not a small thing: MQTT has no
+# per-topic permissions by default, so anyone who can reach port 1883 can
+# subscribe to every topic AND publish to it. On a broker driving Home
+# Assistant that means reading every sensor and switching every device.
+# deploy.sh generates a password file and sets `allow_anonymous false`.
+#
+# Deliberate deviations from the common examples you'll find online:
+#   - The password file is created by a throwaway container running as root,
+#     which then chowns it to uid 1883 (the user mosquitto drops to). A file
+#     written by the host user is unreadable to the broker, and one made
+#     world-readable to work around that gets a deprecation warning from
+#     Mosquitto and will be refused outright in a future version.
+#   - Port 1883 is always published. MQTT is not HTTP, so NGINX Proxy Manager
+#     cannot front it — same situation as Pi-hole's port 53 and WireGuard's
+#     51820. The container also joins main-net so other containers can reach
+#     it as `mosquitto:1883` without going out through the host.
+#   - The websocket listener (9001) is opt-in rather than always on. It's
+#     only useful for browser-based MQTT clients, and an unused open port is
+#     an unused open port.
+#
+# This is a single-instance service: one broker per host, under
+# ~/docker/mosquitto/.
+#
+# This file is the SOURCE template (tracked in git). deploy.sh copies it
+# (and the generated config) to ~/docker/mosquitto/ and runs it from there.
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:${MOSQUITTO_VERSION:-2.1}
+    container_name: mosquitto
+    restart: unless-stopped
+    volumes:
+      # Bind-mounted rather than a named volume so mosquitto.conf and the
+      # password file are visible and editable at ~/docker/mosquitto/config/
+      # — adding a second MQTT user shouldn't require exec'ing into a
+      # container to find the file.
+      - ./config:/mosquitto/config
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    ports:
+      - "${MQTT_PORT:-1883}:1883"
+    networks:
+      - main-net
+
+volumes:
+  mosquitto-data:
+  mosquitto-log:
+
+networks:
+  main-net:
+    external: true
