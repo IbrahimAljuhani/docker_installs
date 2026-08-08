@@ -53,6 +53,10 @@ declare -A SERVICE_FILES=(
     # Security-Lab: no backup.sh by design — these hold no data of yours.
     [juice-shop]="docker-compose.yml"
     [webgoat]="docker-compose.yml"
+    # Vulhub ships NO compose file of ours — it clones upstream's library of
+    # ~330 of them. Empty on purpose; the key still has to exist so
+    # is_available() offers it in standalone (curl) mode.
+    [vulhub]=""
     [immich]="docker-compose.yml backup.sh"
     [pi-hole]="docker-compose.yml"
     [adguard]="docker-compose.yml"
